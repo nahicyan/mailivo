@@ -1,0 +1,27 @@
+{
+  "name": "mailivo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "app",
+    "api",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:app\" \"npm run dev:api\"",
+    "dev:app": "cd app && npm run dev",
+    "dev:api": "cd api && npm run dev",
+    "build": "npm run build:app && npm run build:api",
+    "build:app": "cd app && npm run build",
+    "build:api": "cd api && npm run build",
+    "start": "concurrently \"npm run start:app\" \"npm run start:api\"",
+    "start:app": "cd app && npm run start",
+    "start:api": "cd api && npm run start",
+    "lint": "npm run lint:app && npm run lint:api",
+    "lint:app": "cd app && npm run lint",
+    "lint:api": "cd api && npm run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
