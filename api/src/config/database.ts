@@ -1,4 +1,4 @@
-// ===== API Configuration (api/src/config/database.ts) =====
+// api/src/config/database.ts
 import mongoose from 'mongoose';
 
 export const connectDatabase = async () => {
