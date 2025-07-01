@@ -37,39 +37,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const { data } = await api.get('/auth/profile');
-      setUser(data.user);
-    } catch (error) {
-      setUser(null);
-    } finally {
+useEffect(() => {
+  // Don't check auth on auth pages
+  if (typeof window !== 'undefined') {
+    const isAuthPage = window.location.pathname.includes('/login') || 
+                      window.location.pathname.includes('/register');
+    
+    if (!isAuthPage) {
+      checkAuth();
+    } else {
       setLoading(false);
     }
-  };
+  }
+}, []);
+
+const checkAuth = async () => {
+  try {
+    // Check if token exists first
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    const { data } = await api.get('/auth/profile');
+    setUser(data.user);
+  } catch (error) {
+    // Clear invalid token
+    localStorage.removeItem('auth_token');
+    setUser(null);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/auth/login', { email, password });
     setUser(data.user);
-    localStorage.setItem('auth_token', data.token);
+  //  localStorage.setItem('auth_token', data.token);
     router.push('/dashboard');
   };
 
   const register = async (registerData: RegisterData) => {
     const { data } = await api.post('/auth/register', registerData);
     setUser(data.user);
-    localStorage.setItem('auth_token', data.token);
+  //  localStorage.setItem('auth_token', data.token);
     router.push('/dashboard');
   };
 
   const logout = async () => {
     await api.post('/auth/logout');
     setUser(null);
-    localStorage.removeItem('auth_token');
+  //  localStorage.removeItem('auth_token');
     router.push('/login');
   };
 

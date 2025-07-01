@@ -12,7 +12,7 @@ export const api = axios.create({
 });
 
 // Request interceptor for auth token
-api.interceptors.request.use(
+/* api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
@@ -21,16 +21,22 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
-);
+); */
 
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
+      // Only redirect if not already on auth pages
+      const isAuthPage = window.location.pathname.includes('/login') || 
+                        window.location.pathname.includes('/register');
+      
       localStorage.removeItem('auth_token');
-      window.location.href = '/login';
+      
+      if (!isAuthPage) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
