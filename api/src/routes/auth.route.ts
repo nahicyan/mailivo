@@ -1,4 +1,4 @@
-// api/src/routes/auth.routes.ts
+// api/src/routes/auth.route.ts
 import { Router } from 'express';
 import { authController } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth.middleware';
@@ -43,18 +43,3 @@ router.get('/profile', authenticate, authController.getProfile);
 router.put('/profile', authenticate, authController.updateProfile);
 
 export { router as authRoutes };
-
-// api/src/routes/index.ts
-import { Router } from 'express';
-import { authRoutes } from './auth.routes';
-
-const router = Router();
-
-router.use('/auth', authRoutes);
-
-// Add other routes here as we create them
-// router.use('/campaigns', campaignRoutes);
-// router.use('/contacts', contactRoutes);
-// router.use('/email', emailRoutes);
-
-export { router as apiRoutes };

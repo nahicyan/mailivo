@@ -11,14 +11,15 @@ const generateToken = (userId: string) => {
 };
 
 export const authController = {
-  async register(req: Request, res: Response) {
+  async register(req: Request, res: Response): Promise<void> {
     try {
       const { email, password, companyName, companyDomain } = req.body;
 
       // Check if user exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return res.status(400).json({ error: 'Email already registered' });
+        res.status(400).json({ error: 'Email already registered' });
+        return;
       }
 
       // Create user
@@ -34,7 +35,7 @@ export const authController = {
       await user.save();
 
       // Generate token
-      const token = generateToken(user._id.toString());
+      const token = generateToken((user._id as any).toString());
 
       // Set cookie
       res.cookie('token', token, {
@@ -46,7 +47,7 @@ export const authController = {
 
       res.status(201).json({
         user: {
-          id: user._id,
+          id: (user._id as any).toString(),
           email: user.email,
           company: user.company,
         },
@@ -58,24 +59,26 @@ export const authController = {
     }
   },
 
-  async login(req: Request, res: Response) {
+  async login(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
 
       // Find user
       const user = await User.findOne({ email });
       if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        res.status(401).json({ error: 'Invalid credentials' });
+        return;
       }
 
       // Check password
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        res.status(401).json({ error: 'Invalid credentials' });
+        return;
       }
 
       // Generate token
-      const token = generateToken(user._id.toString());
+      const token = generateToken((user._id as any).toString());
 
       // Set cookie
       res.cookie('token', token, {
@@ -87,7 +90,7 @@ export const authController = {
 
       res.json({
         user: {
-          id: user._id,
+          id: (user._id as any).toString(),
           email: user.email,
           company: user.company,
         },
@@ -99,28 +102,38 @@ export const authController = {
     }
   },
 
-  async logout(req: Request, res: Response) {
+  async logout(_req: Request, res: Response): Promise<void> {
     res.clearCookie('token');
     res.json({ message: 'Logged out successfully' });
   },
 
-  async getProfile(req: AuthRequest, res: Response) {
+  async getProfile(req: AuthRequest, res: Response): Promise<void> {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
     res.json({
       user: {
-        id: req.user._id,
+        id: (req.user._id as any).toString(),
         email: req.user.email,
         company: req.user.company,
       },
     });
   },
 
-  async updateProfile(req: AuthRequest, res: Response) {
+  async updateProfile(req: AuthRequest, res: Response): Promise<void> {
     try {
+      if (!req.user) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
       const updates = req.body;
       delete updates.password; // Don't update password here
 
       const user = await User.findByIdAndUpdate(
-        req.user._id,
+        (req.user._id as any).toString(),
         { $set: updates },
         { new: true }
       ).select('-password');
