@@ -30,9 +30,9 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-  { 
-    name: 'Campaigns', 
-    href: '/dashboard/campaigns', 
+  {
+    name: 'Campaigns',
+    href: '/dashboard/campaigns',
     icon: Mail,
     subItems: [
       { name: 'All Campaigns', href: '/dashboard/campaigns' },
@@ -40,9 +40,9 @@ const navigation = [
       { name: 'Templates', href: '/dashboard/campaigns/templates' },
     ]
   },
-  { 
-    name: 'Contacts', 
-    href: '/dashboard/contacts', 
+  {
+    name: 'Contacts',
+    href: '/dashboard/contacts',
     icon: Users,
     subItems: [
       { name: 'All Contacts', href: '/dashboard/contacts' },
@@ -83,7 +83,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -126,7 +126,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                     )}
                   >
-                    <Link 
+                    <Link
                       href={item.href}
                       className="flex items-center flex-1"
                       onClick={(e) => {
@@ -209,7 +209,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <div className="sticky top-0 z-40 flex h-16 items-center gap-x-4 border-b bg-white px-4 shadow-sm dark:bg-gray-800 sm:gap-x-6 sm:px-6 lg:px-8">
+        <div className="sticky top-0 z-0 flex h-16 items-center gap-x-4 border-b bg-white px-4 shadow-sm dark:bg-gray-800 sm:gap-x-6 sm:px-6 lg:px-8">
           <Button
             variant="ghost"
             size="icon"
@@ -218,7 +218,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          
+
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1 items-center">
               {/* Add search or breadcrumbs here */}

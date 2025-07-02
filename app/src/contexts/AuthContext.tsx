@@ -75,21 +75,21 @@ const checkAuth = async () => {
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/auth/login', { email, password });
     setUser(data.user);
-  //  localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('auth_token', data.token);
     router.push('/dashboard');
   };
 
   const register = async (registerData: RegisterData) => {
     const { data } = await api.post('/auth/register', registerData);
     setUser(data.user);
-  //  localStorage.setItem('auth_token', data.token);
+    localStorage.setItem('auth_token', data.token);
     router.push('/dashboard');
   };
 
   const logout = async () => {
     await api.post('/auth/logout');
     setUser(null);
-  //  localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_token');
     router.push('/login');
   };
 
