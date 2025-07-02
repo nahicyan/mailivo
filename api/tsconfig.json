@@ -17,6 +17,6 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../app/src/services/contact.service.ts"],
   "exclude": ["node_modules", "dist"]
 }
