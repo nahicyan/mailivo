@@ -12,8 +12,8 @@ export interface Campaign {
     opened: number;
     clicked: number;
   };
-  created_at: string;
-  updated_at: string;
+  createdAt: string;  // Changed from created_at
+  updatedAt: string;  // Changed from updated_at
 }
 
 export const campaignService = {

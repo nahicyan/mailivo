@@ -50,8 +50,8 @@ export default function CampaignsPage() {
                 </div>
                 <Badge variant={
                   campaign.status === 'sent' ? 'default' :
-                  campaign.status === 'draft' ? 'secondary' :
-                  campaign.status === 'sending' ? 'destructive' : 'outline'
+                    campaign.status === 'draft' ? 'secondary' :
+                      campaign.status === 'sending' ? 'destructive' : 'outline'
                 }>
                   {campaign.status}
                 </Badge>
@@ -72,7 +72,7 @@ export default function CampaignsPage() {
                   {campaign.metrics.clicked || 0} clicked
                 </div>
                 <div className="ml-auto">
-                  {formatDistanceToNow(new Date(campaign.created_at), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(campaign.createdAt), { addSuffix: true })}
                 </div>
               </div>
             </CardContent>
