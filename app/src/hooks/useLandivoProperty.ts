@@ -7,7 +7,11 @@ export function useLandivoProperty(id: string) {
     queryKey: ['landivo-property', id],
     queryFn: () => landivoClient.getProperty(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      // Don't retry on 404 errors
+      return error.message.includes('404') ? false : failureCount < 3;
+    }
   });
 }
 

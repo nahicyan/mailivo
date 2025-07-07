@@ -2,8 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LandivoProperty, LandivoBuyer } from '@/types/landivo';
-import { Mail, Users, Eye, Send } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { Mail, MapPin, Square, Zap, Users } from 'lucide-react';
 
 interface Props {
   property: LandivoProperty;
@@ -11,91 +11,111 @@ interface Props {
 }
 
 export function CampaignPreview({ property, buyers }: Props) {
-  const qualifiedBuyers = buyers.filter(buyer => buyer.isQualified);
+  const qualifiedBuyers = buyers.filter(buyer => buyer.qualified);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Eye className="h-5 w-5" />
+          <Mail className="h-5 w-5" />
           Campaign Preview
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Email Subject Preview */}
-        <div>
-          <label className="text-sm font-medium">Subject Line</label>
-          <div className="mt-1 p-3 bg-muted rounded-md text-sm">
-            🏠 New Listing: {property.title} - {formatCurrency(property.price)}
-          </div>
-        </div>
-
-        {/* Email Content Preview */}
-        <div>
-          <label className="text-sm font-medium">Email Preview</label>
-          <div className="mt-1 p-4 bg-muted rounded-md text-sm space-y-3">
-            <div className="font-semibold">New Property Alert!</div>
+        {/* Email Preview */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="text-sm text-gray-600 mb-2">Subject: New Land Available - {property.city}, {property.state}</div>
+          
+          <div className="bg-white border rounded p-4 text-sm">
+            <h3 className="font-bold text-lg mb-2">{property.title}</h3>
+            
+            {property.imageUrls && property.imageUrls[0] && (
+              <img 
+                src={property.imageUrls[0]} 
+                alt="Property" 
+                className="w-full h-32 object-cover rounded mb-3"
+              />
+            )}
             
             <div className="space-y-2">
-              <div className="font-medium">{property.title}</div>
-              <div className="text-muted-foreground">{property.location.address}</div>
-              <div className="font-semibold text-lg">{formatCurrency(property.price)}</div>
-            </div>
-
-            <div className="flex gap-4 text-xs">
-              <span>{property.features.bedrooms} beds</span>
-              <span>{property.features.bathrooms} baths</span>
-              <span>{property.features.sqft.toLocaleString()} sqft</span>
-            </div>
-
-            {property.images.length > 0 && (
-              <div className="aspect-video bg-gray-200 rounded flex items-center justify-center text-xs text-muted-foreground">
-                Property Image
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span>{property.streetAddress}, {property.city}, {property.state}</span>
               </div>
-            )}
-
-            <div className="text-xs text-muted-foreground">
-              {property.description.substring(0, 150)}...
+              
+              <div className="flex gap-4">
+                <div className="flex items-center gap-1">
+                  <Square className="h-4 w-4" />
+                  <span>{property.acre} acres</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Zap className="h-4 w-4" />
+                  <span>{property.zoning}</span>
+                </div>
+              </div>
+              
+              <div className="text-lg font-bold text-green-600">
+                {formatCurrency(property.askingPrice)}
+              </div>
+              
+              {property.financing && (
+                <div className="bg-blue-50 p-2 rounded">
+                  <strong>Financing Available:</strong> {property.financing}
+                  {property.monthlyPaymentOne && (
+                    <div>From {formatCurrency(property.monthlyPaymentOne)}/month</div>
+                  )}
+                </div>
+              )}
+              
+              <p className="text-gray-600">{property.description.substring(0, 150)}...</p>
+              
+              <Button className="w-full mt-3">View Full Details</Button>
             </div>
-
-            <Button size="sm" className="w-full">
-              View Full Details
-            </Button>
           </div>
         </div>
 
-        {/* Campaign Settings */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Recipients</span>
-            <Badge variant="outline">
-              <Users className="h-3 w-3 mr-1" />
-              {qualifiedBuyers.length} qualified buyers
-            </Badge>
+        {/* Campaign Stats */}
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div className="font-medium">Total Recipients</div>
+            <div className="text-2xl font-bold">{buyers.length}</div>
           </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Send Time</span>
-            <span className="text-sm text-muted-foreground">Immediately</span>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Template</span>
-            <span className="text-sm text-muted-foreground">Property Alert</span>
+          <div>
+            <div className="font-medium">Qualified Buyers</div>
+            <div className="text-2xl font-bold text-green-600">{qualifiedBuyers.length}</div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" size="sm" className="flex-1">
-            <Eye className="h-4 w-4 mr-2" />
-            Preview
-          </Button>
-          <Button size="sm" className="flex-1">
-            <Send className="h-4 w-4 mr-2" />
-            Send Campaign
-          </Button>
-        </div>
+        {/* Financing Options Preview */}
+        {property.financing && (
+          <div className="space-y-2">
+            <div className="font-medium">Financing Options</div>
+            <div className="space-y-1 text-sm">
+              {property.monthlyPaymentOne && (
+                <div className="flex justify-between">
+                  <span>Option 1:</span>
+                  <span>{formatCurrency(property.monthlyPaymentOne)}/month</span>
+                </div>
+              )}
+              {property.monthlyPaymentTwo && (
+                <div className="flex justify-between">
+                  <span>Option 2:</span>
+                  <span>{formatCurrency(property.monthlyPaymentTwo)}/month</span>
+                </div>
+              )}
+              {property.monthlyPaymentThree && (
+                <div className="flex justify-between">
+                  <span>Option 3:</span>
+                  <span>{formatCurrency(property.monthlyPaymentThree)}/month</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <Button className="w-full">
+          Send Campaign to {buyers.length} Buyers
+        </Button>
       </CardContent>
     </Card>
   );

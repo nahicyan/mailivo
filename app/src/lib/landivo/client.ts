@@ -2,12 +2,14 @@ class LandivoClient {
   private baseURL: string;
 
   constructor() {
+    // Add fallback and ensure env var is properly typed
     this.baseURL = process.env.NEXT_PUBLIC_LANDIVO_API_URL || 'http://localhost:8200';
   }
 
-  async getProperty(id: string) {
+  async getProperty(id: string): Promise<any> {
     try {
-      const response = await fetch(`${this.baseURL}/api/properties/${id}`, {
+      // Fix API route to match your backend
+      const response = await fetch(`${this.baseURL}/api/residency/${id}`, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -24,9 +26,10 @@ class LandivoClient {
     }
   }
 
-  async getPropertyBuyers(propertyId: string) {
+  async getPropertyBuyers(propertyId: string): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseURL}/api/properties/${propertyId}/buyers`);
+      // Update to match your backend structure  
+      const response = await fetch(`${this.baseURL}/api/buyer/property/${propertyId}`);
       if (!response.ok) throw new Error('Failed to fetch buyers');
       return await response.json();
     } catch (error) {
@@ -37,3 +40,4 @@ class LandivoClient {
 }
 
 export const landivoClient = new LandivoClient();
+export default landivoClient;

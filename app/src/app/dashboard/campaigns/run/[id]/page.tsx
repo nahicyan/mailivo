@@ -8,12 +8,19 @@ import { useLandivoProperty, useLandivoPropertyBuyers } from '@/hooks/useLandivo
 import { PropertyDetails } from '@/components/landivo/PropertyDetails';
 import { BuyersList } from '@/components/landivo/BuyersList';
 import { CampaignPreview } from '@/components/campaigns/CampaignPreview';
-import { Mail, Users, Home, ArrowLeft } from 'lucide-react';
+import { Mail, Users, MapPin, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { formatCurrency } from '@/lib/utils';
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+  }).format(amount);
 }
 
 export default function CampaignRunPage({ params }: Props) {
@@ -35,7 +42,7 @@ export default function CampaignRunPage({ params }: Props) {
   if (error || !property) {
     return (
       <div className="text-center py-12">
-        <Home className="mx-auto h-12 w-12 text-muted-foreground" />
+        <MapPin className="mx-auto h-12 w-12 text-muted-foreground" />
         <h3 className="mt-2 text-sm font-semibold">Property not found</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Could not load property with ID: {id}
@@ -62,7 +69,7 @@ export default function CampaignRunPage({ params }: Props) {
             <span>/</span>
             <span>Run Campaign</span>
           </div>
-          <h1 className="text-3xl font-bold">Create Campaign for Property</h1>
+          <h1 className="text-3xl font-bold">Create Campaign for Land</h1>
           <p className="text-muted-foreground">{property.title}</p>
         </div>
         
@@ -82,11 +89,11 @@ export default function CampaignRunPage({ params }: Props) {
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Property Value</CardTitle>
+            <CardTitle className="text-sm font-medium">Asking Price</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(property.price)}</div>
-            <Badge variant={property.status === 'active' ? 'default' : 'secondary'}>
+            <div className="text-2xl font-bold">{formatCurrency(property.askingPrice)}</div>
+            <Badge variant={property.status === 'Available' ? 'default' : 'secondary'}>
               {property.status}
             </Badge>
           </CardContent>
@@ -94,13 +101,13 @@ export default function CampaignRunPage({ params }: Props) {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Property Details</CardTitle>
+            <CardTitle className="text-sm font-medium">Land Details</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-1 text-sm">
-              <div>{property.features.bedrooms} bed, {property.features.bathrooms} bath</div>
-              <div>{property.features.sqft.toLocaleString()} sqft</div>
-              <div className="text-muted-foreground">{property.location.city}, {property.location.state}</div>
+              <div>{property.acre} acres</div>
+              {property.sqft && <div>{property.sqft.toLocaleString()} sqft</div>}
+              <div className="text-muted-foreground">{property.city}, {property.state}</div>
             </div>
           </CardContent>
         </Card>
@@ -111,7 +118,7 @@ export default function CampaignRunPage({ params }: Props) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{buyers?.length || 0}</div>
-            <p className="text-sm text-muted-foreground">qualified buyers</p>
+            <p className="text-sm text-muted-foreground">potential buyers</p>
           </CardContent>
         </Card>
       </div>
