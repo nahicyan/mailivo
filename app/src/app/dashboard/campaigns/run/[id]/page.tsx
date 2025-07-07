@@ -15,12 +15,20 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
   }).format(amount);
+}
+
+// Helper function to strip HTML tags for title display
+function stripHtml(html: string): string {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '').trim();
 }
 
 export default function CampaignRunPage({ params }: Props) {
@@ -69,8 +77,8 @@ export default function CampaignRunPage({ params }: Props) {
             <span>/</span>
             <span>Run Campaign</span>
           </div>
-          <h1 className="text-3xl font-bold">Create Campaign for Land</h1>
-          <p className="text-muted-foreground">{property.title}</p>
+          <h1 className="text-3xl font-bold">Create Campaign for {property.streetAddress}</h1>
+          <div className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: property.title }} />
         </div>
         
         <div className="flex gap-2">
@@ -107,6 +115,7 @@ export default function CampaignRunPage({ params }: Props) {
             <div className="space-y-1 text-sm">
               <div>{property.acre} acres</div>
               {property.sqft && <div>{property.sqft.toLocaleString()} sqft</div>}
+              <div className="text-muted-foreground">{property.streetAddress}</div>
               <div className="text-muted-foreground">{property.city}, {property.state}</div>
             </div>
           </CardContent>

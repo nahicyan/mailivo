@@ -16,7 +16,7 @@ export function PropertyDetails({ property }: Props) {
         {property.imageUrls && (
           <div className="aspect-video rounded-lg overflow-hidden">
             <img 
-              src={property.imageUrls[0]} 
+              src={`${process.env.NEXT_PUBLIC_SERVER_URL}/${property.imageUrls[0]}`}
               alt={property.title}
               className="w-full h-full object-cover"
             />
@@ -24,7 +24,7 @@ export function PropertyDetails({ property }: Props) {
         )}
         
         <div>
-          <h3 className="font-semibold">{property.title}</h3>
+          <div className="font-semibold" dangerouslySetInnerHTML={{ __html: property.title }} />
           <div className="flex items-center gap-1 text-muted-foreground">
             <MapPin className="h-4 w-4" />
             <span className="text-sm">{property.streetAddress}</span>
@@ -55,7 +55,7 @@ export function PropertyDetails({ property }: Props) {
           <div><span className="font-medium">Electric:</span> {property.electric || 'N/A'}</div>
         </div>
 
-        <p className="text-sm text-muted-foreground">{property.description}</p>
+        <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: property.description }} />
       </CardContent>
     </Card>
   );

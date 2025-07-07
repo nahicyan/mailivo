@@ -24,25 +24,25 @@ export function CampaignPreview({ property, buyers }: Props) {
       <CardContent className="space-y-4">
         {/* Email Preview */}
         <div className="border rounded-lg p-4 bg-gray-50">
-          <div className="text-sm text-gray-600 mb-2">Subject: New Land Available - {property.city}, {property.state}</div>
-          
+          <div className="text-sm text-gray-600 mb-2">Subject: New Land Available - {property.streetAddress}</div>
+
           <div className="bg-white border rounded p-4 text-sm">
-            <h3 className="font-bold text-lg mb-2">{property.title}</h3>
-            
+            <div className="font-bold text-lg mb-2" dangerouslySetInnerHTML={{ __html: property.title }} />
+
             {property.imageUrls && property.imageUrls[0] && (
-              <img 
-                src={property.imageUrls[0]} 
-                alt="Property" 
+              <img
+                src={`${process.env.NEXT_PUBLIC_SERVER_URL}/${property.imageUrls[0]}`}
+                alt="Property"
                 className="w-full h-32 object-cover rounded mb-3"
               />
             )}
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 <span>{property.streetAddress}, {property.city}, {property.state}</span>
               </div>
-              
+
               <div className="flex gap-4">
                 <div className="flex items-center gap-1">
                   <Square className="h-4 w-4" />
@@ -53,11 +53,11 @@ export function CampaignPreview({ property, buyers }: Props) {
                   <span>{property.zoning}</span>
                 </div>
               </div>
-              
+
               <div className="text-lg font-bold text-green-600">
                 {formatCurrency(property.askingPrice)}
               </div>
-              
+
               {property.financing && (
                 <div className="bg-blue-50 p-2 rounded">
                   <strong>Financing Available:</strong> {property.financing}
@@ -66,9 +66,9 @@ export function CampaignPreview({ property, buyers }: Props) {
                   )}
                 </div>
               )}
-              
+
               <p className="text-gray-600">{property.description.substring(0, 150)}...</p>
-              
+
               <Button className="w-full mt-3">View Full Details</Button>
             </div>
           </div>
