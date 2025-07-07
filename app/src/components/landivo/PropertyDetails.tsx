@@ -236,19 +236,6 @@ export function PropertyDetails({ property }: Props) {
         {/* Property Description - Only one instance */}
         <div>
           <h3 className="font-semibold mb-2">Property Description</h3>
-          <div className="bg-green-50 p-3 rounded mb-3">
-            <div className="text-sm font-medium text-green-800">Property Overview:</div>
-            <div className="text-xs text-green-700">
-              Zoning: {property.zoning}<br/>
-              Lot Size: {property.sqft?.toLocaleString()} sqft<br/>
-              Utilities: {property.water}, {property.sewer} & {property.electric}<br/>
-              Mobile Homes: {property.mobileHomeFriendly || 'Not Permitted'}<br/>
-              Survey: {property.survey || 'No'}<br/>
-              Floodplain: {property.floodplain || 'No'}<br/>
-              HOA: {property.hoaPoa || 'No'}<br/>
-              Restrictions: {property.restrictions || 'Unknown'}
-            </div>
-          </div>
           <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: property.description }} />
         </div>
 
