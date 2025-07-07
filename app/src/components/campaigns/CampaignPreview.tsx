@@ -10,8 +10,30 @@ interface Props {
   buyers: LandivoBuyer[];
 }
 
+const serverURL = process.env.NEXT_PUBLIC_SERVER_URL;
+
 export function CampaignPreview({ property, buyers }: Props) {
   const qualifiedBuyers = buyers.filter(buyer => buyer.qualified);
+
+  // Parse images safely like landivo does
+  const getPropertyImage = () => {
+    if (!property.imageUrls) return null;
+    
+    let images = [];
+    try {
+      images = Array.isArray(property.imageUrls)
+        ? property.imageUrls
+        : JSON.parse(property.imageUrls);
+    } catch (error) {
+      console.error("Error parsing imageUrls:", error);
+      return null;
+    }
+    
+    if (!images.length) return null;
+    return `${serverURL}/${images[0]}`;
+  };
+
+  const propertyImage = getPropertyImage();
 
   return (
     <Card>
@@ -25,24 +47,24 @@ export function CampaignPreview({ property, buyers }: Props) {
         {/* Email Preview */}
         <div className="border rounded-lg p-4 bg-gray-50">
           <div className="text-sm text-gray-600 mb-2">Subject: New Land Available - {property.streetAddress}</div>
-
+          
           <div className="bg-white border rounded p-4 text-sm">
             <div className="font-bold text-lg mb-2" dangerouslySetInnerHTML={{ __html: property.title }} />
-
-            {property.imageUrls && property.imageUrls[0] && (
-              <img
-                src={`${process.env.NEXT_PUBLIC_SERVER_URL}/${property.imageUrls[0]}`}
-                alt="Property"
+            
+            {propertyImage && (
+              <img 
+                src={propertyImage}
+                alt="Property" 
                 className="w-full h-32 object-cover rounded mb-3"
               />
             )}
-
+            
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 <span>{property.streetAddress}, {property.city}, {property.state}</span>
               </div>
-
+              
               <div className="flex gap-4">
                 <div className="flex items-center gap-1">
                   <Square className="h-4 w-4" />
@@ -53,11 +75,11 @@ export function CampaignPreview({ property, buyers }: Props) {
                   <span>{property.zoning}</span>
                 </div>
               </div>
-
+              
               <div className="text-lg font-bold text-green-600">
                 {formatCurrency(property.askingPrice)}
               </div>
-
+              
               {property.financing && (
                 <div className="bg-blue-50 p-2 rounded">
                   <strong>Financing Available:</strong> {property.financing}
@@ -66,9 +88,14 @@ export function CampaignPreview({ property, buyers }: Props) {
                   )}
                 </div>
               )}
-
-              <p className="text-gray-600">{property.description.substring(0, 150)}...</p>
-
+              
+              <div 
+                className="text-gray-600" 
+                dangerouslySetInnerHTML={{ 
+                  __html: property.description?.substring(0, 300) + '...' || 'No description available'
+                }} 
+              />
+              
               <Button className="w-full mt-3">View Full Details</Button>
             </div>
           </div>
