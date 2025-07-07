@@ -38,9 +38,9 @@ export function BuyersList({ buyers, isLoading }: Props) {
         ) : (
           <div className="space-y-3">
             {buyers.slice(0, 5).map((buyer) => (
-              <div key={buyer._id} className="flex items-center justify-between p-3 rounded-lg border">
+              <div key={buyer.id} className="flex items-center justify-between p-3 rounded-lg border">
                 <div>
-                  <div className="font-medium">{buyer.name}</div>
+                  <div className="font-medium">{buyer.firstName} {buyer.lastName}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-4">
                     <span className="flex items-center gap-1">
                       <Mail className="h-3 w-3" />
@@ -52,8 +52,8 @@ export function BuyersList({ buyers, isLoading }: Props) {
                     </span>
                   </div>
                 </div>
-                <Badge variant={buyer.isQualified ? 'default' : 'secondary'}>
-                  {buyer.isQualified ? 'Qualified' : 'Unqualified'}
+                <Badge variant={buyer.qualified ? 'default' : 'secondary'}>
+                  {buyer.qualified ? 'Qualified' : 'Unqualified'}
                 </Badge>
               </div>
             ))}
