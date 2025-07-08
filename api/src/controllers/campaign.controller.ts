@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import { Campaign } from '../models/Campaign.model';
 import { Contact } from '../models/Contact.model';
+import { emailService } from '../services/email.service';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 export const campaignController = {
@@ -136,5 +137,68 @@ export const campaignController = {
     } catch (error) {
       res.status(500).json({ error: 'Failed to send campaign' });
     }
-  }
+  },
+   async sendTestEmail(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { to, subject, htmlContent, textContent, campaignId } = req.body;
+
+      // Validate input
+      if (!to || !subject || !htmlContent) {
+        res.status(400).json({ 
+          error: 'Missing required fields: to, subject, htmlContent' 
+        });
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(to)) {
+        res.status(400).json({ error: 'Invalid email address' });
+        return;
+      }
+
+      // If campaignId provided, verify ownership
+      if (campaignId) {
+        const campaign = await Campaign.findOne({
+          _id: campaignId,
+          user_id: req.user!._id
+        });
+
+        if (!campaign) {
+          res.status(404).json({ error: 'Campaign not found' });
+          return;
+        }
+      }
+
+      // Send test email
+      await emailService.sendTestCampaign(to, {
+        subject,
+        htmlContent,
+        textContent,
+      });
+
+      // Log test email activity
+      await EmailLog.create({
+        user_id: req.user!._id,
+        campaign_id: campaignId,
+        type: 'test',
+        recipient: to,
+        subject,
+        status: 'sent',
+        sent_at: new Date(),
+      });
+
+      res.json({ 
+        success: true,
+        message: `Test email sent to ${to}` 
+      });
+    } catch (error) {
+      console.error('Test email error:', error);
+      res.status(500).json({ 
+        error: 'Failed to send test email',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  },
+
 };
