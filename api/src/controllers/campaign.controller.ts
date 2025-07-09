@@ -4,6 +4,7 @@ import { Campaign } from '../models/Campaign.model';
 import { Contact } from '../models/Contact.model';
 import { emailService } from '../services/email.service';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { EmailLog } from '../models/EmailLog.model';
 
 export const campaignController = {
   async list(req: AuthRequest, res: Response): Promise<void> {
