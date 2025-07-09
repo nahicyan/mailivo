@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
+import { api } from '@/lib/api';
 
 interface EmailTestModalProps {
   open: boolean;
@@ -41,33 +42,20 @@ export function EmailTestModal({
 
     setSending(true);
     try {
-      const response = await fetch('/api/campaign/test-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          to: email,
-          subject: campaignData.subject,
-          htmlContent: campaignData.htmlContent,
-          textContent: campaignData.textContent,
-          campaignId,
-        }),
+      const { data } = await api.post('/campaigns/test-email', {
+        to: email,
+        subject: campaignData.subject,
+        htmlContent: campaignData.htmlContent,
+        textContent: campaignData.textContent,
+        campaignId,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send test email');
-      }
-
-      toast.success(`Test campaign sent to ${email}`);
+      toast.success(data.message || `Test campaign sent to ${email}`);
       
       onOpenChange(false);
       setEmail('');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to send test email");
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Failed to send test email");
     } finally {
       setSending(false);
     }
