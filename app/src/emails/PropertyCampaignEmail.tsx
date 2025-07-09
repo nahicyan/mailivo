@@ -43,51 +43,39 @@ export const PropertyCampaignEmail = ({
 
   // Check which plans are available
   const availablePlans = [];
-  if (property.monthlyPaymentOne) availablePlans.push(1);
-  if (property.monthlyPaymentTwo) availablePlans.push(2);
-  if (property.monthlyPaymentThree) availablePlans.push(3);
+  if (property.monthlyPaymentOne) {
+    availablePlans.push({
+      number: 1,
+      monthlyPayment: property.monthlyPaymentOne,
+      downPayment: property.downPaymentOne,
+      loanAmount: property.loanAmountOne,
+      interest: property.interestOne,
+    });
+  }
+  if (property.monthlyPaymentTwo) {
+    availablePlans.push({
+      number: 2,
+      monthlyPayment: property.monthlyPaymentTwo,
+      downPayment: property.downPaymentTwo,
+      loanAmount: property.loanAmountTwo,
+      interest: property.interestTwo,
+    });
+  }
+  if (property.monthlyPaymentThree) {
+    availablePlans.push({
+      number: 3,
+      monthlyPayment: property.monthlyPaymentThree,
+      downPayment: property.downPaymentThree,
+      loanAmount: property.loanAmountThree,
+      interest: property.interestThree,
+    });
+  }
+
+  const hasFinancing = property.financing && property.financing !== 'Not-Available' && availablePlans.length > 0;
 
   return (
     <Html>
-      <Head>
-        <style>{`
-          .plan-selector {
-            display: block;
-            margin: 20px 0;
-            text-align: center;
-          }
-          .plan-radio {
-            display: none;
-          }
-          .plan-label {
-            display: inline-block;
-            padding: 8px 16px;
-            margin: 0 4px;
-            background-color: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #374151;
-            cursor: pointer;
-            text-decoration: none;
-          }
-          .plan-radio:checked + .plan-label {
-            background-color: #16a34a;
-            border-color: #16a34a;
-            color: #ffffff;
-          }
-          .plan-content {
-            display: none;
-          }
-          .plan-radio:checked ~ .plan-content {
-            display: block;
-          }
-          #plan1:checked ~ .plan1-content { display: block; }
-          #plan2:checked ~ .plan2-content { display: block; }
-          #plan3:checked ~ .plan3-content { display: block; }
-        `}</style>
-      </Head>
+      <Head />
       <Preview>{emailSubject}</Preview>
       <Body style={main}>
         <Container style={container}>
@@ -178,163 +166,77 @@ export const PropertyCampaignEmail = ({
             </Row>
           </Section>
 
-          {/* Payment Calculator with Interactive Plans */}
-          {property.financing && property.financing !== 'Not-Available' && availablePlans.length > 0 && (
+          {/* Payment Calculator - Email Client Friendly */}
+          {hasFinancing && (
             <Section style={paymentSection}>
-              <Heading as="h3" style={h3}>Payment Calculator</Heading>
+              <Heading as="h3" style={h3}>💰 Payment Calculator</Heading>
+              <Text style={paymentSubtext}>
+                Choose from {availablePlans.length} flexible payment plan{availablePlans.length > 1 ? 's' : ''}:
+              </Text>
               
-              {/* Interactive Plan Selection */}
-              <div className="plan-selector">
-                {availablePlans.map((planNum, index) => (
-                  <React.Fragment key={planNum}>
-                    <input 
-                      type="radio" 
-                      id={`plan${planNum}`}
-                      name="payment-plan"
-                      className="plan-radio"
-                      defaultChecked={index === 0}
-                    />
-                    <label htmlFor={`plan${planNum}`} className="plan-label">
-                      Plan {planNum}
-                    </label>
-                  </React.Fragment>
-                ))}
-              </div>
+              {/* Display all available plans */}
+              {availablePlans.map((plan, index) => (
+                <div key={plan.number} style={planContainer}>
+                  <div style={planHeader}>
+                    <span style={planTitle}>Plan {plan.number}</span>
+                    {index === 0 && <span style={recommendedBadge}>Recommended</span>}
+                  </div>
+                  
+                  <div style={planContent}>
+                    {/* Payment Circle */}
+                    <div style={paymentCircleContainer}>
+                      <div style={paymentCircle}>
+                        <div style={paymentAmount}>${plan.monthlyPayment?.toLocaleString()}</div>
+                        <div style={paymentPeriod}>/mo</div>
+                      </div>
+                    </div>
 
-              {/* Plan 1 Content */}
-              {availablePlans.includes(1) && (
-                <div className="plan-content plan1-content">
-                  <div style={paymentCircleContainer}>
-                    <div style={paymentCircle}>
-                      <div style={paymentAmount}>${property.monthlyPaymentOne?.toLocaleString()}</div>
-                      <div style={paymentPeriod}>/mo</div>
+                    {/* Payment Details */}
+                    <table style={paymentDetailsTable}>
+                      <tr>
+                        <td style={paymentDetailRow}>
+                          <span style={paymentLabel}>Monthly Payment</span>
+                          <span style={paymentValue}>${plan.monthlyPayment?.toLocaleString()}/mo</span>
+                        </td>
+                        <td style={paymentDetailRow}>
+                          <span style={paymentLabel}>Loan Amount</span>
+                          <span style={paymentValue}>${plan.loanAmount?.toLocaleString()}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={paymentDetailRow}>
+                          <span style={paymentLabel}>Down Payment</span>
+                          <span style={paymentValue}>${plan.downPayment?.toLocaleString()}</span>
+                        </td>
+                        <td style={paymentDetailRow}>
+                          <span style={paymentLabel}>Property Tax</span>
+                          <span style={paymentValue}>${Math.round((property.tax || 0) / 12)}/mo</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={paymentDetailRow}>
+                          <span style={paymentLabel}>Interest Rate</span>
+                          <span style={paymentValue}>{plan.interest}% APR</span>
+                        </td>
+                        <td style={paymentDetailRow}>
+                          <span style={paymentLabel}>Service Fee</span>
+                          <span style={paymentValue}>${property.serviceFee || 35}/mo</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    {/* Plan-specific CTA */}
+                    <div style={planCTA}>
+                      <Button 
+                        href={`https://landivo.com/properties/${property.id}?plan=${plan.number}`} 
+                        style={planButton}
+                      >
+                        Select Plan {plan.number}
+                      </Button>
                     </div>
                   </div>
-
-                  <table style={paymentDetailsTable}>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Monthly Payment</span>
-                        <span style={paymentValue}>${property.monthlyPaymentOne?.toLocaleString()}/mo</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Loan Amount</span>
-                        <span style={paymentValue}>${property.loanAmountOne?.toLocaleString()}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Down Payment</span>
-                        <span style={paymentValue}>${property.downPaymentOne?.toLocaleString()}</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Property Tax</span>
-                        <span style={paymentValue}>${Math.round((property.tax || 0) / 12)}/mo</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Interest Rate</span>
-                        <span style={paymentValue}>{property.interestOne}% APR</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Service Fee</span>
-                        <span style={paymentValue}>${property.serviceFee || 35}/mo</span>
-                      </td>
-                    </tr>
-                  </table>
                 </div>
-              )}
-
-              {/* Plan 2 Content */}
-              {availablePlans.includes(2) && (
-                <div className="plan-content plan2-content">
-                  <div style={paymentCircleContainer}>
-                    <div style={paymentCircle}>
-                      <div style={paymentAmount}>${property.monthlyPaymentTwo?.toLocaleString()}</div>
-                      <div style={paymentPeriod}>/mo</div>
-                    </div>
-                  </div>
-
-                  <table style={paymentDetailsTable}>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Monthly Payment</span>
-                        <span style={paymentValue}>${property.monthlyPaymentTwo?.toLocaleString()}/mo</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Loan Amount</span>
-                        <span style={paymentValue}>${property.loanAmountTwo?.toLocaleString()}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Down Payment</span>
-                        <span style={paymentValue}>${property.downPaymentTwo?.toLocaleString()}</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Property Tax</span>
-                        <span style={paymentValue}>${Math.round((property.tax || 0) / 12)}/mo</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Interest Rate</span>
-                        <span style={paymentValue}>{property.interestTwo}% APR</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Service Fee</span>
-                        <span style={paymentValue}>${property.serviceFee || 35}/mo</span>
-                      </td>
-                    </tr>
-                  </table>
-                </div>
-              )}
-
-              {/* Plan 3 Content */}
-              {availablePlans.includes(3) && (
-                <div className="plan-content plan3-content">
-                  <div style={paymentCircleContainer}>
-                    <div style={paymentCircle}>
-                      <div style={paymentAmount}>${property.monthlyPaymentThree?.toLocaleString()}</div>
-                      <div style={paymentPeriod}>/mo</div>
-                    </div>
-                  </div>
-
-                  <table style={paymentDetailsTable}>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Monthly Payment</span>
-                        <span style={paymentValue}>${property.monthlyPaymentThree?.toLocaleString()}/mo</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Loan Amount</span>
-                        <span style={paymentValue}>${property.loanAmountThree?.toLocaleString()}</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Down Payment</span>
-                        <span style={paymentValue}>${property.downPaymentThree?.toLocaleString()}</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Property Tax</span>
-                        <span style={paymentValue}>${Math.round((property.tax || 0) / 12)}/mo</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Interest Rate</span>
-                        <span style={paymentValue}>{property.interestThree}% APR</span>
-                      </td>
-                      <td style={paymentDetailRow}>
-                        <span style={paymentLabel}>Service Fee</span>
-                        <span style={paymentValue}>${property.serviceFee || 35}/mo</span>
-                      </td>
-                    </tr>
-                  </table>
-                </div>
-              )}
+              ))}
 
               {/* Pre-Qualification Section */}
               <Section style={qualifySection}>
@@ -342,8 +244,8 @@ export const PropertyCampaignEmail = ({
                   <div style={qualifyBenefit}>✓ Takes About 2 Minutes</div>
                   <div style={qualifyBenefit}>✓ Won't affect your credit score</div>
                 </div>
-                <Button href="https://landivo.com/pre-qualify" style={qualifyButton}>
-                  Get Pre-Qualified
+                <Button href={`https://landivo.com/properties/${property.id}/pre-qualify`} style={qualifyButton}>
+                  Get Pre-Qualified Now
                 </Button>
               </Section>
             </Section>
@@ -512,17 +414,60 @@ const paymentSection = {
   borderRadius: '8px',
 };
 
+const paymentSubtext = {
+  fontSize: '14px',
+  color: '#6b7280',
+  textAlign: 'center' as const,
+  marginBottom: '24px',
+};
+
+const planContainer = {
+  backgroundColor: '#f8fafc',
+  border: '2px solid #e2e8f0',
+  borderRadius: '12px',
+  marginBottom: '20px',
+  overflow: 'hidden',
+};
+
+const planHeader = {
+  backgroundColor: '#16a34a',
+  padding: '16px 20px',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+};
+
+const planTitle = {
+  fontSize: '18px',
+  fontWeight: 'bold',
+  color: '#ffffff',
+};
+
+const recommendedBadge = {
+  backgroundColor: '#fbbf24',
+  color: '#92400e',
+  padding: '4px 12px',
+  borderRadius: '12px',
+  fontSize: '12px',
+  fontWeight: 'bold',
+  textTransform: 'uppercase' as const,
+};
+
+const planContent = {
+  padding: '24px 20px',
+};
+
 const paymentCircleContainer = {
   textAlign: 'center' as const,
   margin: '20px 0',
 };
 
 const paymentCircle = {
-  width: '160px',
-  height: '160px',
+  width: '140px',
+  height: '140px',
   borderRadius: '50%',
   backgroundColor: '#ffffff',
-  border: '8px solid #16a34a',
+  border: '6px solid #16a34a',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -531,14 +476,14 @@ const paymentCircle = {
 };
 
 const paymentAmount = {
-  fontSize: '28px',
+  fontSize: '22px',
   fontWeight: 'bold',
   color: '#16a34a',
   lineHeight: '1',
 };
 
 const paymentPeriod = {
-  fontSize: '14px',
+  fontSize: '12px',
   color: '#16a34a',
   marginTop: '4px',
 };
@@ -557,7 +502,7 @@ const paymentDetailRow = {
 };
 
 const paymentLabel = {
-  fontSize: '14px',
+  fontSize: '13px',
   fontWeight: '500',
   color: '#374151',
   display: 'block',
@@ -569,6 +514,23 @@ const paymentValue = {
   fontWeight: 'bold',
   color: '#1a1a1a',
   display: 'block',
+};
+
+const planCTA = {
+  textAlign: 'center' as const,
+  marginTop: '20px',
+};
+
+const planButton = {
+  backgroundColor: '#16a34a',
+  color: '#ffffff',
+  padding: '12px 24px',
+  borderRadius: '6px',
+  textDecoration: 'none',
+  fontSize: '14px',
+  fontWeight: 'bold',
+  display: 'inline-block',
+  border: '2px solid #16a34a',
 };
 
 const qualifySection = {
