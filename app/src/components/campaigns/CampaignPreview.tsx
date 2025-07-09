@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LandivoProperty, LandivoBuyer } from '@/types/landivo';
 import { formatCurrency } from '@/lib/utils';
-import { Mail, MapPin, Square, Zap, Users, Home, Droplets, Clock, AlertCircle, Send } from 'lucide-react';
+import { Mail, MapPin, Square, Zap, Users, Home, Droplets, Clock, AlertCircle, Send, Eye, Code } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EmailTestModal } from './EmailTestModal';
 import { render } from '@react-email/render';
@@ -27,6 +27,7 @@ export function CampaignPreview({ property, buyers }: Props) {
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [emailContent, setEmailContent] = useState<EmailContent | null>(null);
   const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'visual' | 'html'>('visual');
 
   const getPropertyImage = () => {
     if (!property.imageUrls) return null;
@@ -152,7 +153,7 @@ To unsubscribe: ${serverURL}/unsubscribe
         <CardContent className="space-y-4">
           <div className="space-y-4">
             {/* Campaign Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 bg-blue-50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-blue-600" />
@@ -167,37 +168,39 @@ To unsubscribe: ${serverURL}/unsubscribe
                 </div>
                 <p className="text-2xl font-bold text-green-600">{qualifiedBuyers.length}</p>
               </div>
-              <div className="p-4 bg-orange-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Square className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm font-medium">Property Size</span>
-                </div>
-                <p className="text-2xl font-bold text-orange-600">{property.acre} acres</p>
-              </div>
               <div className="p-4 bg-purple-50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Home className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium">Price</span>
+                  <span className="text-sm font-medium">Property Value</span>
                 </div>
                 <p className="text-2xl font-bold text-purple-600">{formatCurrency(property.askingPrice)}</p>
               </div>
-            </div>
+              <div className="p-4 bg-orange-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm font-medium">Status</span>
+                </div>
+                <p className="text-sm font-bold text-orange-600">{property.status}</p>
+              </div>
+            </div> */}
 
-            {/* Financing Plan Selector */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Select Financing Plan for Campaign:</label>
+            {/* Plan Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Financing Plan</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedPlan("1")}
-                  className={`px-4 py-2 text-sm rounded ${selectedPlan === "1" ? 'bg-green-600 text-white' : 'bg-gray-100 border'}`}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedPlan === "1" ? 'bg-green-600 text-white' : 'bg-gray-100 border'}`}
                   disabled={isGeneratingEmail}
                 >
                   Plan 1
                 </button>
-                {property.monthlyPaymentTwo && (
+                {planData.monthlyPayment && (
                   <button
                     onClick={() => setSelectedPlan("2")}
-                    className={`px-4 py-2 text-sm rounded ${selectedPlan === "2" ? 'bg-green-600 text-white' : 'bg-gray-100 border'}`}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedPlan === "2" ? 'bg-green-600 text-white' : 'bg-gray-100 border'}`}
                     disabled={isGeneratingEmail}
                   >
                     Plan 2
@@ -206,7 +209,8 @@ To unsubscribe: ${serverURL}/unsubscribe
                 {property.monthlyPaymentThree && (
                   <button
                     onClick={() => setSelectedPlan("3")}
-                    className={`px-4 py-2 text-sm rounded ${selectedPlan === "3" ? 'bg-green-600 text-white' : 'bg-gray-100 border'}`}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedPlan === "3" ? 'bg-green-600 text-white' : 'bg-gray-100 border'}`}
                     disabled={isGeneratingEmail}
                   >
                     Plan 3
@@ -215,12 +219,35 @@ To unsubscribe: ${serverURL}/unsubscribe
               </div>
             </div>
 
-            {/* Email Preview */}
-            <div className="border rounded-lg p-4 bg-gray-50">
-              <div className="text-sm text-gray-600 mb-2">
+            {/* Preview Mode Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
                 <strong>Subject:</strong> New Land Available - {property.streetAddress}
               </div>
-              
+              <div className="flex gap-1 bg-gray-100 rounded-md p-1">
+                <button
+                  onClick={() => setPreviewMode('visual')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    previewMode === 'visual' ? 'bg-white shadow-sm' : 'text-gray-600'
+                  }`}
+                >
+                  <Eye className="h-3 w-3 inline mr-1" />
+                  Visual
+                </button>
+                <button
+                  onClick={() => setPreviewMode('html')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    previewMode === 'html' ? 'bg-white shadow-sm' : 'text-gray-600'
+                  }`}
+                >
+                  <Code className="h-3 w-3 inline mr-1" />
+                  HTML
+                </button>
+              </div>
+            </div>
+
+            {/* Email Preview */}
+            <div className="border rounded-lg overflow-hidden bg-gray-50">
               {isGeneratingEmail ? (
                 <div className="bg-white border rounded p-4 text-sm flex items-center justify-center py-8">
                   <div className="flex items-center gap-2 text-gray-500">
@@ -228,53 +255,27 @@ To unsubscribe: ${serverURL}/unsubscribe
                     Generating email preview...
                   </div>
                 </div>
+              ) : previewMode === 'visual' ? (
+                <div className="bg-white">
+                  {emailContent?.html ? (
+                    <iframe
+                      srcDoc={emailContent.html}
+                      className="w-full h-[800px] border-0"
+                      title="Email Preview"
+                      sandbox="allow-same-origin"
+                    />
+                  ) : (
+                    <div className="p-8 text-center text-gray-500">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                      <p>Email preview not available</p>
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div className="bg-white border rounded p-4 text-sm">
-                  <div className="space-y-3">
-                    {propertyImage && (
-                      <img 
-                        src={propertyImage} 
-                        alt="Property" 
-                        className="w-full h-48 object-cover rounded"
-                      />
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <Badge variant="secondary">{property.status}</Badge>
-                      <span className="text-xl font-bold text-green-600">
-                        {formatCurrency(property.askingPrice)}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        <span>{property.city}, {property.state} {property.zip}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Square className="h-4 w-4" />
-                        <span>{property.acre} acres</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Droplets className="h-4 w-4" />
-                        <span>{property.water || 'No water'}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded">
-                      <h4 className="font-medium mb-2">Financing Plan {selectedPlan}</h4>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>Monthly: {safeCurrency(planData.monthlyPayment)}</div>
-                        <div>Down: {safeCurrency(planData.downPayment)}</div>
-                        <div>Loan: {safeCurrency(planData.loanAmount)}</div>
-                        <div>Rate: {planData.interest || 0}%</div>
-                      </div>
-                    </div>
-                    
-                    <Button className="w-full" size="sm">
-                      View Property Details
-                    </Button>
-                  </div>
+                <div className="bg-gray-900 text-green-400 p-4 text-xs font-mono max-h-[800px] overflow-auto">
+                  <pre className="whitespace-pre-wrap">
+                    {emailContent?.html || 'No HTML content available'}
+                  </pre>
                 </div>
               )}
             </div>

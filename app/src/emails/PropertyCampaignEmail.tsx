@@ -121,7 +121,7 @@ export const PropertyCampaignEmail = ({
                 <td style={highlightCell} align="center">
                   <div style={highlightIcon}>□</div>
                   <div style={highlightValue}>{property.sqft?.toLocaleString()}</div>
-                  <div style={highlightLabel}>21,154 sqft</div>
+                  <div style={highlightLabel}>sqft</div>
                 </td>
                 <td style={highlightCell} align="center">
                   <div style={highlightIcon}>🏠</div>
@@ -130,7 +130,7 @@ export const PropertyCampaignEmail = ({
                 </td>
                 <td style={highlightCell} align="center">
                   <div style={highlightIcon}>📍</div>
-                  <div style={highlightValue}>0.49 acres</div>
+                  <div style={highlightValue}>{property.acre} acres</div>
                   <div style={highlightLabel}>Acreage</div>
                 </td>
                 <td style={highlightCell} align="center">
@@ -148,6 +148,7 @@ export const PropertyCampaignEmail = ({
               <Column style={detailColumn}>
                 <Heading as="h4" style={h4}>Location</Heading>
                 <Text style={detailText}>
+                  <strong>Address:</strong> {property.streetAddress}<br />
                   <strong>County:</strong> {property.county}<br />
                   <strong>State:</strong> {property.state}<br />
                   <strong>Zip:</strong> {property.zip}
@@ -156,7 +157,7 @@ export const PropertyCampaignEmail = ({
               <Column style={detailColumn}>
                 <Heading as="h4" style={h4}>Property Details</Heading>
                 <Text style={detailText}>
-                  <strong>Size:</strong> {property.sqft?.toLocaleString()}<br />
+                  <strong>Size:</strong> {property.sqft?.toLocaleString()} sqft<br />
                   <strong>Acreage:</strong> {property.acre}<br />
                   <strong>Zoning:</strong> {property.zoning}<br />
                   <strong>Parcel:</strong> {property.apnOrPin}
@@ -169,7 +170,7 @@ export const PropertyCampaignEmail = ({
           <Section>
             <table width="100%" style={utilityTable}>
               <tr>
-                <td><strong>Land Type:</strong> {property.landType?.join(', ')}</td>
+                <td><strong>Land Type:</strong> {property.landType?.join(', ') || 'N/A'}</td>
                 <td><strong>Water:</strong> {property.water || 'N/A'}</td>
               </tr>
               <tr>
@@ -280,7 +281,7 @@ export const PropertyCampaignEmail = ({
             <Text style={footerText}>
               You received this email because you're subscribed to property alerts.
             </Text>
-            <Link href="#" style={footerLink}>
+            <Link href={`${serverURL}/unsubscribe`} style={footerLink}>
               Unsubscribe
             </Link>
           </Section>
