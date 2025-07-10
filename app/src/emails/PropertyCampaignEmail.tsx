@@ -325,6 +325,31 @@ export const PropertyCampaignEmail = ({
 
           <Hr style={hr} />
 
+          {/* VIP Signup Section */}
+          <Section style={vipSection}>
+            <div style={vipContent}>
+              <div style={vipIcon}>⭐</div>
+              <Heading as="h3" style={vipHeading}>Join Our VIP List</Heading>
+              <Text style={vipDescription}>
+                Get early access to the best properties before they hit the market. Receive personalized property alerts tailored to your investment criteria and budget.
+              </Text>
+              <div style={vipBenefitsList}>
+                <div style={vipBenefit}>🎯 Properties matched to your exact preferences</div>
+                <div style={vipBenefit}>⚡ Early notifications before public listings</div>
+                <div style={vipBenefit}>💰 Exclusive deals and financing options</div>
+                <div style={vipBenefit}>📞 Direct line to our property specialists</div>
+              </div>
+              <Button href="https://landivo.com/vip-signup" style={vipButton}>
+                Join VIP List - It's Free
+              </Button>
+              <Text style={vipSubtext}>
+                Trusted by 15,000+ investors nationwide
+              </Text>
+            </div>
+          </Section>
+
+          <Hr style={hr} />
+
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
@@ -342,7 +367,7 @@ export const PropertyCampaignEmail = ({
 
 // Styles
 const main = {
-  backgroundColor: '#f6f9fc',
+  backgroundColor: '#FDF8F2',
   fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
 };
 
@@ -362,13 +387,13 @@ const header = {
 const titleStyle = {
   fontSize: '24px',
   fontWeight: 'bold',
-  color: '#1a1a1a',
+  color: '#030001',
   margin: '0',
   lineHeight: '1.2',
 };
 
 const h3 = {
-  color: '#1a1a1a',
+  color: '#030001',
   fontSize: '18px',
   fontWeight: 'bold',
   margin: '0 0 16px 0',
@@ -386,8 +411,8 @@ const badgeSection = {
 };
 
 const statusBadge = {
-  backgroundColor: '#fef3c7',
-  color: '#92400e',
+  backgroundColor: '#D4A017',
+  color: '#ffffff',
   padding: '8px 16px',
   borderRadius: '4px',
   fontSize: '14px',
@@ -396,7 +421,7 @@ const statusBadge = {
 };
 
 const ctaButton = {
-  backgroundColor: '#16a34a',
+  backgroundColor: '#3f4f24',
   borderRadius: '6px',
   color: '#fff',
   fontSize: '14px',
@@ -428,7 +453,7 @@ const highlightIcon = {
 const highlightValue = {
   fontSize: '16px',
   fontWeight: 'bold',
-  color: '#1a1a1a',
+  color: '#030001',
   marginBottom: '4px',
 };
 
@@ -450,7 +475,7 @@ const detailColumn = {
 const detailText = {
   fontSize: '14px',
   lineHeight: '1.6',
-  color: '#4b5563',
+  color: '#030001',
   margin: '0',
 };
 
@@ -472,7 +497,7 @@ const paymentCircle = {
   height: '160px',
   borderRadius: '50%',
   backgroundColor: '#ffffff',
-  border: '8px solid #16a34a',
+  border: '8px solid #3f4f24',
   display: 'inline-block',
   lineHeight: '144px',
   textAlign: 'center' as const,
@@ -488,13 +513,13 @@ const paymentCircleInner = {
 const paymentAmount = {
   fontSize: '28px',
   fontWeight: 'bold',
-  color: '#16a34a',
+  color: '#3f4f24',
   lineHeight: '1',
 };
 
 const paymentPeriod = {
   fontSize: '14px',
-  color: '#16a34a',
+  color: '#3f4f24',
   marginTop: '4px',
 };
 
@@ -514,7 +539,7 @@ const paymentDetailRow = {
 const paymentLabel = {
   fontSize: '14px',
   fontWeight: '500',
-  color: '#374151',
+  color: '#030001',
   display: 'block',
   marginBottom: '4px',
 };
@@ -522,12 +547,12 @@ const paymentLabel = {
 const paymentValue = {
   fontSize: '14px',
   fontWeight: 'bold',
-  color: '#1a1a1a',
+  color: '#030001',
   display: 'block',
 };
 
 const qualifySection = {
-  backgroundColor: '#dcfce7',
+  backgroundColor: '#f4f7ee',
   padding: '20px',
   borderRadius: '8px',
   marginTop: '20px',
@@ -539,7 +564,7 @@ const qualifyBenefits = {
 };
 
 const qualifyBenefit = {
-  color: '#166534',
+  color: '#3f4f24',
   fontSize: '14px',
   fontWeight: '500',
   lineHeight: '1.5',
@@ -547,7 +572,7 @@ const qualifyBenefit = {
 };
 
 const qualifyButton = {
-  backgroundColor: '#16a34a',
+  backgroundColor: '#3f4f24',
   color: '#ffffff',
   padding: '14px 32px',
   borderRadius: '6px',
@@ -559,14 +584,14 @@ const qualifyButton = {
 
 const morePlansButton = {
   backgroundColor: '#ffffff',
-  color: '#16a34a',
+  color: '#3f4f24',
   padding: '12px 24px',
   borderRadius: '6px',
   textDecoration: 'none',
   fontSize: '14px',
   fontWeight: '600',
   display: 'inline-block',
-  border: '2px solid #16a34a',
+  border: '2px solid #3f4f24',
   marginTop: '20px',
 };
 
@@ -577,7 +602,7 @@ const descriptionSection = {
 const descriptionText = {
   fontSize: '14px',
   lineHeight: '1.6',
-  color: '#4b5563',
+  color: '#030001',
 };
 
 const guidelinesSection = {
@@ -591,8 +616,85 @@ const guidelinesSection = {
 const guidelineText = {
   fontSize: '13px',
   lineHeight: '1.8',
-  color: '#374151',
+  color: '#030001',
   margin: '0',
+};
+
+// VIP Section Styles
+const vipSection = {
+  padding: '0 20px',
+  marginBottom: '20px',
+};
+
+const vipContent = {
+  background: 'linear-gradient(135deg, #3f4f24 0%, #324c48 100%)',
+  borderRadius: '12px',
+  padding: '40px 30px',
+  textAlign: 'center' as const,
+  color: '#ffffff',
+  position: 'relative' as const,
+};
+
+const vipIcon = {
+  fontSize: '48px',
+  marginBottom: '16px',
+  display: 'block',
+};
+
+const vipHeading = {
+  color: '#ffffff',
+  fontSize: '28px',
+  fontWeight: 'bold',
+  margin: '0 0 16px 0',
+  textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+};
+
+const vipDescription = {
+  fontSize: '16px',
+  lineHeight: '1.6',
+  margin: '0 0 24px 0',
+  color: 'rgba(255,255,255,0.95)',
+  maxWidth: '480px',
+  marginLeft: 'auto',
+  marginRight: 'auto',
+};
+
+const vipBenefitsList = {
+  margin: '24px 0 32px 0',
+  textAlign: 'left' as const,
+  maxWidth: '400px',
+  marginLeft: 'auto',
+  marginRight: 'auto',
+};
+
+const vipBenefit = {
+  fontSize: '15px',
+  lineHeight: '1.7',
+  margin: '8px 0',
+  color: 'rgba(255,255,255,0.95)',
+  fontWeight: '500',
+};
+
+const vipButton = {
+  backgroundColor: '#ffffff',
+  color: '#D4A017',
+  padding: '16px 32px',
+  borderRadius: '8px',
+  textDecoration: 'none',
+  fontSize: '18px',
+  fontWeight: 'bold',
+  display: 'inline-block',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  border: 'none',
+  transition: 'all 0.3s ease',
+  marginBottom: '16px',
+};
+
+const vipSubtext = {
+  fontSize: '13px',
+  color: 'rgba(255,255,255,0.8)',
+  margin: '16px 0 0 0',
+  fontStyle: 'italic',
 };
 
 const hr = {
@@ -607,13 +709,13 @@ const footer = {
 
 const footerText = {
   fontSize: '12px',
-  color: '#6b7280',
+  color: '#030001',
   margin: '0 0 10px 0',
 };
 
 const footerLink = {
   fontSize: '12px',
-  color: '#2563eb',
+  color: '#D4A017',
   textDecoration: 'underline',
 };
 
