@@ -35,7 +35,24 @@ export const PropertyCampaignEmail = ({
     } catch (error) {
       return null;
     }
-    return images.length ? `${serverURL}/${images[0]}` : null;
+    
+    if (images.length === 0) return null;
+    
+    const firstImagePath = images[0];
+    
+    // If the image path is already a full URL, return it as is
+    if (firstImagePath.startsWith('http://') || firstImagePath.startsWith('https://')) {
+      return firstImagePath;
+    }
+    
+    const baseURL = serverURL.includes('landivo.com') ? serverURL : 'https://landivo.com/api';
+    
+    // Remove any trailing slash from baseURL and leading slash from image path
+    const cleanBaseURL = baseURL.replace(/\/$/, '');
+    const cleanImagePath = firstImagePath.replace(/^\//, '');
+    
+    // Construct the full URL for email clients
+    return `${cleanBaseURL}/${cleanImagePath}`;
   };
 
   const propertyImage = getPropertyImage();
