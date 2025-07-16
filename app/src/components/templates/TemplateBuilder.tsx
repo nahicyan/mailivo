@@ -52,10 +52,11 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     })
   );
+
 
   const addComponent = useCallback((componentType: string) => {
     const definition = componentDefinitions.find(def => def.type === componentType);
@@ -82,9 +83,10 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-    
+
+    setActiveId(null);
+
     if (!over) {
-      setActiveId(null);
       return;
     }
 
@@ -92,12 +94,11 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
     if (active.data.current?.type === 'palette-item') {
       const componentType = active.data.current.componentType;
       addComponent(componentType);
-      setActiveId(null);
       return;
     }
 
     // Handle reordering within canvas
-    if (active.id !== over.id) {
+    if (active.id !== over.id && over.id !== 'canvas-area') {
       const oldIndex = currentTemplate.components.findIndex(item => item.id === active.id);
       const newIndex = currentTemplate.components.findIndex(item => item.id === over.id);
 
@@ -108,14 +109,12 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
         }));
       }
     }
-
-    setActiveId(null);
   }, [currentTemplate.components, addComponent]);
 
   const updateComponent = useCallback((id: string, props: Record<string, any>) => {
     setCurrentTemplate(prev => ({
       ...prev,
-      components: prev.components.map(comp => 
+      components: prev.components.map(comp =>
         comp.id === id ? { ...comp, props: { ...comp.props, ...props } } : comp
       )
     }));
@@ -143,7 +142,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
 
   if (previewMode) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-screen flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">Template Preview</h2>
           <div className="flex gap-2">
@@ -163,8 +162,9 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
     );
   }
 
+
   return (
-    <div className="h-full flex">
+    <div className="h-screen flex overflow-hidden">
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -172,35 +172,37 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
       >
         {/* Left Sidebar - Component Palette */}
         <div className="w-80 border-r bg-gray-50 flex flex-col">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold mb-4">Email Components</h2>
+          <div className="p-4 border-b bg-white">
+            <h2 className="text-lg font-semibold">Email Components</h2>
+          </div>
+          <div className="flex-1 min-h-0">
             <ComponentPalette onAddComponent={addComponent} />
           </div>
         </div>
 
         {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Toolbar */}
-          <div className="border-b p-4 bg-white">
+          <div className="border-b p-4 bg-white shrink-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div>
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                <div className="min-w-0 flex-1">
                   <Input
                     value={currentTemplate.name}
                     onChange={(e) => setCurrentTemplate(prev => ({ ...prev, name: e.target.value }))}
-                    className="text-lg font-semibold border-none p-0 h-auto focus-visible:ring-0"
+                    className="text-lg font-semibold border-none p-0 h-auto focus-visible:ring-0 bg-transparent"
                     placeholder="Template Name"
                   />
                   <Input
                     value={currentTemplate.description || ''}
                     onChange={(e) => setCurrentTemplate(prev => ({ ...prev, description: e.target.value }))}
-                    className="text-sm text-muted-foreground border-none p-0 h-auto focus-visible:ring-0"
+                    className="text-sm text-muted-foreground border-none p-0 h-auto focus-visible:ring-0 bg-transparent"
                     placeholder="Template description..."
                   />
                 </div>
               </div>
-              
-              <div className="flex gap-2">
+
+              <div className="flex gap-2 shrink-0">
                 <Button variant="outline" onClick={() => setPreviewMode(true)}>
                   <Eye className="mr-2 h-4 w-4" />
                   Preview
@@ -218,7 +220,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
           </div>
 
           {/* Canvas */}
-          <div className="flex-1 flex">
+          <div className="flex-1 flex min-h-0">
             <div className="flex-1 p-6 bg-gray-100">
               <CanvasArea
                 components={currentTemplate.components}
@@ -242,11 +244,18 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
           </div>
         </div>
 
-        <DragOverlay>
-          {activeId ? (
-            <div className="p-4 bg-white border rounded shadow-lg">
-              {activeId.startsWith('palette-') ? 'Adding component...' : 'Moving component...'}
-            </div>
+        <DragOverlay dropAnimation={null}>
+          {activeId && activeId.startsWith('palette-') ? (
+            <Card className="w-64 bg-white border shadow-xl opacity-95">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">📧</span>
+                  <div>
+                    <h4 className="text-sm font-medium">Adding component...</h4>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ) : null}
         </DragOverlay>
       </DndContext>

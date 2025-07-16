@@ -102,39 +102,52 @@ export function SortableComponent({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative border-2 border-transparent hover:border-blue-200 transition-colors",
+        "group relative border-2 border-transparent hover:border-blue-200 transition-all cursor-pointer",
         isSelected && "border-blue-500 bg-blue-50/50",
-        isDragging && "opacity-50"
+        isDragging && "opacity-50 z-50"
       )}
       onClick={onSelect}
     >
       {/* Component Preview */}
       {renderComponentPreview()}
 
-      {/* Overlay Controls */}
+      {/* Overlay Controls - Only show on hover or when selected */}
       <div className={cn(
-        "absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2",
-        isSelected && "opacity-100"
+        "absolute inset-0 bg-blue-500/10 opacity-0 transition-opacity flex items-center justify-center gap-2",
+        (isSelected || isDragging) && "opacity-100",
+        "group-hover:opacity-100"
       )}>
         <Button
           size="sm"
           variant="secondary"
+          className="shadow-sm"
           {...attributes}
           {...listeners}
         >
           <GripVertical className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="secondary" onClick={onSelect}>
+        <Button 
+          size="sm" 
+          variant="secondary" 
+          className="shadow-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+        >
           <Settings className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="destructive" onClick={onRemove}>
+        <Button 
+          size="sm" 
+          variant="destructive" 
+          className="shadow-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
-      </div>
-
-      {/* Component Label */}
-      <div className="absolute top-2 left-2 bg-white/90 px-2 py-1 rounded text-xs font-medium">
-        {component.icon} {component.name}
       </div>
     </div>
   );
