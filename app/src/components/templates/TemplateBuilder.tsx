@@ -57,30 +57,6 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
     })
   );
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over) return;
-
-    if (active.id !== over.id) {
-      const oldIndex = currentTemplate.components.findIndex(item => item.id === active.id);
-      const newIndex = currentTemplate.components.findIndex(item => item.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        setCurrentTemplate(prev => ({
-          ...prev,
-          components: arrayMove(prev.components, oldIndex, newIndex)
-        }));
-      }
-    }
-
-    setActiveId(null);
-  }, [currentTemplate.components]);
-
   const addComponent = useCallback((componentType: string) => {
     const definition = componentDefinitions.find(def => def.type === componentType);
     if (!definition) return;
@@ -99,6 +75,42 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
       components: [...prev.components, newComponent]
     }));
   }, [currentTemplate.components.length]);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over) {
+      setActiveId(null);
+      return;
+    }
+
+    // Handle dropping from palette to canvas
+    if (active.data.current?.type === 'palette-item') {
+      const componentType = active.data.current.componentType;
+      addComponent(componentType);
+      setActiveId(null);
+      return;
+    }
+
+    // Handle reordering within canvas
+    if (active.id !== over.id) {
+      const oldIndex = currentTemplate.components.findIndex(item => item.id === active.id);
+      const newIndex = currentTemplate.components.findIndex(item => item.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        setCurrentTemplate(prev => ({
+          ...prev,
+          components: arrayMove(prev.components, oldIndex, newIndex)
+        }));
+      }
+    }
+
+    setActiveId(null);
+  }, [currentTemplate.components, addComponent]);
 
   const updateComponent = useCallback((id: string, props: Record<string, any>) => {
     setCurrentTemplate(prev => ({
@@ -233,7 +245,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
         <DragOverlay>
           {activeId ? (
             <div className="p-4 bg-white border rounded shadow-lg">
-              Dragging component...
+              {activeId.startsWith('palette-') ? 'Adding component...' : 'Moving component...'}
             </div>
           ) : null}
         </DragOverlay>
