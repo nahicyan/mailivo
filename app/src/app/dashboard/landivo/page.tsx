@@ -62,9 +62,11 @@ export default function LandivoPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Create campaigns for specific properties
             </p>
-            <Button className="w-full">
-              Create Campaign
-            </Button>
+            <Link href="/dashboard/landivo/run">
+              <Button className="w-full">
+                Create Campaign
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
