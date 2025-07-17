@@ -22,13 +22,33 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
   const definition = componentDefinitions.find(def => def.type === component.type);
   if (!definition) return null;
 
-  const getValue = (key: string) => {
+  const getValue = (key: string): any => {
     const keys = key.split('.');
     let value = component.props;
     for (const k of keys) {
       value = value?.[k];
     }
     return value;
+  };
+
+  const getStringValue = (key: string): string => {
+    const value = getValue(key);
+    return typeof value === 'string' ? value : '';
+  };
+
+  const getNumberValue = (key: string): number => {
+    const value = getValue(key);
+    return typeof value === 'number' ? value : 0;
+  };
+
+  const getBooleanValue = (key: string): boolean => {
+    const value = getValue(key);
+    return Boolean(value);
+  };
+
+  const getArrayValue = (key: string): any[] => {
+    const value = getValue(key);
+    return Array.isArray(value) ? value : [];
   };
 
   const setValue = (key: string, value: any) => {
@@ -46,13 +66,11 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
   };
 
   const renderField = (field: ComponentConfigField) => {
-    const value = getValue(field.key);
-
     switch (field.type) {
       case 'text':
         return (
           <Input
-            value={value || ''}
+            value={getStringValue(field.key)}
             onChange={(e) => setValue(field.key, e.target.value)}
             placeholder={field.placeholder}
           />
@@ -61,7 +79,7 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
       case 'textarea':
         return (
           <Textarea
-            value={value || ''}
+            value={getStringValue(field.key)}
             onChange={(e) => setValue(field.key, e.target.value)}
             placeholder={field.placeholder}
             rows={3}
@@ -72,23 +90,24 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
         return (
           <Input
             type="number"
-            value={value || ''}
+            value={getNumberValue(field.key)}
             onChange={(e) => setValue(field.key, parseFloat(e.target.value) || 0)}
             placeholder={field.placeholder}
           />
         );
 
       case 'color':
+        const colorValue = getStringValue(field.key) || '#000000';
         return (
           <div className="flex gap-2">
             <Input
               type="color"
-              value={value || '#000000'}
+              value={colorValue}
               onChange={(e) => setValue(field.key, e.target.value)}
               className="w-16 h-9 p-1"
             />
             <Input
-              value={value || ''}
+              value={colorValue}
               onChange={(e) => setValue(field.key, e.target.value)}
               placeholder="#000000"
             />
@@ -98,14 +117,17 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
       case 'boolean':
         return (
           <Switch
-            checked={value || false}
+            checked={getBooleanValue(field.key)}
             onCheckedChange={(checked) => setValue(field.key, checked)}
           />
         );
 
       case 'select':
         return (
-          <Select value={value || ''} onValueChange={(val) => setValue(field.key, val)}>
+          <Select 
+            value={getStringValue(field.key)} 
+            onValueChange={(val) => setValue(field.key, val)}
+          >
             <SelectTrigger>
               <SelectValue placeholder={field.placeholder} />
             </SelectTrigger>
@@ -120,7 +142,13 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
         );
 
       case 'array':
-        return <ArrayField field={field} value={value || []} setValue={setValue} />;
+        return (
+          <ArrayField 
+            field={field} 
+            value={getArrayValue(field.key)} 
+            setValue={setValue} 
+          />
+        );
 
       default:
         return null;
@@ -194,7 +222,7 @@ function ArrayField({ field, value, setValue }: {
                 <div key={key}>
                   <Label className="text-xs">{key}</Label>
                   <Input
-                    value={val as string}
+                    value={String(val || '')}
                     onChange={(e) => updateItem(index, { ...item, [key]: e.target.value })}
                   />
                 </div>
@@ -202,7 +230,7 @@ function ArrayField({ field, value, setValue }: {
             </div>
           ) : (
             <Input
-              value={item}
+              value={String(item || '')}
               onChange={(e) => updateItem(index, e.target.value)}
             />
           )}
