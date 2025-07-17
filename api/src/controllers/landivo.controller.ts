@@ -1,18 +1,27 @@
-import { Request, Response } from 'express';
-import axios from 'axios';
+import { Request, Response, RequestHandler } from 'express';
+import axios, { AxiosError } from 'axios';
 
 const LANDIVO_API_URL = process.env.LANDIVO_API_URL || 'http://localhost:8200';
 
-export const landivoController = {
-  async getProperties(req: Request, res: Response) {
+interface LandivoController {
+  getProperties: RequestHandler;
+  getProperty: RequestHandler;
+  getPropertyBuyers: RequestHandler;
+  getAllBuyers: RequestHandler;
+  syncProperties: RequestHandler;
+}
+
+export const landivoController: LandivoController = {
+  async getProperties(_req: Request, res: Response) {
     try {
       const response = await axios.get(`${LANDIVO_API_URL}/api/residency`);
       res.json(response.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       console.error('Error fetching properties from Landivo:', error);
       res.status(500).json({ 
         error: 'Failed to fetch properties',
-        details: error.response?.data || error.message 
+        details: axiosError.response?.data || axiosError.message 
       });
     }
   },
@@ -23,13 +32,15 @@ export const landivoController = {
       const response = await axios.get(`${LANDIVO_API_URL}/api/residency/${id}`);
       res.json(response.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       console.error(`Error fetching property ${req.params.id}:`, error);
-      if (error.response?.status === 404) {
-        return res.status(404).json({ error: 'Property not found' });
+      if (axiosError.response?.status === 404) {
+        res.status(404).json({ error: 'Property not found' });
+        return;
       }
       res.status(500).json({ 
         error: 'Failed to fetch property',
-        details: error.response?.data || error.message 
+        details: axiosError.response?.data || axiosError.message 
       });
     }
   },
@@ -45,20 +56,21 @@ export const landivoController = {
     }
   },
 
-  async getAllBuyers(req: Request, res: Response) {
+  async getAllBuyers(_req: Request, res: Response) {
     try {
       const response = await axios.get(`${LANDIVO_API_URL}/api/buyer`);
       res.json(response.data);
     } catch (error) {
+      const axiosError = error as AxiosError;
       console.error('Error fetching all buyers:', error);
       res.status(500).json({ 
         error: 'Failed to fetch buyers',
-        details: error.response?.data || error.message 
+        details: axiosError.response?.data || axiosError.message 
       });
     }
   },
 
-  async syncProperties(req: Request, res: Response) {
+  async syncProperties(_req: Request, res: Response) {
     try {
       const response = await axios.get(`${LANDIVO_API_URL}/api/residency`);
       res.json({ 
@@ -66,10 +78,11 @@ export const landivoController = {
         count: response.data?.length || 0 
       });
     } catch (error) {
+      const axiosError = error as AxiosError;
       console.error('Error syncing properties:', error);
       res.status(500).json({ 
         error: 'Failed to sync properties',
-        details: error.response?.data || error.message 
+        details: axiosError.response?.data || axiosError.message 
       });
     }
   }
