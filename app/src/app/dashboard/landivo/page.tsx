@@ -20,32 +20,53 @@ export default function LandivoPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              Properties
+              <Mail className="h-5 w-5" />
+              Manage Campaigns
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              View and manage your property listings for email campaigns
+              Create Manage & View Campaigns
             </p>
-            <Button variant="outline" className="w-full">
-              View Properties
+            <Link href="/dashboard/landivo/campaigns/manage/">
+              <Button className="w-full">
+                Manage Campaigns
+              </Button>
+            </Link>
+          </CardContent>
+       </Card>
+
+
+
+        <Card>
+         <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create & Manage Offer, Discounts & Other Events
+            </p>
+            <Button className="w-full">
+              Manage Events
             </Button>
           </CardContent>
         </Card>
 
-        <Card>
+                <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Buyers
+              Email Lists
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Manage your buyer database and segments
+              Manage your Email Lists & Buyers
             </p>
-            <Button variant="outline" className="w-full">
+            <Button className="w-full">
               View Buyers
             </Button>
           </CardContent>
@@ -60,13 +81,31 @@ export default function LandivoPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Create campaigns for specific properties
+              Create a quick campaigns and send email instantly.
+              Ideal For Testing.
             </p>
             <Link href="/dashboard/landivo/run">
               <Button className="w-full">
                 Create Campaign
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Properties
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              View and manage your property listings for email campaigns
+            </p>
+            <Button className="w-full">
+              View Properties
+            </Button>
           </CardContent>
         </Card>
       </div>
