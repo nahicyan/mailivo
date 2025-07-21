@@ -4,7 +4,7 @@ import { LandivoProperty } from '@/types/landivo';
 const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
 
 async function fetchLandivoProperties(): Promise<LandivoProperty[]> {
-  const response = await fetch(`${serverURL}/api/landivo/properties`, {
+  const response = await fetch(`${serverURL}/landivo/properties`, {
     credentials: 'include',
   });
   

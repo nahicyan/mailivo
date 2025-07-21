@@ -14,7 +14,7 @@ interface LandivoController {
 export const landivoController: LandivoController = {
   async getProperties(_req: Request, res: Response) {
     try {
-      const response = await axios.get(`${LANDIVO_API_URL}/api/residency`);
+      const response = await axios.get(`${LANDIVO_API_URL}/residency`);
       res.json(response.data);
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -29,7 +29,7 @@ export const landivoController: LandivoController = {
   async getProperty(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const response = await axios.get(`${LANDIVO_API_URL}/api/residency/${id}`);
+      const response = await axios.get(`${LANDIVO_API_URL}/residency/${id}`);
       res.json(response.data);
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -48,7 +48,7 @@ export const landivoController: LandivoController = {
   async getPropertyBuyers(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const response = await axios.get(`${LANDIVO_API_URL}/api/buyer?propertyId=${id}`);
+      const response = await axios.get(`${LANDIVO_API_URL}/buyer?propertyId=${id}`);
       res.json(response.data);
     } catch (error) {
       console.error(`Error fetching buyers for property ${req.params.id}:`, error);
@@ -58,7 +58,7 @@ export const landivoController: LandivoController = {
 
   async getAllBuyers(_req: Request, res: Response) {
     try {
-      const response = await axios.get(`${LANDIVO_API_URL}/api/buyer`);
+      const response = await axios.get(`${LANDIVO_API_URL}/buyer`);
       res.json(response.data);
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -72,7 +72,7 @@ export const landivoController: LandivoController = {
 
   async syncProperties(_req: Request, res: Response) {
     try {
-      const response = await axios.get(`${LANDIVO_API_URL}/api/residency`);
+      const response = await axios.get(`${LANDIVO_API_URL}/residency`);
       res.json({ 
         message: 'Properties synced successfully',
         count: response.data?.length || 0 

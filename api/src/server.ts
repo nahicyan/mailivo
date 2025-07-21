@@ -14,6 +14,9 @@ import { routes } from './routes';
 
 const app = express();
 
+// Fix trust proxy issue
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet());
 app.use(compression());
