@@ -11,6 +11,11 @@ import compression from 'compression';
 import morgan from 'morgan';
 import { connectDatabase } from './config/database';
 import { routes } from './routes';
+import { campaignRoutes } from './routes/campaign.route';
+import { propertiesRoutes } from './routes/properties.route';
+import { emailListsRoutes } from './routes/email-lists.route';
+import { templatesRoutes } from './routes/template.route';
+
 
 const app = express();
 
@@ -49,6 +54,11 @@ app.get('/health', (_req, res) => {
 
 // Routes
 app.use('/api', routes);
+
+app.use('/api/campaigns', campaignRoutes);
+app.use('/api/properties', propertiesRoutes);
+app.use('/api/email-lists', emailListsRoutes);
+app.use('/api/templates', templatesRoutes);
 
 // Error handling
 app.use((_req, res) => {
