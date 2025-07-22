@@ -35,7 +35,10 @@ export const templateService = {
   },
 
   async create(template: Partial<EmailTemplate>) {
-    const { data } = await api.post('/templates', template);
+    const { data } = await api.post('/templates', {
+      ...template,
+      components: template.components || []  
+    });
     return data;
   },
 

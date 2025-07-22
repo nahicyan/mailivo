@@ -30,22 +30,42 @@ const emailTemplateSchema = new Schema<IEmailTemplate>({
   },
   name: {
     type: String,
-    required: true,
+    required: [true, 'Template name is required'],
+    trim: true,
+    minlength: [1, 'Template name cannot be empty'],
+    maxlength: [100, 'Template name cannot exceed 100 characters'],
+    validate: {
+      validator: function(v: string) {
+        return !!(v && v.trim().length > 0);
+      },
+      message: 'Template name cannot be empty'
+    }
   },
-  description: String,
+  description: {
+    type: String,
+    maxlength: [500, 'Description cannot exceed 500 characters']
+  },
   category: {
     type: String,
     enum: ['property', 'newsletter', 'announcement', 'custom'],
     default: 'custom',
   },
-  components: [{
-    id: String,
-    type: String,
-    name: String,
-    icon: String,
-    props: Schema.Types.Mixed,
-    order: Number,
-  }],
+  components: {
+    type: [{
+      id: String,
+      type: String,
+      name: String,
+      icon: String,
+      props: Schema.Types.Mixed,
+      order: Number,
+    }],
+    validate: {
+      validator: function(components: any[]) {
+        return components && components.length > 0;
+      },
+      message: 'Template must have at least one component'
+    }
+  },
   settings: {
     backgroundColor: String,
     primaryColor: String,
@@ -57,6 +77,8 @@ const emailTemplateSchema = new Schema<IEmailTemplate>({
   },
 }, { timestamps: true });
 
+// Compound index to enforce unique names per user
+emailTemplateSchema.index({ user_id: 1, name: 1 }, { unique: true });
 emailTemplateSchema.index({ user_id: 1, category: 1 });
 
 export const EmailTemplate = model<IEmailTemplate>('EmailTemplate', emailTemplateSchema);
