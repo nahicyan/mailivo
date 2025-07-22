@@ -1,16 +1,16 @@
 // api/src/routes/template.route.ts
 import { Router } from 'express';
-import { templatesController } from '../controllers/templates.controller';
+import { templateController } from '../controllers/template.controller'; // Use templateController instead
 import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/', templatesController.getAllTemplates.bind(templatesController));
-router.post('/', templatesController.createTemplate.bind(templatesController));
-router.get('/:id', templatesController.getTemplate.bind(templatesController));
-router.put('/:id', templatesController.updateTemplate.bind(templatesController));
-router.delete('/:id', templatesController.deleteTemplate.bind(templatesController));
+router.get('/', templateController.list.bind(templateController));
+router.post('/', templateController.create.bind(templateController));
+router.get('/:id', templateController.get.bind(templateController));
+router.put('/:id', templateController.update.bind(templateController));
+router.delete('/:id', templateController.delete.bind(templateController));
 
 export { router as templatesRoutes };

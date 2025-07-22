@@ -1,4 +1,4 @@
-// ===== Frontend API Client (app/src/lib/api.ts) =====
+// app/src/lib/api.ts
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -12,7 +12,7 @@ export const api = axios.create({
 });
 
 // Request interceptor for auth token
-/* api.interceptors.request.use(
+api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
@@ -21,7 +21,7 @@ export const api = axios.create({
     return config;
   },
   (error) => Promise.reject(error)
-); */
+);
 
 // Response interceptor for error handling
 api.interceptors.response.use(

@@ -18,6 +18,25 @@ export const templateController = {
     }
   },
 
+  async get(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const template = await EmailTemplate.findOne({ 
+        _id: id, 
+        user_id: req.user!._id 
+      });
+
+      if (!template) {
+        res.status(404).json({ error: 'Template not found' });
+        return;
+      }
+
+      res.json({ template });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch template' });
+    }
+  },
+
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
       const template = new EmailTemplate({
