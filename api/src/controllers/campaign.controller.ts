@@ -1,7 +1,7 @@
+// api/src/controllers/campaign.controller.ts
 import { Request, Response } from 'express';
 import { Campaign } from '../models/Campaign';
 import { emailService } from '../services/email.service';
-import { landivoService } from '../services/landivo.service';
 import { logger } from '../utils/logger';
 
 class CampaignController {
@@ -85,7 +85,8 @@ class CampaignController {
 
       const campaign = await Campaign.findOne({ _id: id, userId });
       if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       res.json(campaign);
@@ -108,7 +109,8 @@ class CampaignController {
       );
 
       if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       logger.info(`Campaign updated: ${id}`, { userId, campaignId: id });
@@ -126,7 +128,8 @@ class CampaignController {
 
       const campaign = await Campaign.findOneAndDelete({ _id: id, userId });
       if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       logger.info(`Campaign deleted: ${id}`, { userId, campaignId: id });
@@ -144,11 +147,13 @@ class CampaignController {
 
       const campaign = await Campaign.findOne({ _id: id, userId });
       if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       if (campaign.status === 'sent') {
-        return res.status(400).json({ error: 'Campaign already sent' });
+        res.status(400).json({ error: 'Campaign already sent' });
+        return;
       }
 
       // Update status to sending
@@ -178,7 +183,8 @@ class CampaignController {
       );
 
       if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       res.json({ message: 'Campaign paused', campaign });
@@ -200,7 +206,8 @@ class CampaignController {
       );
 
       if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       res.json({ message: 'Campaign resumed', campaign });
@@ -217,7 +224,8 @@ class CampaignController {
 
       const originalCampaign = await Campaign.findOne({ _id: id, userId });
       if (!originalCampaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       const duplicatedCampaign = new Campaign({
@@ -253,7 +261,8 @@ class CampaignController {
 
       const campaign = await Campaign.findOne({ _id: id, userId });
       if (!campaign) {
-        return res.status(404).json({ error: 'Campaign not found' });
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
       }
 
       const analytics = {
