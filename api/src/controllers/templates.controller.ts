@@ -3,7 +3,7 @@ import { Template } from '../models/Template';
 import { logger } from '../utils/logger';
 
 class TemplatesController {
-  async getAllTemplates(req: Request, res: Response) {
+  getAllTemplates = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.id;
       const templates = await Template.find({ userId }).sort({ createdAt: -1 });
@@ -37,7 +37,7 @@ class TemplatesController {
     }
   }
 
-  async createTemplate(req: Request, res: Response) {
+  createTemplate = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.id;
       const { name, content, type, description } = req.body;
@@ -58,7 +58,7 @@ class TemplatesController {
     }
   }
 
-  async getTemplate(req: Request, res: Response) {
+  getTemplate = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -81,7 +81,47 @@ class TemplatesController {
     }
   }
 
-  private getSystemTemplate(id: string) {
+  updateTemplate = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = (req as any).user.id;
+      const updates = req.body;
+
+      const template = await Template.findOneAndUpdate(
+        { _id: id, userId },
+        { ...updates, updatedAt: new Date() },
+        { new: true }
+      );
+
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+
+      res.json(template);
+    } catch (error) {
+      logger.error('Error updating template:', error);
+      res.status(500).json({ error: 'Failed to update template' });
+    }
+  }
+
+  deleteTemplate = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = (req as any).user.id;
+
+      const template = await Template.findOneAndDelete({ _id: id, userId });
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+
+      res.json({ message: 'Template deleted successfully' });
+    } catch (error) {
+      logger.error('Error deleting template:', error);
+      res.status(500).json({ error: 'Failed to delete template' });
+    }
+  }
+
+  private getSystemTemplate = (id: string) => {
     const templates = {
       'new-listing': {
         id: 'new-listing',
@@ -125,46 +165,6 @@ class TemplatesController {
     };
 
     return templates[id as keyof typeof templates] || null;
-  }
-
-  async updateTemplate(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const userId = (req as any).user.id;
-      const updates = req.body;
-
-      const template = await Template.findOneAndUpdate(
-        { _id: id, userId },
-        { ...updates, updatedAt: new Date() },
-        { new: true }
-      );
-
-      if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
-      }
-
-      res.json(template);
-    } catch (error) {
-      logger.error('Error updating template:', error);
-      res.status(500).json({ error: 'Failed to update template' });
-    }
-  }
-
-  async deleteTemplate(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const userId = (req as any).user.id;
-
-      const template = await Template.findOneAndDelete({ _id: id, userId });
-      if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
-      }
-
-      res.json({ message: 'Template deleted successfully' });
-    } catch (error) {
-      logger.error('Error deleting template:', error);
-      res.status(500).json({ error: 'Failed to delete template' });
-    }
   }
 }
 
