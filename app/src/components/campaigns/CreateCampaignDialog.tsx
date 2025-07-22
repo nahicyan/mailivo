@@ -18,6 +18,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CreateCampaignRequest } from '@/types/campaign';
+import { useLandivoProperties } from '@/hooks/useLandivoProperties';
+import { useEmailLists } from '@/hooks/useEmailLists';
+import { useTemplates } from '@/hooks/useTemplates';
 
 interface CreateCampaignDialogProps {
   open: boolean;
@@ -27,9 +30,6 @@ interface CreateCampaignDialogProps {
 
 export function CreateCampaignDialog({ open, onClose, onSuccess }: CreateCampaignDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [properties, setProperties] = useState<string[]>([]);
-  const [emailLists, setEmailLists] = useState<string[]>([]);
-  const [templates, setTemplates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   
   const [formData, setFormData] = useState<CreateCampaignRequest>({
@@ -43,186 +43,154 @@ export function CreateCampaignDialog({ open, onClose, onSuccess }: CreateCampaig
     description: ''
   });
 
-  useEffect(() => {
-    if (open) {
-      fetchSelectOptions();
-    }
-  }, [open]);
-
-  const fetchSelectOptions = async () => {
-    try {
-      const [propsRes, listsRes, templatesRes] = await Promise.all([
-        fetch('/api/properties'),
-        fetch('/api/email-lists'),
-        fetch('/api/templates')
-      ]);
-      
-      setProperties(await propsRes.json());
-      setEmailLists(await listsRes.json());
-      setTemplates(await templatesRes.json());
-    } catch (error) {
-      console.error('Error fetching options:', error);
-    }
-  };
-
-  const handlePropertyChange = (property: string) => {
-    setFormData(prev => ({
-      ...prev,
-      property,
-      name: property // Auto-fill name with property address
-    }));
-  };
+  // Use the correct hooks for fetching data
+  const { data: properties, isLoading: propertiesLoading, error: propertiesError } = useLandivoProperties();
+  const { data: emailLists, isLoading: listsLoading, error: listsError } = useEmailLists();
+  const { data: templates, isLoading: templatesLoading, error: templatesError } = useTemplates();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      const campaignData = {
+        ...formData,
+        scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined
+      };
+
       const response = await fetch('/api/campaigns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          scheduledDate: selectedDate?.toISOString()
-        })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(campaignData),
       });
 
-      if (response.ok) {
-        onSuccess();
-        onClose();
-        // Reset form
-        setFormData({
-          name: '',
-          property: '',
-          emailList: '',
-          emailTemplate: '',
-          emailAddressGroup: '',
-          emailSchedule: 'immediate',
-          emailVolume: 1000,
-          description: ''
-        });
-        setSelectedDate(undefined);
+      if (!response.ok) {
+        throw new Error('Failed to create campaign');
       }
+
+      onSuccess();
+      onClose();
+      setFormData({
+        name: '',
+        property: '',
+        emailList: '',
+        emailTemplate: '',
+        emailAddressGroup: '',
+        emailSchedule: 'immediate',
+        emailVolume: 1000,
+        description: ''
+      });
     } catch (error) {
       console.error('Error creating campaign:', error);
+      // You might want to show a toast notification here
     } finally {
       setLoading(false);
     }
   };
 
+  // Show error message if any of the APIs fail
+  if (propertiesError || listsError || templatesError) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error Loading Data</DialogTitle>
+          </DialogHeader>
+          <div className="text-red-600">
+            Failed to load campaign options. Please check your connection and try again.
+            {propertiesError && <div>Properties: {propertiesError.message}</div>}
+            {listsError && <div>Email Lists: {listsError.message}</div>}
+            {templatesError && <div>Templates: {templatesError.message}</div>}
+          </div>
+          <Button onClick={onClose}>Close</Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Create New Campaign</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="property">Property *</Label>
-              <Select value={formData.property} onValueChange={handlePropertyChange} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select property" />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map((property) => (
-                    <SelectItem key={property} value={property}>
-                      {property}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="name">Campaign Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Campaign name (auto-filled from property)"
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Campaign Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Enter campaign name"
+              required
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="emailList">Email List *</Label>
-              <Select value={formData.emailList} onValueChange={(value) => setFormData(prev => ({ ...prev, emailList: value }))} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select email list" />
-                </SelectTrigger>
-                <SelectContent>
-                  {emailLists.map((list) => (
-                    <SelectItem key={list} value={list}>
-                      {list}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="emailTemplate">Email Template *</Label>
-              <Select value={formData.emailTemplate} onValueChange={(value) => setFormData(prev => ({ ...prev, emailTemplate: value }))} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template} value={template}>
-                      {template}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="property">Property</Label>
+            <Select value={formData.property} onValueChange={(value) => setFormData(prev => ({ ...prev, property: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder={propertiesLoading ? "Loading properties..." : "Select property"} />
+              </SelectTrigger>
+              <SelectContent>
+                {properties?.map((property) => (
+                  <SelectItem key={property.id} value={property.id}>
+                    {property.title} - {property.streetAddress}, {property.city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="emailAddressGroup">Email Address Group</Label>
-              <Input
-                id="emailAddressGroup"
-                value={formData.emailAddressGroup}
-                onChange={(e) => setFormData(prev => ({ ...prev, emailAddressGroup: e.target.value }))}
-                placeholder="Enter email group"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="emailVolume">Email Volume</Label>
-              <Input
-                id="emailVolume"
-                type="number"
-                value={formData.emailVolume}
-                onChange={(e) => setFormData(prev => ({ ...prev, emailVolume: parseInt(e.target.value) || 0 }))}
-                placeholder="Expected volume"
-                min="1"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="emailList">Email List</Label>
+            <Select value={formData.emailList} onValueChange={(value) => setFormData(prev => ({ ...prev, emailList: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder={listsLoading ? "Loading email lists..." : "Select email list"} />
+              </SelectTrigger>
+              <SelectContent>
+                {emailLists?.map((list) => (
+                  <SelectItem key={list.id} value={list.id}>
+                    {list.name} ({list.totalContacts} contacts)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="emailSchedule">Schedule</Label>
-              <Select value={formData.emailSchedule} onValueChange={(value) => setFormData(prev => ({ ...prev, emailSchedule: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select schedule" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="immediate">Send Immediately</SelectItem>
-                  <SelectItem value="scheduled">Schedule for Later</SelectItem>
-                  <SelectItem value="recurring">Recurring</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="emailTemplate">Email Template</Label>
+            <Select value={formData.emailTemplate} onValueChange={(value) => setFormData(prev => ({ ...prev, emailTemplate: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder={templatesLoading ? "Loading templates..." : "Select template"} />
+              </SelectTrigger>
+              <SelectContent>
+                {templates?.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="emailSchedule">Schedule</Label>
+            <Select value={formData.emailSchedule} onValueChange={(value) => setFormData(prev => ({ ...prev, emailSchedule: value }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="immediate">Send Immediately</SelectItem>
+                <SelectItem value="scheduled">Schedule for Later</SelectItem>
+              </SelectContent>
+            </Select>
 
             {formData.emailSchedule === 'scheduled' && (
-              <div className="space-y-2">
-                <Label>Scheduled Date</Label>
+              <div className="pt-2">
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -258,7 +226,7 @@ export function CreateCampaignDialog({ open, onClose, onSuccess }: CreateCampaig
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || propertiesLoading || listsLoading || templatesLoading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Campaign
             </Button>
