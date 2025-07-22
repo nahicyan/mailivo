@@ -1,20 +1,19 @@
-// api/src/routes/index.ts - Updated to include email-lists route
+// api/src/routes/index.ts - Add the new route
 import { Router } from 'express';
 import { authRoutes } from './auth.route';
 import { campaignRoutes } from './campaign.route';
 import { templatesRoutes } from './template.route';
 import { landivoRoutes } from './landivo.route';
-import { emailListsRoutes } from './email-lists.route';
+import { landivoEmailListsRoutes } from './landivo-email-lists.route';  // New import
 
 const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/campaigns', campaignRoutes);
 router.use('/templates', templatesRoutes);
-router.use('/email-lists', emailListsRoutes);
+router.use('/landivo-email-lists', landivoEmailListsRoutes);  // New route
 router.use('/landivo', landivoRoutes);
 
-// Health check
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });

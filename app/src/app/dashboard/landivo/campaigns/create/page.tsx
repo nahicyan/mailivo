@@ -1,8 +1,8 @@
-// app/src/app/dashboard/landivo/campaigns/create/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,6 @@ import {
 import { format } from 'date-fns';
 import { CreateCampaignRequest } from '@/types/campaign';
 import { useLandivoProperties } from '@/hooks/useLandivoProperties';
-import { useEmailLists } from '@/hooks/useEmailLists';
 import { useTemplates } from '@/hooks/useTemplates';
 import Link from 'next/link';
 
@@ -60,7 +59,7 @@ export default function CreateCampaignPage() {
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Fetch data - Fixed email lists destructuring
+    // Fetch data - Fixed email lists to use Landivo API
     const {
         data: properties,
         isLoading: propertiesLoading,
@@ -69,11 +68,31 @@ export default function CreateCampaignPage() {
     } = useLandivoProperties();
 
     const {
-        emailLists,
-        listsLoading,
-        listsError,
-        refetchLists
-    } = useEmailLists();
+        data: emailLists,
+        isLoading: listsLoading,
+        error: listsError,
+        refetch: refetchLists
+    } = useQuery({
+        queryKey: ['landivo-email-lists'],
+        queryFn: async () => {
+            const response = await fetch('/api/landivo-email-lists', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch email lists: ${response.statusText}`);
+            }
+
+            return response.json();
+        },
+        staleTime: 30000,
+        retry: 2
+    });
 
     const {
         data: templates,
@@ -411,24 +430,30 @@ export default function CreateCampaignPage() {
                                                     <SelectValue placeholder={
                                                         listsLoading ? "Loading email lists..." :
                                                             listsError ? "Error loading email lists - Click to retry" :
-                                                                emailLists.length === 0 ? "No email lists found" :
+                                                                !emailLists || emailLists.length === 0 ? "No email lists found" :
                                                                     "Select email list"
                                                     } />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {emailLists?.map((list) => (
-                                                        <SelectItem key={list.id || list._id} value={list.id || list._id}>
-                                                            <div className="flex justify-between items-center w-full">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-medium">{list.name}</span>
-                                                                    <span className="text-xs text-gray-500">{list.description}</span>
+                                                    {emailLists && emailLists.length > 0 ? (
+                                                        emailLists.map((list) => (
+                                                            <SelectItem key={list.id} value={list.id}>
+                                                                <div className="flex justify-between items-center w-full">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium">{list.name}</span>
+                                                                        <span className="text-xs text-gray-500">{list.description}</span>
+                                                                    </div>
+                                                                    <Badge variant="secondary" className="ml-2">
+                                                                        {list.totalContacts} contacts
+                                                                    </Badge>
                                                                 </div>
-                                                                <Badge variant="secondary" className="ml-2">
-                                                                    {list.totalContacts} contacts
-                                                                </Badge>
-                                                            </div>
+                                                            </SelectItem>
+                                                        ))
+                                                    ) : (
+                                                        <SelectItem disabled value="no-lists">
+                                                            No email lists available
                                                         </SelectItem>
-                                                    ))}
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                             {errors.emailList && <p className="text-sm text-red-600">{errors.emailList}</p>}
