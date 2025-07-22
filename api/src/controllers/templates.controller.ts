@@ -1,11 +1,18 @@
-import { Request, Response } from 'express';
+// api/src/controllers/templates.controller.ts
+import { Response } from 'express';
 import { Template } from '../models/Template';
 import { logger } from '../utils/logger';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 class TemplatesController {
-  async getAllTemplates(req: Request, res: Response) {
+  async getAllTemplates(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
       const templates = await Template.find({ userId }).sort({ createdAt: -1 });
       
       // Include default system templates
@@ -37,9 +44,14 @@ class TemplatesController {
     }
   }
 
-  async createTemplate(req: Request, res: Response) {
+  async createTemplate(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
       const { name, content, type, description } = req.body;
 
       const template = new Template({
@@ -58,20 +70,31 @@ class TemplatesController {
     }
   }
 
-  async getTemplate(req: Request, res: Response) {
+  async getTemplate(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       // Handle system templates
       if (id.startsWith('system-') || ['new-listing', 'price-drop', 'open-house'].includes(id)) {
         const systemTemplate = this.getSystemTemplate(id);
-        return res.json(systemTemplate);
+        if (!systemTemplate) {
+          res.status(404).json({ error: 'System template not found' });
+          return;
+        }
+        res.json(systemTemplate);
+        return;
       }
 
       const template = await Template.findOne({ _id: id, userId });
       if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
+        res.status(404).json({ error: 'Template not found' });
+        return;
       }
 
       res.json(template);
@@ -81,11 +104,16 @@ class TemplatesController {
     }
   }
 
-  async updateTemplate(req: Request, res: Response) {
+  async updateTemplate(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
       const updates = req.body;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const template = await Template.findOneAndUpdate(
         { _id: id, userId },
@@ -94,7 +122,8 @@ class TemplatesController {
       );
 
       if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
+        res.status(404).json({ error: 'Template not found' });
+        return;
       }
 
       res.json(template);
@@ -104,14 +133,20 @@ class TemplatesController {
     }
   }
 
-  async deleteTemplate(req: Request, res: Response) {
+  async deleteTemplate(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const template = await Template.findOneAndDelete({ _id: id, userId });
       if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
+        res.status(404).json({ error: 'Template not found' });
+        return;
       }
 
       res.json({ message: 'Template deleted successfully' });
@@ -122,49 +157,31 @@ class TemplatesController {
   }
 
   private getSystemTemplate(id: string) {
-    const templates = {
+    const templates: Record<string, any> = {
       'new-listing': {
         id: 'new-listing',
         name: 'New Listing Announcement',
         type: 'system',
-        content: `
-          <h1>New Property Available!</h1>
-          <p>{{property.title}}</p>
-          <p>Address: {{property.streetAddress}}, {{property.city}}, {{property.state}}</p>
-          <p>Price: ${{property.askingPrice}}</p>
-          <p>Size: {{property.acre}} acres</p>
-          <p>{{property.description}}</p>
-        `,
+        content: '<h1>New Property Available!</h1><p>{{property.title}}</p><p>Address: {{property.streetAddress}}, {{property.city}}, {{property.state}}</p><p>Price: ${{property.askingPrice}}</p><p>Size: {{property.acre}} acres</p><p>{{property.description}}</p>',
         description: 'Professional template for new property listings'
       },
       'price-drop': {
         id: 'price-drop',
         name: 'Price Drop Alert',
         type: 'system',
-        content: `
-          <h1>Price Reduced!</h1>
-          <p>Great news! The price for {{property.title}} has been reduced.</p>
-          <p>New Price: ${{property.askingPrice}}</p>
-          <p>Don't miss this opportunity!</p>
-        `,
+        content: '<h1>Price Reduced!</h1><p>Great news! The price for {{property.title}} has been reduced.</p><p>New Price: ${{property.askingPrice}}</p><p>Don\'t miss this opportunity!</p>',
         description: 'Alert buyers about price reductions'
       },
       'open-house': {
         id: 'open-house',
         name: 'Open House Invitation',
         type: 'system',
-        content: `
-          <h1>You're Invited to Our Open House!</h1>
-          <p>Property: {{property.title}}</p>
-          <p>Date: {{event.date}}</p>
-          <p>Time: {{event.time}}</p>
-          <p>Address: {{property.streetAddress}}</p>
-        `,
+        content: '<h1>You\'re Invited to Our Open House!</h1><p>Property: {{property.title}}</p><p>Date: {{event.date}}</p><p>Time: {{event.time}}</p><p>Address: {{property.streetAddress}}</p>',
         description: 'Invite prospects to open house events'
       }
     };
 
-    return templates[id as keyof typeof templates] || null;
+    return templates[id] || null;
   }
 }
 

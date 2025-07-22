@@ -1,3 +1,4 @@
+// api/src/routes/email-lists.route.ts
 import { Router } from 'express';
 import { emailListsController } from '../controllers/email-lists.controller';
 import { authenticate } from '../middleware/auth.middleware';
@@ -15,14 +16,14 @@ const validate = (req: any, res: any, next: any) => {
   next();
 };
 
-router.get('/', emailListsController.getAllEmailLists);
+router.get('/', emailListsController.getAllEmailLists.bind(emailListsController));
 router.post('/', [
   body('name').notEmpty().withMessage('List name is required'),
-], validate, emailListsController.createEmailList);
+], validate, emailListsController.createEmailList.bind(emailListsController));
 
-router.get('/:id', emailListsController.getEmailList);
-router.put('/:id', emailListsController.updateEmailList);
-router.delete('/:id', emailListsController.deleteEmailList);
-router.post('/:id/sync-buyers', emailListsController.syncBuyersFromLandivo);
+router.get('/:id', emailListsController.getEmailList.bind(emailListsController));
+router.put('/:id', emailListsController.updateEmailList.bind(emailListsController));
+router.delete('/:id', emailListsController.deleteEmailList.bind(emailListsController));
+router.post('/:id/sync-buyers', emailListsController.syncBuyersFromLandivo.bind(emailListsController));
 
 export { router as emailListsRoutes };

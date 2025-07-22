@@ -1,3 +1,4 @@
+// api/src/controllers/properties.controller.ts
 import { Request, Response } from 'express';
 import axios from 'axios';
 import { logger } from '../utils/logger';
@@ -6,7 +7,7 @@ import { LandivoProperty } from '../types/landivo';
 const LANDIVO_API_URL = process.env.LANDIVO_API_URL || 'http://localhost:8200';
 
 class PropertiesController {
-  async getAllProperties(req: Request, res: Response) {
+  async getAllProperties(_req: Request, res: Response) {
     try {
       const response = await axios.get(`${LANDIVO_API_URL}/residency/allresd`);
       const properties: LandivoProperty[] = response.data;
@@ -39,7 +40,7 @@ class PropertiesController {
     }
   }
 
-  async syncFromLandivo(req: Request, res: Response) {
+  async syncFromLandivo(_req: Request, res: Response) {
     try {
       const response = await axios.get(`${LANDIVO_API_URL}/residency/allresd`);
       const properties: LandivoProperty[] = response.data;

@@ -1,15 +1,22 @@
-import { Request, Response } from 'express';
+// api/src/controllers/email-lists.controller.ts
+import { Response } from 'express';
 import axios from 'axios';
 import { EmailList } from '../models/EmailList';
 import { logger } from '../utils/logger';
 import { LandivoBuyer } from '../types/landivo';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 const LANDIVO_API_URL = process.env.LANDIVO_API_URL || 'http://localhost:8200';
 
 class EmailListsController {
-  async getAllEmailLists(req: Request, res: Response) {
+  async getAllEmailLists(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
       const emailLists = await EmailList.find({ userId }).sort({ createdAt: -1 });
       res.json(emailLists);
     } catch (error) {
@@ -18,9 +25,14 @@ class EmailListsController {
     }
   }
 
-  async createEmailList(req: Request, res: Response) {
+  async createEmailList(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
       const { name, description, buyerCriteria } = req.body;
 
       // Fetch buyers from Landivo based on criteria
@@ -57,14 +69,20 @@ class EmailListsController {
     }
   }
 
-  async getEmailList(req: Request, res: Response) {
+  async getEmailList(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const emailList = await EmailList.findOne({ _id: id, userId });
       if (!emailList) {
-        return res.status(404).json({ error: 'Email list not found' });
+        res.status(404).json({ error: 'Email list not found' });
+        return;
       }
 
       res.json(emailList);
@@ -74,11 +92,16 @@ class EmailListsController {
     }
   }
 
-  async updateEmailList(req: Request, res: Response) {
+  async updateEmailList(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
       const updates = req.body;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const emailList = await EmailList.findOneAndUpdate(
         { _id: id, userId },
@@ -87,7 +110,8 @@ class EmailListsController {
       );
 
       if (!emailList) {
-        return res.status(404).json({ error: 'Email list not found' });
+        res.status(404).json({ error: 'Email list not found' });
+        return;
       }
 
       res.json(emailList);
@@ -97,14 +121,20 @@ class EmailListsController {
     }
   }
 
-  async deleteEmailList(req: Request, res: Response) {
+  async deleteEmailList(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const emailList = await EmailList.findOneAndDelete({ _id: id, userId });
       if (!emailList) {
-        return res.status(404).json({ error: 'Email list not found' });
+        res.status(404).json({ error: 'Email list not found' });
+        return;
       }
 
       res.json({ message: 'Email list deleted successfully' });
@@ -114,14 +144,20 @@ class EmailListsController {
     }
   }
 
-  async syncBuyersFromLandivo(req: Request, res: Response) {
+  async syncBuyersFromLandivo(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const emailList = await EmailList.findOne({ _id: id, userId });
       if (!emailList) {
-        return res.status(404).json({ error: 'Email list not found' });
+        res.status(404).json({ error: 'Email list not found' });
+        return;
       }
 
       // Fetch updated buyers from Landivo

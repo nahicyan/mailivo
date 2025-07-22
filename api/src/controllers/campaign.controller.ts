@@ -1,14 +1,20 @@
 // api/src/controllers/campaign.controller.ts
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { Campaign } from '../models/Campaign';
 import { emailService } from '../services/email.service';
 import { logger } from '../utils/logger';
+import { AuthRequest } from '../middleware/auth.middleware';
 
 class CampaignController {
-  async getAllCampaigns(req: Request, res: Response): Promise<void> {
+  async getAllCampaigns(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { page = 1, limit = 10, status, search } = req.query;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const filter: any = { userId };
       
@@ -43,9 +49,14 @@ class CampaignController {
     }
   }
 
-  async createCampaign(req: Request, res: Response): Promise<void> {
+  async createCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
       const campaignData = {
         ...req.body,
         userId,
@@ -70,7 +81,7 @@ class CampaignController {
         await campaign.save();
       }
 
-      logger.info(`Campaign created: ${campaign._id}`, { userId, campaignId: campaign._id });
+      logger.info(`Campaign created: ${campaign._id}`, { userId: userId.toString(), campaignId: campaign._id });
       res.status(201).json(campaign);
     } catch (error) {
       logger.error('Error creating campaign:', error);
@@ -78,10 +89,15 @@ class CampaignController {
     }
   }
 
-  async getCampaign(req: Request, res: Response): Promise<void> {
+  async getCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaign = await Campaign.findOne({ _id: id, userId });
       if (!campaign) {
@@ -96,11 +112,16 @@ class CampaignController {
     }
   }
 
-  async updateCampaign(req: Request, res: Response): Promise<void> {
+  async updateCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
       const updates = req.body;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaign = await Campaign.findOneAndUpdate(
         { _id: id, userId },
@@ -113,7 +134,7 @@ class CampaignController {
         return;
       }
 
-      logger.info(`Campaign updated: ${id}`, { userId, campaignId: id });
+      logger.info(`Campaign updated: ${id}`, { userId: userId.toString(), campaignId: id });
       res.json(campaign);
     } catch (error) {
       logger.error('Error updating campaign:', error);
@@ -121,10 +142,15 @@ class CampaignController {
     }
   }
 
-  async deleteCampaign(req: Request, res: Response): Promise<void> {
+  async deleteCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaign = await Campaign.findOneAndDelete({ _id: id, userId });
       if (!campaign) {
@@ -132,7 +158,7 @@ class CampaignController {
         return;
       }
 
-      logger.info(`Campaign deleted: ${id}`, { userId, campaignId: id });
+      logger.info(`Campaign deleted: ${id}`, { userId: userId.toString(), campaignId: id });
       res.json({ message: 'Campaign deleted successfully' });
     } catch (error) {
       logger.error('Error deleting campaign:', error);
@@ -140,10 +166,15 @@ class CampaignController {
     }
   }
 
-  async sendCampaign(req: Request, res: Response): Promise<void> {
+  async sendCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaign = await Campaign.findOne({ _id: id, userId });
       if (!campaign) {
@@ -163,7 +194,7 @@ class CampaignController {
       // Queue email sending job
       await emailService.sendCampaign(campaign);
 
-      logger.info(`Campaign sending initiated: ${id}`, { userId, campaignId: id });
+      logger.info(`Campaign sending initiated: ${id}`, { userId: userId.toString(), campaignId: id });
       res.json({ message: 'Campaign sending initiated', campaign });
     } catch (error) {
       logger.error('Error sending campaign:', error);
@@ -171,10 +202,15 @@ class CampaignController {
     }
   }
 
-  async pauseCampaign(req: Request, res: Response): Promise<void> {
+  async pauseCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaign = await Campaign.findOneAndUpdate(
         { _id: id, userId },
@@ -194,10 +230,15 @@ class CampaignController {
     }
   }
 
-  async resumeCampaign(req: Request, res: Response): Promise<void> {
+  async resumeCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaign = await Campaign.findOneAndUpdate(
         { _id: id, userId },
@@ -217,10 +258,15 @@ class CampaignController {
     }
   }
 
-  async duplicateCampaign(req: Request, res: Response): Promise<void> {
+  async duplicateCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const originalCampaign = await Campaign.findOne({ _id: id, userId });
       if (!originalCampaign) {
@@ -254,10 +300,15 @@ class CampaignController {
     }
   }
 
-  async getCampaignAnalytics(req: Request, res: Response): Promise<void> {
+  async getCampaignAnalytics(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaign = await Campaign.findOne({ _id: id, userId });
       if (!campaign) {
@@ -276,7 +327,7 @@ class CampaignController {
         },
         engagement: {
           totalEngagements: campaign.metrics.open + campaign.metrics.clicks,
-          mobileEngagement: (campaign.metrics.mobileOpen / campaign.metrics.open * 100).toFixed(2) || 0
+          mobileEngagement: campaign.metrics.open > 0 ? (campaign.metrics.mobileOpen / campaign.metrics.open * 100).toFixed(2) : 0
         }
       };
 
@@ -287,9 +338,14 @@ class CampaignController {
     }
   }
 
-  async getCampaignMetrics(req: Request, res: Response): Promise<void> {
+  async getCampaignMetrics(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const metrics = await Campaign.aggregate([
         { $match: { userId } },
@@ -327,10 +383,15 @@ class CampaignController {
     }
   }
 
-  async bulkDeleteCampaigns(req: Request, res: Response): Promise<void> {
+  async bulkDeleteCampaigns(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { campaignIds } = req.body;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const result = await Campaign.deleteMany({
         _id: { $in: campaignIds },
@@ -347,10 +408,15 @@ class CampaignController {
     }
   }
 
-  async bulkSendCampaigns(req: Request, res: Response): Promise<void> {
+  async bulkSendCampaigns(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { campaignIds } = req.body;
-      const userId = (req as any).user.id;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
 
       const campaigns = await Campaign.find({
         _id: { $in: campaignIds },
