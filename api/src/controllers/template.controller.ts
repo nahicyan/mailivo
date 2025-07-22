@@ -41,30 +41,8 @@ export const templateController = {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
-      // Debug: Log the raw request body
-      console.log('Raw request body:', JSON.stringify(req.body, null, 2));
+      const { name, components, description, category, settings } = req.body;
       
-      // Parse components if it's a string (defensive programming)
-      let { name, components, ...rest } = req.body;
-      
-      console.log('Components type:', typeof components);
-      console.log('Components value:', components);
-      
-      if (typeof components === 'string') {
-        try {
-          components = JSON.parse(components);
-          console.log('Parsed components:', components);
-        } catch (parseError) {
-          console.error('Failed to parse components JSON:', parseError);
-          res.status(400).json({ 
-            error: 'Invalid components format',
-            message: 'Components must be a valid array',
-            field: 'components'
-          });
-          return;
-        }
-      }
-
       // Validate required fields
       if (!name || name.trim().length === 0) {
         res.status(400).json({ 
@@ -85,9 +63,11 @@ export const templateController = {
       }
 
       const template = new EmailTemplate({
-        ...rest,
         name: name.trim(),
+        description,
+        category: category || 'custom',
         components,
+        settings: settings || {},
         user_id: req.user!._id,
       });
 
@@ -96,7 +76,7 @@ export const templateController = {
     } catch (error: any) {
       console.error('Error creating template:', error);
       
-      // Handle duplicate key error (unique constraint violation)
+      // Handle duplicate key error
       if (error.code === 11000) {
         res.status(409).json({ 
           error: 'Template name already exists',

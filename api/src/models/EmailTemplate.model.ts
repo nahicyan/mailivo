@@ -51,14 +51,7 @@ const emailTemplateSchema = new Schema<IEmailTemplate>({
     default: 'custom',
   },
   components: {
-    type: [{
-      id: String,
-      type: String,
-      name: String,
-      icon: String,
-      props: Schema.Types.Mixed,
-      order: Number,
-    }],
+    type: [],
     validate: {
       validator: function(components: any[]) {
         return components && components.length > 0;
