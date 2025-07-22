@@ -40,6 +40,9 @@ import { useLandivoProperties } from '@/hooks/useLandivoProperties';
 import { useTemplates } from '@/hooks/useTemplates';
 import Link from 'next/link';
 
+// Get the API URL from environment variable or use production URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+
 export default function CreateCampaignPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -59,7 +62,7 @@ export default function CreateCampaignPage() {
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Fetch data - Fixed email lists to use Landivo API
+    // Fetch data - Fixed email lists to use proper API URL
     const {
         data: properties,
         isLoading: propertiesLoading,
@@ -75,7 +78,7 @@ export default function CreateCampaignPage() {
     } = useQuery({
         queryKey: ['landivo-email-lists'],
         queryFn: async () => {
-            const response = await fetch('/api/landivo-email-lists', {
+            const response = await fetch(`${API_URL}/api/landivo-email-lists`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -106,22 +109,21 @@ export default function CreateCampaignPage() {
 
         switch (step) {
             case 1:
-                if (!formData.name.trim()) newErrors.name = 'Campaign name is required';
-                if (!formData.description.trim()) newErrors.description = 'Description is required';
+                if (!formData.name.trim()) {
+                    newErrors.name = 'Campaign name is required';
+                }
+                if (!formData.property) {
+                    newErrors.property = 'Please select a property';
+                }
                 break;
             case 2:
-                if (!formData.property) newErrors.property = 'Property selection is required';
+                if (!formData.emailList) {
+                    newErrors.emailList = 'Please select an email list';
+                }
                 break;
             case 3:
-                if (!formData.emailList) newErrors.emailList = 'Email list is required';
-                if (!formData.emailTemplate) newErrors.emailTemplate = 'Email template is required';
-                break;
-            case 4:
-                if (formData.emailSchedule === 'scheduled' && !selectedDate) {
-                    newErrors.schedule = 'Schedule date is required';
-                }
-                if (!formData.emailVolume || formData.emailVolume < 1) {
-                    newErrors.emailVolume = 'Email volume must be at least 1';
+                if (!formData.emailTemplate) {
+                    newErrors.emailTemplate = 'Please select an email template';
                 }
                 break;
         }
@@ -132,44 +134,40 @@ export default function CreateCampaignPage() {
 
     const handleNext = () => {
         if (validateStep(currentStep)) {
-            setCurrentStep(prev => Math.min(prev + 1, 4));
+            setCurrentStep(currentStep + 1);
         }
     };
 
     const handlePrevious = () => {
-        setCurrentStep(prev => Math.max(prev - 1, 1));
+        setCurrentStep(currentStep - 1);
     };
 
     const handleSubmit = async () => {
-        if (!validateStep(4)) return;
+        if (!validateStep(currentStep)) {
+            return;
+        }
 
         setLoading(true);
-
         try {
-            const campaignData = {
-                ...formData,
-                scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined
-            };
-
-            const response = await fetch('/api/campaigns', {
+            const response = await fetch(`${API_URL}/api/campaigns`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
                 },
                 credentials: 'include',
-                body: JSON.stringify(campaignData),
+                body: JSON.stringify(formData)
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create campaign');
+                throw new Error('Failed to create campaign');
             }
 
-            router.push('/dashboard/landivo/campaigns/manage');
-        } catch (error: any) {
+            const campaign = await response.json();
+            router.push(`/dashboard/landivo/campaigns/${campaign._id}`);
+        } catch (error) {
             console.error('Error creating campaign:', error);
-            setErrors({ submit: `Failed to create campaign: ${error.message}` });
+            setErrors({ submit: 'Failed to create campaign. Please try again.' });
         } finally {
             setLoading(false);
         }
