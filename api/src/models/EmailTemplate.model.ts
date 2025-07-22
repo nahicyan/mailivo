@@ -22,6 +22,15 @@ export interface IEmailTemplate extends Document {
   isDefault: boolean;
 }
 
+const componentSchema = new Schema({
+  id: { type: String, required: true },
+  type: { type: String, required: true },
+  name: { type: String, required: true },
+  icon: { type: String, required: true },
+  props: { type: Schema.Types.Mixed, default: {} },
+  order: { type: Number, required: true }
+}, { _id: false });
+
 const emailTemplateSchema = new Schema<IEmailTemplate>({
   user_id: {
     type: Schema.Types.ObjectId,
@@ -51,7 +60,7 @@ const emailTemplateSchema = new Schema<IEmailTemplate>({
     default: 'custom',
   },
   components: {
-    type: [],
+    type: [componentSchema],
     validate: {
       validator: function(components: any[]) {
         return components && components.length > 0;

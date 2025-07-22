@@ -12,7 +12,14 @@ export const templateController = {
       if (category) filter.category = category;
 
       const templates = await EmailTemplate.find(filter).sort({ updatedAt: -1 });
-      res.json({ templates });
+      
+      // Map _id to id for frontend compatibility
+      const templatesWithId = templates.map(template => ({
+        ...template.toObject(),
+        id: (template._id as any).toString()
+      }));
+      
+      res.json({ templates: templatesWithId });
     } catch (error) {
       console.error('Error fetching templates:', error);
       res.status(500).json({ error: 'Failed to fetch templates' });
@@ -32,7 +39,13 @@ export const templateController = {
         return;
       }
 
-      res.json({ template });
+      // Map _id to id for frontend compatibility
+      const templateWithId = {
+        ...template.toObject(),
+        id: (template._id as any).toString()
+      };
+
+      res.json({ template: templateWithId });
     } catch (error) {
       console.error('Error fetching template:', error);
       res.status(500).json({ error: 'Failed to fetch template' });
@@ -72,7 +85,14 @@ export const templateController = {
       });
 
       await template.save();
-      res.status(201).json({ template });
+      
+      // Map _id to id for frontend compatibility
+      const templateWithId = {
+        ...template.toObject(),
+        id: (template._id as any).toString()
+      };
+      
+      res.status(201).json({ template: templateWithId });
     } catch (error: any) {
       console.error('Error creating template:', error);
       
@@ -145,7 +165,13 @@ export const templateController = {
         return;
       }
 
-      res.json({ template });
+      // Map _id to id for frontend compatibility
+      const templateWithId = {
+        ...template.toObject(),
+        id: (template._id as any).toString()
+      };
+
+      res.json({ template: templateWithId });
     } catch (error: any) {
       console.error('Error updating template:', error);
       
