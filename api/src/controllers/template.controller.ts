@@ -41,12 +41,19 @@ export const templateController = {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
+      // Debug: Log the raw request body
+      console.log('Raw request body:', JSON.stringify(req.body, null, 2));
+      
       // Parse components if it's a string (defensive programming)
       let { name, components, ...rest } = req.body;
+      
+      console.log('Components type:', typeof components);
+      console.log('Components value:', components);
       
       if (typeof components === 'string') {
         try {
           components = JSON.parse(components);
+          console.log('Parsed components:', components);
         } catch (parseError) {
           console.error('Failed to parse components JSON:', parseError);
           res.status(400).json({ 

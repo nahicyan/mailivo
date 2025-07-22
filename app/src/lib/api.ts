@@ -3,12 +3,19 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// app/src/lib/api.ts
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
+  transformRequest: [
+    (data) => {
+      console.log('Axios sending:', data); // Debug log
+      return JSON.stringify(data);
+    }
+  ]
 });
 
 // Request interceptor for auth token

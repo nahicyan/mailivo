@@ -34,11 +34,10 @@ export const templateService = {
     return data;
   },
 
-  async create(template: Partial<EmailTemplate>) {
-    const { data } = await api.post('/templates', {
-      ...template,
-      components: template.components || []  
-    });
+async create(template: Partial<EmailTemplate>) {
+    console.log('Template service sending:', template); // Debug log
+    
+    const { data } = await api.post('/templates', template); // Don't spread or modify
     return data;
   },
 
