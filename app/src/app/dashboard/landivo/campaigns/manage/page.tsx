@@ -1,6 +1,8 @@
+// app/src/app/dashboard/landivo/campaigns/manage/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,15 +25,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CreateCampaignDialog } from '@/components/campaigns/CreateCampaignDialog';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { Campaign } from '@/types/campaign';
 
 export default function ManageCampaignsPage() {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -64,6 +65,10 @@ export default function ManageCampaignsPage() {
     }
   };
 
+  const handleCreateCampaign = () => {
+    router.push('/dashboard/landivo/campaigns/create');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -74,7 +79,7 @@ export default function ManageCampaignsPage() {
             Create and manage your email marketing campaigns
           </p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="w-full sm:w-auto">
+        <Button onClick={handleCreateCampaign} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Create Campaign
         </Button>
@@ -178,7 +183,7 @@ export default function ManageCampaignsPage() {
               <p className="text-muted-foreground mb-4">
                 {searchTerm ? 'Try adjusting your search' : 'Create your first campaign to get started'}
               </p>
-              <Button onClick={() => setShowCreateDialog(true)}>
+              <Button onClick={handleCreateCampaign}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create Campaign
               </Button>
@@ -190,13 +195,6 @@ export default function ManageCampaignsPage() {
           ))
         )}
       </div>
-
-      {/* Create Campaign Dialog */}
-      <CreateCampaignDialog 
-        open={showCreateDialog} 
-        onClose={() => setShowCreateDialog(false)}
-        onSuccess={fetchCampaigns}
-      />
     </div>
   );
 }
@@ -205,6 +203,16 @@ export default function ManageCampaignsPage() {
 function CampaignCard({ campaign, onUpdate }: { campaign: Campaign; onUpdate: () => void }) {
   const openRate = campaign.metrics.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
   const clickRate = campaign.metrics.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'paused': return 'bg-yellow-100 text-yellow-800';
+      case 'completed': return 'bg-blue-100 text-blue-800';
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
