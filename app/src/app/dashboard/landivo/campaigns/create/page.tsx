@@ -60,7 +60,7 @@ export default function CreateCampaignPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Fetch data
+  // Fetch data - Fixed email lists destructuring
   const { 
     data: properties, 
     isLoading: propertiesLoading, 
@@ -268,7 +268,11 @@ export default function CreateCampaignPage() {
                     {listsError && <p>• Email Lists: {listsError.message}</p>}
                     {templatesError && <p>• Templates: {templatesError.message}</p>}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => window.location.reload()} className="mt-2">
+                  <Button size="sm" variant="outline" onClick={() => {
+                    refetchProperties();
+                    refetchLists();
+                    refetchTemplates();
+                  }} className="mt-2">
                     <RefreshCcw className="h-3 w-3 mr-1" />
                     Retry
                   </Button>
@@ -386,7 +390,7 @@ export default function CreateCampaignPage() {
               </Card>
             )}
 
-            {/* Step 3: Audience & Template */}
+            {/* Step 3: Audience & Template - Fixed Email Lists */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <Card>
@@ -408,6 +412,7 @@ export default function CreateCampaignPage() {
                           <SelectValue placeholder={
                             listsLoading ? "Loading email lists..." : 
                             listsError ? "Error loading email lists" :
+                            emailLists?.length === 0 ? "No email lists available" :
                             "Select email list"
                           } />
                         </SelectTrigger>
@@ -417,7 +422,9 @@ export default function CreateCampaignPage() {
                               <div className="flex justify-between items-center w-full">
                                 <div className="flex flex-col">
                                   <span className="font-medium">{list.name}</span>
-                                  <span className="text-xs text-gray-500">{list.description}</span>
+                                  {list.description && (
+                                    <span className="text-xs text-gray-500">{list.description}</span>
+                                  )}
                                 </div>
                                 <Badge variant="secondary" className="ml-2">
                                   {list.totalContacts} contacts
@@ -428,7 +435,38 @@ export default function CreateCampaignPage() {
                         </SelectContent>
                       </Select>
                       {errors.emailList && <p className="text-sm text-red-600">{errors.emailList}</p>}
+                      {listsError && !listsLoading && (
+                        <p className="text-sm text-amber-600">
+                          Failed to load email lists. Please try refreshing the page.
+                        </p>
+                      )}
+                      {emailLists?.length === 0 && !listsLoading && !listsError && (
+                        <p className="text-sm text-amber-600">
+                          No email lists found. Create one first from the Email Lists section.
+                        </p>
+                      )}
                     </div>
+
+                    {/* Email List Preview */}
+                    {formData.emailList && getSelectedEmailList() && (
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-medium text-gray-900 mb-2">Selected Email List</h4>
+                        <div className="space-y-2">
+                          <p className="font-medium">{getSelectedEmailList()?.name}</p>
+                          {getSelectedEmailList()?.description && (
+                            <p className="text-sm text-gray-600">{getSelectedEmailList()?.description}</p>
+                          )}
+                          <div className="flex space-x-2">
+                            <Badge>{getSelectedEmailList()?.totalContacts} contacts</Badge>
+                            {getSelectedEmailList()?.lastSyncAt && (
+                              <Badge variant="outline">
+                                Last synced: {new Date(getSelectedEmailList()?.lastSyncAt).toLocaleDateString()}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
