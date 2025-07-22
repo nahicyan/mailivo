@@ -1,5 +1,6 @@
 // app/src/hooks/useTemplates.ts
 import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 export interface EmailTemplate {
   id: string;
@@ -25,25 +26,22 @@ export interface EmailTemplate {
   updatedAt: string;
 }
 
-const mailivoBE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 async function fetchTemplates(): Promise<EmailTemplate[]> {
-  const response = await fetch(`${mailivoBE_URL}/api/templates`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-    }
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch templates');
+  try {
+    const { data } = await api.get('/templates');
+    
+    // Handle both formats: direct array or { templates: [...] }
+    const templates = Array.isArray(data) ? data : (data.templates || []);
+    
+    // Ensure each template has an id field
+    return templates.map((template: any) => ({
+      ...template,
+      id: template.id || template._id
+    }));
+  } catch (error: any) {
+    console.error('Error fetching templates:', error);
+    throw new Error('Failed to fetch email templates');
   }
-  
-  const data = await response.json();
-  
-  // Handle both formats: direct array or { templates: [...] }
-  return Array.isArray(data) ? data : (data.templates || []);
 }
 
 export function useTemplates() {

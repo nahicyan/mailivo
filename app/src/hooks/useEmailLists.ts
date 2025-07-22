@@ -1,4 +1,6 @@
+// app/src/hooks/useEmailLists.ts
 import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 export interface EmailList {
   id: string;
@@ -15,21 +17,14 @@ export interface EmailList {
   };
 }
 
-const landivoAPI_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'https://api.landivo.com';
-
 async function fetchEmailLists(): Promise<EmailList[]> {
-  const response = await fetch(`${landivoAPI_URL}/api/email-lists`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    }
-  });
-  
-  if (!response.ok) {
+  try {
+    const { data } = await api.get('/email-lists');
+    return Array.isArray(data) ? data : (data.emailLists || []);
+  } catch (error: any) {
+    console.error('Error fetching email lists:', error);
     throw new Error('Failed to fetch email lists');
   }
-  
-  return response.json();
 }
 
 export function useEmailLists() {
