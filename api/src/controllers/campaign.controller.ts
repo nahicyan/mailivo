@@ -5,7 +5,7 @@ import { landivoService } from '../services/landivo.service';
 import { logger } from '../utils/logger';
 
 class CampaignController {
-  async getAllCampaigns(req: Request, res: Response) {
+  async getAllCampaigns(req: Request, res: Response): Promise<void> {
     try {
       const { page = 1, limit = 10, status, search } = req.query;
       const userId = (req as any).user.id;
@@ -43,7 +43,7 @@ class CampaignController {
     }
   }
 
-  async createCampaign(req: Request, res: Response) {
+  async createCampaign(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).user.id;
       const campaignData = {
@@ -78,7 +78,7 @@ class CampaignController {
     }
   }
 
-  async getCampaign(req: Request, res: Response) {
+  async getCampaign(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -95,7 +95,7 @@ class CampaignController {
     }
   }
 
-  async updateCampaign(req: Request, res: Response) {
+  async updateCampaign(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -119,7 +119,7 @@ class CampaignController {
     }
   }
 
-  async deleteCampaign(req: Request, res: Response) {
+  async deleteCampaign(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -137,7 +137,7 @@ class CampaignController {
     }
   }
 
-  async sendCampaign(req: Request, res: Response) {
+  async sendCampaign(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -166,7 +166,7 @@ class CampaignController {
     }
   }
 
-  async pauseCampaign(req: Request, res: Response) {
+  async pauseCampaign(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -188,7 +188,7 @@ class CampaignController {
     }
   }
 
-  async resumeCampaign(req: Request, res: Response) {
+  async resumeCampaign(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -210,7 +210,7 @@ class CampaignController {
     }
   }
 
-  async duplicateCampaign(req: Request, res: Response) {
+  async duplicateCampaign(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -246,7 +246,7 @@ class CampaignController {
     }
   }
 
-  async getCampaignAnalytics(req: Request, res: Response) {
+  async getCampaignAnalytics(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -278,7 +278,7 @@ class CampaignController {
     }
   }
 
-  async getCampaignMetrics(req: Request, res: Response) {
+  async getCampaignMetrics(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).user.id;
 
@@ -318,7 +318,7 @@ class CampaignController {
     }
   }
 
-  async bulkDeleteCampaigns(req: Request, res: Response) {
+  async bulkDeleteCampaigns(req: Request, res: Response): Promise<void> {
     try {
       const { campaignIds } = req.body;
       const userId = (req as any).user.id;
@@ -338,7 +338,7 @@ class CampaignController {
     }
   }
 
-  async bulkSendCampaigns(req: Request, res: Response) {
+  async bulkSendCampaigns(req: Request, res: Response): Promise<void> {
     try {
       const { campaignIds } = req.body;
       const userId = (req as any).user.id;
