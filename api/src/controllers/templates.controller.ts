@@ -3,7 +3,7 @@ import { Template } from '../models/Template';
 import { logger } from '../utils/logger';
 
 class TemplatesController {
-  getAllTemplates = async (req: Request, res: Response) => {
+  async getAllTemplates(req: Request, res: Response) {
     try {
       const userId = (req as any).user.id;
       const templates = await Template.find({ userId }).sort({ createdAt: -1 });
@@ -37,7 +37,7 @@ class TemplatesController {
     }
   }
 
-  createTemplate = async (req: Request, res: Response) => {
+  async createTemplate(req: Request, res: Response) {
     try {
       const userId = (req as any).user.id;
       const { name, content, type, description } = req.body;
@@ -58,7 +58,7 @@ class TemplatesController {
     }
   }
 
-  getTemplate = async (req: Request, res: Response) => {
+  async getTemplate(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -81,7 +81,7 @@ class TemplatesController {
     }
   }
 
-  updateTemplate = async (req: Request, res: Response) => {
+  async updateTemplate(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -104,7 +104,7 @@ class TemplatesController {
     }
   }
 
-  deleteTemplate = async (req: Request, res: Response) => {
+  async deleteTemplate(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const userId = (req as any).user.id;
@@ -121,7 +121,7 @@ class TemplatesController {
     }
   }
 
-  private getSystemTemplate = (id: string) => {
+  private getSystemTemplate(id: string) {
     const templates = {
       'new-listing': {
         id: 'new-listing',
