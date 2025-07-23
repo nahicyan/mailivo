@@ -41,30 +41,39 @@ class LandivoService {
     try {
       logger.info('Fetching email lists from Landivo...');
       
-      // Step 1: Fetch all EmailLists - FIXED ENDPOINT
+      // Fetch all EmailLists
       const emailListsResponse = await axios.get(`${this.apiUrl}/email-lists`);
       const emailLists: LandivoEmailList[] = emailListsResponse.data;
+
+      // Debug log to see the actual structure
+      if (emailLists.length > 0) {
+        logger.info('Sample email list structure:', JSON.stringify(emailLists[0], null, 2));
+      }
 
       if (!emailLists || emailLists.length === 0) {
         logger.info('No email lists found in Landivo');
         return [];
       }
 
-      // Step 2: Fetch all Buyers - FIXED ENDPOINT
-      // Temporarily disabled until we need buyer data
-      // const buyersResponse = await axios.get(`${this.apiUrl}/api/buyer`);
-      // const buyers: LandivoBuyer[] = buyersResponse.data;
+      // Transform email lists - check if buyers data is already included
+      const emailListsWithBuyers: EmailListWithBuyers[] = emailLists.map((emailList: any) => {
+        // Handle both possible data structures
+        const id = emailList.id || emailList._id;
+        const buyers = emailList.buyers || [];
+        const totalContacts = emailList.totalContacts || emailList.buyerCount || buyers.length || 0;
 
-      // For now, return email lists without buyer details since we need to understand
-      // the BuyerEmailList relationship endpoint structure
-      const emailListsWithBuyers: EmailListWithBuyers[] = emailLists.map((emailList: LandivoEmailList) => {
         return {
           emailList: {
-            ...emailList,
-            id: emailList.id || (emailList as any)._id
+            id,
+            name: emailList.name,
+            description: emailList.description,
+            source: emailList.source || 'manual',
+            criteria: emailList.criteria || {},
+            createdAt: emailList.createdAt,
+            totalContacts
           },
-          buyers: [], // Will populate once we know the correct endpoint
-          totalContacts: 0
+          buyers: buyers,
+          totalContacts: totalContacts
         };
       });
 

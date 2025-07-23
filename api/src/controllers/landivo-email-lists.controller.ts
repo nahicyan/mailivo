@@ -25,6 +25,7 @@ class LandivoEmailListsController {
         source: listData.emailList.source,
         criteria: listData.emailList.criteria,
         totalContacts: listData.totalContacts,
+        buyerCount: listData.totalContacts, // Add buyerCount for compatibility
         createdAt: listData.emailList.createdAt,
         // Include sample buyers for preview (first 5)
         sampleBuyers: listData.buyers.slice(0, 5).map(buyer => ({
@@ -72,6 +73,7 @@ class LandivoEmailListsController {
         source: emailListData.emailList.source,
         criteria: emailListData.emailList.criteria,
         totalContacts: emailListData.totalContacts,
+        buyerCount: emailListData.totalContacts, // Add buyerCount for compatibility
         createdAt: emailListData.emailList.createdAt,
         buyers: emailListData.buyers.map(buyer => ({
           id: buyer.id,
@@ -124,7 +126,7 @@ class LandivoEmailListsController {
       logger.error('Error fetching email list stats:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       res.status(500).json({ 
-        error: 'Failed to fetch email list statistics',
+        error: 'Failed to fetch email list stats',
         details: errorMessage 
       });
     }
