@@ -9,24 +9,27 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCampaigns } from '@/hooks/useCampaigns';
-import { Plus, Mail, Users, TrendingUp, Search, Filter, Building, User } from 'lucide-react';
+import { Plus, Mail, Users, TrendingUp, Search, Building, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function CampaignsPage() {
   const [filters, setFilters] = useState({ 
-    status: '', 
-    source: '', 
+    status: 'all', 
+    source: 'all', 
     page: 1,
     search: ''
   });
   
-  const { data: campaignsData, isLoading } = useCampaigns(filters);
+  const { data: campaignsData, isLoading, error } = useCampaigns({
+    ...filters,
+    status: filters.status === 'all' ? undefined : filters.status,
+    source: filters.source === 'all' ? undefined : filters.source
+  });
 
-  const campaigns = campaignsData?.campaigns || [];
+  const campaigns = campaignsData?.campaigns || campaignsData || [];
 
   const getStatusBadge = (campaign: any) => {
     const status = campaign.status;
-    const source = campaign.source;
 
     switch (status) {
       case 'sent':
@@ -78,7 +81,31 @@ export default function CampaignsPage() {
   }, {});
 
   if (isLoading) {
-    return <div>Loading campaigns...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading campaigns...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Mail className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">Failed to load campaigns</h3>
+          <p className="text-muted-foreground mb-4">
+            There was an error loading your campaigns. Please try again.
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -123,7 +150,7 @@ export default function CampaignsPage() {
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="sending">Sending</SelectItem>
@@ -137,7 +164,7 @@ export default function CampaignsPage() {
             <SelectValue placeholder="All Sources" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Sources</SelectItem>
+            <SelectItem value="all">All Sources</SelectItem>
             <SelectItem value="landivo">Landivo</SelectItem>
             <SelectItem value="manual">Manual</SelectItem>
           </SelectContent>
@@ -232,81 +259,83 @@ export default function CampaignsPage() {
             </CardContent>
           </Card>
         ) : (
-          Object.entries(groupedCampaigns).map(([source, sourceCampaigns]: [string, any[]]) => (
-            <div key={source} className="space-y-4">
-              {Object.keys(groupedCampaigns).length > 1 && (
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold capitalize">
-                    {source === 'landivo' ? 'Landivo Campaigns' : 'Manual Campaigns'}
-                  </h2>
-                  <Badge variant="secondary">{sourceCampaigns.length}</Badge>
-                </div>
-              )}
-              
-              {sourceCampaigns.map((campaign: any) => (
-                <Card key={campaign._id || campaign.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                          {getSourceBadge(campaign.source)}
-                          {getStatusBadge(campaign)}
+          <>
+            {Object.entries(groupedCampaigns).map(([source, sourceCampaigns]: [string, any[]]) => (
+              <div key={source} className="space-y-4">
+                {Object.keys(groupedCampaigns).length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold capitalize">
+                      {source === 'landivo' ? 'Landivo Campaigns' : 'Manual Campaigns'}
+                    </h2>
+                    <Badge variant="secondary">{sourceCampaigns.length}</Badge>
+                  </div>
+                )}
+                
+                {sourceCampaigns.map((campaign: any) => (
+                  <Card key={campaign._id || campaign.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                            {getSourceBadge(campaign.source)}
+                            {getStatusBadge(campaign)}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {campaign.subject || 'No subject'}
+                          </p>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {campaign.subject || 'No subject'}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+                        <div>
+                          <span className="text-muted-foreground">Property:</span>
+                          <p className="font-medium">{campaign.property || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Email List:</span>
+                          <p className="font-medium">{campaign.emailList || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Template:</span>
+                          <p className="font-medium">{campaign.emailTemplate || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Volume:</span>
+                          <p className="font-medium">{campaign.emailVolume || 0}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {campaign.metrics?.sent || 0} sent
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Mail className="h-4 w-4" />
+                          {campaign.metrics?.opened || 0} opened
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <TrendingUp className="h-4 w-4" />
+                          {campaign.metrics?.clicked || 0} clicked
+                        </div>
+                        <div className="ml-auto">
+                          {formatDistanceToNow(new Date(campaign.createdAt), { addSuffix: true })}
+                        </div>
+                      </div>
+
+                      {campaign.description && (
+                        <p className="text-sm text-muted-foreground mt-2 border-t pt-2">
+                          {campaign.description}
                         </p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
-                      <div>
-                        <span className="text-muted-foreground">Property:</span>
-                        <p className="font-medium">{campaign.property || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Email List:</span>
-                        <p className="font-medium">{campaign.emailList || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Template:</span>
-                        <p className="font-medium">{campaign.emailTemplate || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Volume:</span>
-                        <p className="font-medium">{campaign.emailVolume || 0}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {campaign.metrics?.sent || 0} sent
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-4 w-4" />
-                        {campaign.metrics?.opened || 0} opened
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <TrendingUp className="h-4 w-4" />
-                        {campaign.metrics?.clicked || 0} clicked
-                      </div>
-                      <div className="ml-auto">
-                        {formatDistanceToNow(new Date(campaign.createdAt), { addSuffix: true })}
-                      </div>
-                    </div>
-
-                    {campaign.description && (
-                      <p className="text-sm text-muted-foreground mt-2 border-t pt-2">
-                        {campaign.description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ))
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ))}
+          </>
         )}
       </div>
     </div>
