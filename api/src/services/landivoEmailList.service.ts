@@ -49,7 +49,7 @@ class LandivoService {
       
       // Step 1: Fetch all EmailLists - FIXED ENDPOINT
       const emailListsResponse = await axios.get(`${this.apiUrl}/email-lists`);
-      const emailLists: LandivoEmailList[] = emailListsResponse.data;qq 
+      const emailLists: LandivoEmailList[] = emailListsResponse.data;
 
       if (!emailLists || emailLists.length === 0) {
         logger.info('No email lists found in Landivo');
