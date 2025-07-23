@@ -8,7 +8,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 class CampaignController {
   async getAllCampaigns(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { page = 1, limit = 10, status, search } = req.query;
+      const { page = 1, limit = 10, status, search, source } = req.query; // Add source param
       const userId = req.user?._id;
 
       if (!userId) {
@@ -17,8 +17,9 @@ class CampaignController {
       }
 
       const filter: any = { userId };
-      
+
       if (status) filter.status = status;
+      if (source) filter.source = source; // Add source filtering
       if (search) {
         filter.$or = [
           { name: { $regex: search, $options: 'i' } },
@@ -60,6 +61,7 @@ class CampaignController {
       const campaignData = {
         ...req.body,
         userId,
+        source: req.body.source || 'manual', // Set source from request
         status: 'draft',
         metrics: {
           open: 0,
@@ -75,20 +77,18 @@ class CampaignController {
       const campaign = new Campaign(campaignData);
       await campaign.save();
 
-      // Auto-populate name from property if not provided
-      if (!campaign.name && campaign.property) {
-        campaign.name = campaign.property;
-        await campaign.save();
-      }
-
-      logger.info(`Campaign created: ${campaign._id}`, { userId: userId.toString(), campaignId: campaign._id });
+      logger.info(`Campaign created: ${campaign._id}`, {
+        userId: userId.toString(),
+        campaignId: campaign._id,
+        source: campaign.source
+      });
       res.status(201).json(campaign);
     } catch (error) {
       logger.error('Error creating campaign:', error);
       res.status(500).json({ error: 'Failed to create campaign' });
     }
   }
-
+  
   async getCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -398,7 +398,7 @@ class CampaignController {
         userId
       });
 
-      res.json({ 
+      res.json({
         message: `${result.deletedCount} campaigns deleted successfully`,
         deletedCount: result.deletedCount
       });
@@ -430,7 +430,7 @@ class CampaignController {
         await emailService.sendCampaign(campaign);
       }
 
-      res.json({ 
+      res.json({
         message: `${campaigns.length} campaigns initiated for sending`,
         processedCount: campaigns.length
       });

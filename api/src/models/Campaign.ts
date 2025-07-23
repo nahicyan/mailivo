@@ -8,6 +8,7 @@ export interface ICampaign extends Document {
   emailAddressGroup?: string;
   emailSchedule: string;
   emailVolume: number;
+  source: 'landivo' | 'manual' | 'api';
   status: 'draft' | 'active' | 'paused' | 'sending' | 'sent' | 'completed';
   metrics: {
     open: number;
@@ -33,6 +34,11 @@ const CampaignSchema: Schema = new Schema({
   emailAddressGroup: { type: String },
   emailSchedule: { type: String, required: true },
   emailVolume: { type: Number, default: 0 },
+    source: { 
+    type: String, 
+    enum: ['landivo', 'manual', 'api'],
+    default: 'manual'
+  },
   status: { 
     type: String, 
     enum: ['draft', 'active', 'paused', 'sending', 'sent', 'completed'],

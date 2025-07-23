@@ -107,6 +107,7 @@ export default function CreateCampaignPage() {
                 credentials: 'include',
                 body: JSON.stringify({
                     ...formData,
+                    source: 'landivo',
                     scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined
                 })
             });

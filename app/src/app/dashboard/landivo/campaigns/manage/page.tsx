@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
+import {
+  Plus,
+  Search,
+  Filter,
   MoreHorizontal,
   Mail,
   Users,
@@ -40,9 +40,15 @@ export default function ManageCampaignsPage() {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await fetch('/api/campaigns');
+      // Add source=landivo query parameter
+      const response = await fetch('/api/campaigns?source=landivo', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
       const data = await response.json();
-      setCampaigns(data);
+      setCampaigns(data.campaigns || data); // Handle both pagination and direct array
     } catch (error) {
       console.error('Error fetching campaigns:', error);
     } finally {
@@ -147,7 +153,7 @@ export default function ManageCampaignsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Avg. Open Rate</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {campaigns.length > 0 
+                  {campaigns.length > 0
                     ? `${((campaigns.reduce((sum, c) => sum + (c.metrics.open / c.metrics.sent * 100), 0) / campaigns.length)).toFixed(1)}%`
                     : '0%'
                   }
@@ -226,7 +232,7 @@ function CampaignCard({ campaign, onUpdate }: { campaign: Campaign; onUpdate: ()
                 {campaign.status}
               </Badge>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Property</p>

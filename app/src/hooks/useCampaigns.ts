@@ -1,8 +1,16 @@
-// ===== Campaign Hook (app/src/hooks/useCampaigns.ts) =====
+// app/src/hooks/useCampaigns.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { campaignService } from '@/services/campaign.service';
 
-export const useCampaigns = (params?: any) => {
+interface CampaignParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  source?: string;
+  search?: string;
+}
+
+export const useCampaigns = (params?: CampaignParams) => {
   return useQuery({
     queryKey: ['campaigns', params],
     queryFn: () => campaignService.list(params),
