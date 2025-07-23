@@ -24,11 +24,11 @@ interface LandivoBuyer {
   currentCreditScore?: string;
 }
 
-// interface BuyerEmailListRelation {
-//   buyerId: string;
-//   emailListId: string;
-//   createdAt: string;
-// }
+interface BuyerEmailListRelation {
+  buyerId: string;
+  emailListId: string;
+  createdAt: string;
+}
 
 interface EmailListWithBuyers {
   emailList: LandivoEmailList;
@@ -48,8 +48,8 @@ class LandivoService {
       logger.info('Fetching email lists from Landivo...');
       
       // Step 1: Fetch all EmailLists - FIXED ENDPOINT
-      const emailListsResponse = await axios.get(`${this.apiUrl}/api/email-lists`);
-      const emailLists: LandivoEmailList[] = emailListsResponse.data;
+      const emailListsResponse = await axios.get(`${this.apiUrl}/email-lists`);
+      const emailLists: LandivoEmailList[] = emailListsResponse.data;qq 
 
       if (!emailLists || emailLists.length === 0) {
         logger.info('No email lists found in Landivo');
@@ -57,8 +57,8 @@ class LandivoService {
       }
 
       // Step 2: Fetch all Buyers - FIXED ENDPOINT
-    //   const buyersResponse = await axios.get(`${this.apiUrl}/api/buyer`);
-    //  const buyers: LandivoBuyer[] = buyersResponse.data;
+      const buyersResponse = await axios.get(`${this.apiUrl}/buyer`);
+      const buyers: LandivoBuyer[] = buyersResponse.data;
 
       // For now, return email lists without buyer details since we need to understand
       // the BuyerEmailList relationship endpoint structure
@@ -88,7 +88,7 @@ class LandivoService {
       logger.info(`Fetching email list ${emailListId} from Landivo...`);
 
       // Fetch specific EmailList - FIXED ENDPOINT
-      const emailListResponse = await axios.get(`${this.apiUrl}/api/email-lists/${emailListId}`);
+      const emailListResponse = await axios.get(`${this.apiUrl}/email-lists/${emailListId}`);
       const emailList: LandivoEmailList = emailListResponse.data;
 
       if (!emailList) {
