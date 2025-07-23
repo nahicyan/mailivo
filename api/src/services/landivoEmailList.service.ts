@@ -24,12 +24,6 @@ interface LandivoBuyer {
   currentCreditScore?: string;
 }
 
-interface BuyerEmailListRelation {
-  buyerId: string;
-  emailListId: string;
-  createdAt: string;
-}
-
 interface EmailListWithBuyers {
   emailList: LandivoEmailList;
   buyers: LandivoBuyer[];
@@ -57,8 +51,9 @@ class LandivoService {
       }
 
       // Step 2: Fetch all Buyers - FIXED ENDPOINT
-      const buyersResponse = await axios.get(`${this.apiUrl}/buyer`);
-      const buyers: LandivoBuyer[] = buyersResponse.data;
+      // Temporarily disabled until we need buyer data
+      // const buyersResponse = await axios.get(`${this.apiUrl}/api/buyer`);
+      // const buyers: LandivoBuyer[] = buyersResponse.data;
 
       // For now, return email lists without buyer details since we need to understand
       // the BuyerEmailList relationship endpoint structure
