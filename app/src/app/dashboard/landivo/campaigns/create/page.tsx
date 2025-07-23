@@ -78,7 +78,7 @@ export default function CreateCampaignPage() {
     } = useQuery({
         queryKey: ['landivo-email-lists'],
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/api/landivo-email-lists`, {
+            const response = await fetch(`${API_URL}/landivo-email-lists`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

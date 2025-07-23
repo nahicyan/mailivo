@@ -47,8 +47,8 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK' });
 });
 
-// Routes
-app.use('/api', routes);
+// Routes - mounted directly without /api prefix
+app.use('/', routes);
 
 // Error handling
 app.use((_req, res) => {
