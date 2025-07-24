@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import Workflow from '../models/Workflow';
-import WorkflowExecution from '../models/WorkflowExecution';
+import Workflow, { IWorkflow } from '../models/Workflow';
+import WorkflowExecution, { IWorkflowExecution } from '../models/WorkflowExecution';
 
 interface AuthRequest extends Request {
   user: {
@@ -31,8 +31,7 @@ class WorkflowController {
       const workflows = await Workflow.find(filter)
         .sort({ updatedAt: -1 })
         .limit(Number(limit))
-        .skip((Number(page) - 1) * Number(limit))
-        .populate('stats');
+        .skip((Number(page) - 1) * Number(limit));
 
       const total = await Workflow.countDocuments(filter);
 
@@ -56,8 +55,7 @@ class WorkflowController {
       const { id } = req.params;
       const userId = req.user.id;
 
-      const workflow = await Workflow.findOne({ _id: id, userId })
-        .populate('stats');
+      const workflow = await Workflow.findOne({ _id: id, userId });
 
       if (!workflow) {
         res.status(404).json({ error: 'Workflow not found' });
@@ -206,9 +204,9 @@ class WorkflowController {
       
       const stats = {
         totalRuns: executions.length,
-        successfulRuns: executions.filter(e => e.status === 'completed').length,
-        failedRuns: executions.filter(e => e.status === 'failed').length,
-        avgExecutionTime: executions.reduce((acc, e) => {
+        successfulRuns: executions.filter((e: IWorkflowExecution) => e.status === 'completed').length,
+        failedRuns: executions.filter((e: IWorkflowExecution) => e.status === 'failed').length,
+        avgExecutionTime: executions.reduce((acc: number, e: IWorkflowExecution) => {
           if (e.completedAt && e.startedAt) {
             return acc + (e.completedAt.getTime() - e.startedAt.getTime());
           }
