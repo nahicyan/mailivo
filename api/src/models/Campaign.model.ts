@@ -6,6 +6,7 @@ export interface ICampaign extends Document {
   name: string;
   type: 'broadcast' | 'automated' | 'ab_test';
   status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused';
+  source?: 'landivo' | 'manual' | 'api';
   subject: string;
   preview_text?: string;
   from_name: string;
@@ -70,6 +71,11 @@ const campaignSchema = new Schema<ICampaign>({
     type: String,
     enum: ['draft', 'scheduled', 'sending', 'sent', 'paused'],
     default: 'draft',
+  },
+  source: {
+    type: String,
+    enum: ['landivo', 'manual', 'api'],
+    default: 'manual',
   },
   subject: {
     type: String,

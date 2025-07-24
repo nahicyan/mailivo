@@ -38,10 +38,11 @@ export default function ManageCampaignsPage() {
     fetchCampaigns();
   }, []);
 
-  const fetchCampaigns = async () => {
+const fetchCampaigns = async () => {
     try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
       // Add source=landivo query parameter
-      const response = await fetch('/api/campaigns?source=landivo', {
+      const response = await fetch(`${API_URL}/campaigns?source=landivo`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
         },
