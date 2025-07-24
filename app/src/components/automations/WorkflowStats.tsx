@@ -15,9 +15,8 @@ import {
   AlertCircle,
   Play,
   Pause,
-  Calendar,
-  Target,
-  BarChart3
+  BarChart3,
+  Target
 } from 'lucide-react';
 import { workflowAPI } from '@/services/workflowAPI';
 
@@ -31,34 +30,13 @@ interface WorkflowNode {
   position: { x: number; y: number };
 }
 
-interface WorkflowConnection {
-  from: string;
-  to: string;
-}
-
 interface Workflow {
   id: string;
   name: string;
   description: string;
   isActive: boolean;
   nodes: WorkflowNode[];
-  connections: WorkflowConnection[];
-}
-
-interface WorkflowStats {
-  totalRuns: number;
-  successfulRuns: number;
-  failedRuns: number;
-  avgExecutionTime: number;
-  conversionRate: number;
-}
-
-interface WorkflowExecution {
-  id: string;
-  status: 'running' | 'completed' | 'failed' | 'paused';
-  startedAt: string;
-  completedAt?: string;
-  contactId: string;
+  connections: any[];
 }
 
 interface WorkflowStatsProps {
@@ -66,9 +44,9 @@ interface WorkflowStatsProps {
 }
 
 export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
-  const [stats, setStats] = useState<WorkflowStats | null>(null);
-  const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [executions, setExecutions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const triggerCount = workflow.nodes.filter(n => n.type === 'trigger').length;
   const actionCount = workflow.nodes.filter(n => n.type === 'action').length;
@@ -76,90 +54,31 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
 
   useEffect(() => {
     if (workflow.id) {
-      loadWorkflowStats();
-      loadRecentExecutions();
+      loadStats();
     }
   }, [workflow.id]);
 
-  const loadWorkflowStats = async () => {
+  const loadStats = async () => {
+    if (!workflow.id) return;
+    
+    setIsLoading(true);
     try {
-      const statsData = await workflowAPI.getWorkflowStats(workflow.id);
+      const [statsData, executionsData] = await Promise.all([
+        workflowAPI.getWorkflowStats(workflow.id),
+        workflowAPI.getWorkflowExecutions(workflow.id, { limit: 5 })
+      ]);
       setStats(statsData);
-    } catch (error) {
-      console.error('Failed to load workflow stats:', error);
-      // Set default empty stats if API fails
-      setStats({
-        totalRuns: 0,
-        successfulRuns: 0,
-        failedRuns: 0,
-        avgExecutionTime: 0,
-        conversionRate: 0
-      });
-    }
-  };
-
-  const loadRecentExecutions = async () => {
-    try {
-      const executionsData = await workflowAPI.getWorkflowExecutions(workflow.id, { limit: 5 });
       setExecutions(executionsData.executions || []);
     } catch (error) {
-      console.error('Failed to load executions:', error);
-      setExecutions([]);
+      console.error('Failed to load stats:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const successRate = stats ? 
-    stats.totalRuns > 0 ? ((stats.successfulRuns / stats.totalRuns) * 100).toFixed(1) : '0' 
+  const successRate = stats && stats.totalRuns > 0 
+    ? ((stats.successfulRuns / stats.totalRuns) * 100).toFixed(1)
     : '0';
-
-  const formatExecutionTime = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-    return `${Math.floor(seconds / 3600)}h`;
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      completed: { variant: 'default' as const, className: 'bg-green-100 text-green-800', label: 'Success' },
-      failed: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Failed' },
-      running: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', label: 'Running' },
-      paused: { variant: 'outline' as const, className: 'bg-yellow-100 text-yellow-800', label: 'Paused' }
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.failed;
-    return (
-      <Badge variant={config.variant} className={`text-xs ${config.className}`}>
-        {config.label}
-      </Badge>
-    );
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-20 w-full" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -168,7 +87,7 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <BarChart3 size={18} className="text-blue-600" />
-            Workflow Overview
+            Overview
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -197,15 +116,9 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
             <span className="text-sm font-medium text-gray-600">Status</span>
             <Badge variant={workflow.isActive ? 'default' : 'secondary'} className="flex items-center gap-1">
               {workflow.isActive ? (
-                <>
-                  <Play size={12} />
-                  Active
-                </>
+                <><Play size={12} />Active</>
               ) : (
-                <>
-                  <Pause size={12} />
-                  Draft
-                </>
+                <><Pause size={12} />Draft</>
               )}
             </Badge>
           </div>
@@ -221,7 +134,13 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {stats && stats.totalRuns > 0 ? (
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : stats && stats.totalRuns > 0 ? (
             <>
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
@@ -264,7 +183,7 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
                     <Clock size={16} />
                     Avg. Execution Time
                   </span>
-                  <span className="font-bold text-lg">{formatExecutionTime(stats.avgExecutionTime)}</span>
+                  <span className="font-bold text-lg">{stats.avgExecutionTime}s</span>
                 </div>
 
                 <div className="flex justify-between items-center">
@@ -289,16 +208,19 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
       {/* Recent Activity */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Calendar size={18} className="text-purple-600" />
-            Recent Activity
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          {executions.length > 0 ? (
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : executions.length > 0 ? (
             <div className="space-y-3">
               {executions.map((execution, index) => (
-                <div key={execution.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-900">
                       {new Date(execution.startedAt).toLocaleDateString('en-US', {
@@ -310,7 +232,9 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
                     </span>
                     <span className="text-xs text-gray-500">Contact: {execution.contactId}</span>
                   </div>
-                  {getStatusBadge(execution.status)}
+                  <Badge variant={execution.status === 'completed' ? 'default' : 'destructive'} className="text-xs">
+                    {execution.status === 'completed' ? 'Success' : 'Failed'}
+                  </Badge>
                 </div>
               ))}
             </div>

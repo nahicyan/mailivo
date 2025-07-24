@@ -7,12 +7,12 @@ export interface WorkflowNode {
   description?: string;
   config: Record<string, any>;
   position: { x: number; y: number };
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface WorkflowConnection {
-  id: string;
+  id?: string;
   from: string;
   to: string;
   condition?: string;
@@ -23,12 +23,12 @@ export interface Workflow {
   name: string;
   description: string;
   isActive: boolean;
-  userId: string;
+  userId?: string;
   nodes: WorkflowNode[];
   connections: WorkflowConnection[];
-  stats: WorkflowStats;
-  createdAt: Date;
-  updatedAt: Date;
+  stats?: WorkflowStats;
+  createdAt?: Date;
+  updatedAt?: Date;
   lastRunAt?: Date;
 }
 
@@ -60,7 +60,7 @@ export interface TriggerConfig {
   date_trigger: {
     schedule: 'once' | 'daily' | 'weekly' | 'monthly';
     time: string; // HH:MM format
-    timezone: string;
+    timezone?: string;
   };
 }
 
@@ -152,27 +152,6 @@ export interface WorkflowExecutionLog {
   createdAt: Date;
 }
 
-// Form Types
-export interface WorkflowFormData {
-  name: string;
-  description: string;
-  isActive: boolean;
-  trigger: {
-    type: string;
-    config: Record<string, any>;
-  };
-  conditions: Array<{
-    type: string;
-    config: Record<string, any>;
-    connections: string[];
-  }>;
-  actions: Array<{
-    type: string;
-    config: Record<string, any>;
-    delay?: number;
-  }>;
-}
-
 // Component Props
 export interface WorkflowBuilderProps {
   workflowId?: string;
@@ -183,9 +162,6 @@ export interface WorkflowBuilderProps {
 
 export interface NodePaletteProps {
   onAddNode: (type: string, subtype: string, title: string) => void;
-  availableTriggers: Array<{ id: string; label: string; icon: any; color: string }>;
-  availableActions: Array<{ id: string; label: string; icon: any; color: string }>;
-  availableConditions: Array<{ id: string; label: string; options: string[] }>;
 }
 
 export interface WorkflowCanvasProps {
@@ -194,7 +170,7 @@ export interface WorkflowCanvasProps {
   onUpdateNode: (nodeId: string, updatedNode: WorkflowNode) => void;
   onDeleteNode: (nodeId: string) => void;
   onConnect: (fromNodeId: string, toNodeId: string) => void;
-  onDisconnect: (connectionId: string) => void;
+  onDisconnect?: (connectionId: string) => void;
   readOnly?: boolean;
 }
 

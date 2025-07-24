@@ -1,26 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  Settings, 
-  X, 
-  GripVertical,
-  Zap,
-  Target,
-  Filter,
-  Mail,
-  Clock,
-  Users,
-  Eye,
-  MousePointer,
-  Calendar,
-  Send,
-  Trash2
-} from 'lucide-react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import NodeEditor from './NodeEditor';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface WorkflowNode {
   id: string;
@@ -32,147 +17,286 @@ interface WorkflowNode {
   position: { x: number; y: number };
 }
 
-interface WorkflowNodeProps {
+interface NodeEditorProps {
   node: WorkflowNode;
-  onUpdate: (updatedNode: WorkflowNode) => void;
-  onDelete: (nodeId: string) => void;
-  isConnecting: boolean;
-  onConnect: () => void;
+  onChange: (updatedNode: WorkflowNode) => void;
+  onSave: () => void;
+  onCancel: () => void;
 }
 
-const TRIGGER_TYPES = [
-  { id: 'campaign_sent', label: 'Campaign Sent', icon: Mail, color: 'bg-blue-500' },
-  { id: 'email_opened', label: 'Email Opened', icon: Eye, color: 'bg-green-500' },
-  { id: 'link_clicked', label: 'Link Clicked', icon: MousePointer, color: 'bg-purple-500' },
-  { id: 'contact_added', label: 'Contact Added', icon: Users, color: 'bg-orange-500' },
-  { id: 'date_trigger', label: 'Date/Time', icon: Calendar, color: 'bg-red-500' },
-];
-
-const ACTION_TYPES = [
-  { id: 'send_email', label: 'Send Email', icon: Send, color: 'bg-blue-500' },
-  { id: 'add_to_list', label: 'Add to List', icon: Users, color: 'bg-green-500' },
-  { id: 'remove_from_list', label: 'Remove from List', icon: Trash2, color: 'bg-red-500' },
-  { id: 'update_contact', label: 'Update Contact', icon: Settings, color: 'bg-purple-500' },
-  { id: 'wait', label: 'Wait/Delay', icon: Clock, color: 'bg-yellow-500' },
-];
-
-export default function WorkflowNode({ 
-  node, 
-  onUpdate, 
-  onDelete, 
-  isConnecting, 
-  onConnect 
-}: WorkflowNodeProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [nodeData, setNodeData] = useState(node);
-
-  const getNodeIcon = (type: string, subtype: string) => {
-    if (type === 'trigger') {
-      const trigger = TRIGGER_TYPES.find(t => t.id === subtype);
-      return trigger ? trigger.icon : Zap;
-    }
-    if (type === 'action') {
-      const action = ACTION_TYPES.find(a => a.id === subtype);
-      return action ? action.icon : Target;
-    }
-    return Filter;
-  };
-
-  const getNodeColor = (type: string, subtype: string) => {
-    if (type === 'trigger') {
-      const trigger = TRIGGER_TYPES.find(t => t.id === subtype);
-      return trigger ? trigger.color : 'bg-gray-500';
-    }
-    if (type === 'action') {
-      const action = ACTION_TYPES.find(a => a.id === subtype);
-      return action ? action.color : 'bg-gray-500';
-    }
-    return 'bg-indigo-500';
-  };
-
-  const IconComponent = getNodeIcon(node.type, node.subtype);
-
-  const handleSave = () => {
-    onUpdate(nodeData);
-    setIsEditing(false);
+export default function NodeEditor({ node, onChange, onSave, onCancel }: NodeEditorProps) {
+  const handleConfigChange = (key: string, value: any) => {
+    onChange({
+      ...node,
+      config: { ...node.config, [key]: value }
+    });
   };
 
   return (
-    <Card className={`w-72 shadow-lg border-2 ${isConnecting ? 'border-blue-300 cursor-pointer' : 'border-gray-200'} transition-all hover:shadow-xl`}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-lg ${getNodeColor(node.type, node.subtype)} text-white`}>
-              <IconComponent size={16} />
-            </div>
-            <div>
-              <CardTitle className="text-sm font-medium">{node.title}</CardTitle>
-              <Badge variant="outline" className="text-xs mt-1">
-                {node.type}
-              </Badge>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              <Settings size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(node.id)}
-              className="text-red-500 hover:text-red-700"
-            >
-              <X size={14} />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
+    <div className="space-y-4">
+      <div>
+        <Label className="text-xs font-medium">Title</Label>
+        <Input
+          value={node.title}
+          onChange={(e) => onChange({ ...node, title: e.target.value })}
+          placeholder="Node title"
+          className="text-sm mt-1"
+        />
+      </div>
       
-      <CardContent className="space-y-3">
-        {isEditing ? (
-          <NodeEditor 
-            node={nodeData} 
-            onChange={setNodeData}
-            onSave={handleSave}
-          />
-        ) : (
-          <NodeDisplay node={node} />
-        )}
-        
-        {/* Connection points */}
-        <div className="flex justify-between items-center pt-2 border-t">
-          <div className="w-3 h-3 rounded-full bg-gray-300 cursor-pointer hover:bg-blue-500 transition-colors" />
-          <GripVertical size={16} className="text-gray-400" />
-          <div 
-            className="w-3 h-3 rounded-full bg-gray-300 cursor-pointer hover:bg-blue-500 transition-colors"
-            onClick={onConnect}
-          />
-        </div>
-      </CardContent>
-    </Card>
+      <div>
+        <Label className="text-xs font-medium">Description</Label>
+        <Textarea
+          value={node.description || ''}
+          onChange={(e) => onChange({ ...node, description: e.target.value })}
+          placeholder="Node description"
+          className="text-sm min-h-[60px] mt-1"
+        />
+      </div>
+
+      {/* Trigger Configurations */}
+      {node.type === 'trigger' && renderTriggerConfig(node, handleConfigChange)}
+
+      {/* Action Configurations */}
+      {node.type === 'action' && renderActionConfig(node, handleConfigChange)}
+
+      {/* Condition Configurations */}
+      {node.type === 'condition' && renderConditionConfig(node, handleConfigChange)}
+
+      <div className="flex gap-2 pt-2">
+        <Button onClick={onSave} size="sm" className="flex-1">
+          Save Changes
+        </Button>
+        <Button onClick={onCancel} variant="outline" size="sm">
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 }
 
-function NodeDisplay({ node }: { node: WorkflowNode }) {
-  return (
-    <div className="space-y-2">
-      <div className="text-sm text-gray-600">
-        {node.description || 'No description set'}
-      </div>
-      {node.config && Object.keys(node.config).length > 0 && (
-        <div className="bg-gray-50 p-2 rounded text-xs space-y-1">
-          {Object.entries(node.config).map(([key, value]) => (
-            <div key={key} className="flex justify-between">
-              <span className="font-medium">{key}:</span>
-              <span>{String(value)}</span>
-            </div>
-          ))}
+function renderTriggerConfig(node: WorkflowNode, handleConfigChange: (key: string, value: any) => void) {
+  switch (node.subtype) {
+    case 'campaign_sent':
+      return (
+        <div>
+          <Label className="text-xs font-medium">Campaign</Label>
+          <Select onValueChange={(value) => handleConfigChange('campaignId', value)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="campaign1">Welcome Series</SelectItem>
+              <SelectItem value="campaign2">Property Alerts</SelectItem>
+              <SelectItem value="campaign3">Monthly Newsletter</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+      );
+
+    case 'email_opened':
+      return (
+        <>
+          <div>
+            <Label className="text-xs font-medium">Campaign</Label>
+            <Select onValueChange={(value) => handleConfigChange('campaignId', value)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="campaign1">Welcome Series</SelectItem>
+                <SelectItem value="campaign2">Property Alerts</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs font-medium">Timeframe (hours)</Label>
+            <Input
+              type="number"
+              value={node.config?.timeframe || 24}
+              onChange={(e) => handleConfigChange('timeframe', parseInt(e.target.value))}
+              placeholder="24"
+              className="mt-1"
+            />
+          </div>
+        </>
+      );
+
+    case 'date_trigger':
+      return (
+        <>
+          <div>
+            <Label className="text-xs font-medium">Schedule</Label>
+            <Select onValueChange={(value) => handleConfigChange('schedule', value)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select schedule" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="once">Once</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs font-medium">Time</Label>
+            <Input
+              type="time"
+              value={node.config?.time || '09:00'}
+              onChange={(e) => handleConfigChange('time', e.target.value)}
+              className="mt-1"
+            />
+          </div>
+        </>
+      );
+
+    default:
+      return null;
+  }
+}
+
+function renderActionConfig(node: WorkflowNode, handleConfigChange: (key: string, value: any) => void) {
+  switch (node.subtype) {
+    case 'send_email':
+      return (
+        <>
+          <div>
+            <Label className="text-xs font-medium">Email Template</Label>
+            <Select onValueChange={(value) => handleConfigChange('templateId', value)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="welcome">Welcome Email</SelectItem>
+                <SelectItem value="followup">Follow-up Email</SelectItem>
+                <SelectItem value="promo">Promotional Email</SelectItem>
+                <SelectItem value="property_alert">Property Alert</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label className="text-xs font-medium">Delay (hours)</Label>
+            <Input
+              type="number"
+              value={node.config?.delay || 0}
+              onChange={(e) => handleConfigChange('delay', parseInt(e.target.value))}
+              placeholder="0"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs font-medium">Subject Line</Label>
+            <Input
+              value={node.config?.subject || ''}
+              onChange={(e) => handleConfigChange('subject', e.target.value)}
+              placeholder="Email subject"
+              className="mt-1"
+            />
+          </div>
+        </>
+      );
+
+    case 'wait':
+      return (
+        <>
+          <div>
+            <Label className="text-xs font-medium">Duration</Label>
+            <Input
+              type="number"
+              value={node.config?.duration || 1}
+              onChange={(e) => handleConfigChange('duration', parseInt(e.target.value))}
+              placeholder="1"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-medium">Unit</Label>
+            <Select onValueChange={(value) => handleConfigChange('unit', value)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select unit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="minutes">Minutes</SelectItem>
+                <SelectItem value="hours">Hours</SelectItem>
+                <SelectItem value="days">Days</SelectItem>
+                <SelectItem value="weeks">Weeks</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      );
+
+    case 'add_to_list':
+    case 'remove_from_list':
+      return (
+        <div>
+          <Label className="text-xs font-medium">Email List</Label>
+          <Select onValueChange={(value) => handleConfigChange('listId', value)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select list" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="list1">Newsletter Subscribers</SelectItem>
+              <SelectItem value="list2">Property Leads</SelectItem>
+              <SelectItem value="list3">VIP Clients</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
+
+function renderConditionConfig(node: WorkflowNode, handleConfigChange: (key: string, value: any) => void) {
+  return (
+    <>
+      <div>
+        <Label className="text-xs font-medium">Condition Type</Label>
+        <Select onValueChange={(value) => handleConfigChange('conditionType', value)}>
+          <SelectTrigger className="mt-1">
+            <SelectValue placeholder="Select condition" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="email_status">Email Status</SelectItem>
+            <SelectItem value="contact_property">Contact Property</SelectItem>
+            <SelectItem value="time_elapsed">Time Elapsed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {node.config?.conditionType === 'email_status' && (
+        <>
+          <div>
+            <Label className="text-xs font-medium">Email Status</Label>
+            <Select onValueChange={(value) => handleConfigChange('status', value)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="opened">Opened</SelectItem>
+                <SelectItem value="not_opened">Not Opened</SelectItem>
+                <SelectItem value="clicked">Clicked</SelectItem>
+                <SelectItem value="not_clicked">Not Clicked</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs font-medium">Within (hours)</Label>
+            <Input
+              type="number"
+              value={node.config?.timeframe || 24}
+              onChange={(e) => handleConfigChange('timeframe', parseInt(e.target.value))}
+              placeholder="24"
+              className="mt-1"
+            />
+          </div>
+        </>
       )}
-    </div>
+    </>
   );
 }
