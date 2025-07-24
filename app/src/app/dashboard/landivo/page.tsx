@@ -85,7 +85,7 @@ export default function LandivoPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Create & Manage Landivo Email Workflows
             </p>
-            <Link href="/dashboard/landivo/workflow">
+            <Link href="/dashboard/landivo/workflows">
               <Button className="w-full">
                 Manage Workflow
               </Button>
