@@ -1,15 +1,42 @@
 'use client';
 
-import React from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import React, { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import WorkflowBuilder from '@/components/automations/WorkflowBuilder';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function WorkflowBuilderPage() {
+function WorkflowBuilderWrapper() {
+  const searchParams = useSearchParams();
+  const workflowId = searchParams.get('id') || undefined;
+
+  return <WorkflowBuilder workflowId={workflowId} />;
+}
+
+export default function WorkflowPage() {
   return (
-    <DashboardLayout>
-      <div className="min-h-screen bg-white">
-        <WorkflowBuilder />
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <Skeleton className="h-8 w-64" />
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex h-[calc(100vh-140px)]">
+            <div className="w-80 bg-white border-r border-gray-200 p-4">
+              <Skeleton className="h-full w-full" />
+            </div>
+            <div className="flex-1 bg-white">
+              <Skeleton className="h-full w-full" />
+            </div>
+            <div className="w-80 bg-white border-l border-gray-200 p-4">
+              <Skeleton className="h-full w-full" />
+            </div>
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
+    }>
+      <WorkflowBuilderWrapper />
+    </Suspense>
   );
 }
