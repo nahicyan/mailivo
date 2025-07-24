@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Save, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/use-toast';
 import WorkflowCanvas from './WorkflowCanvas';
 import NodePalette from './NodePalette';
 import WorkflowStats from './WorkflowStats';
+import { workflowAPI } from '@/services/workflowAPI';
 
 interface WorkflowNode {
   id: string;
@@ -34,9 +36,13 @@ interface Workflow {
   connections: WorkflowConnection[];
 }
 
-export default function WorkflowBuilder() {
+interface WorkflowBuilderProps {
+  workflowId?: string;
+}
+
+export default function WorkflowBuilder({ workflowId }: WorkflowBuilderProps) {
   const [workflow, setWorkflow] = useState<Workflow>({
-    id: '1',
+    id: '',
     name: 'New Workflow',
     description: '',
     isActive: false,
@@ -45,6 +51,31 @@ export default function WorkflowBuilder() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!workflowId);
+  const { toast } = useToast();
+
+  // Load existing workflow if ID provided
+  useEffect(() => {
+    if (workflowId) {
+      loadWorkflow(workflowId);
+    }
+  }, [workflowId]);
+
+  const loadWorkflow = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const data = await workflowAPI.getWorkflow(id);
+      setWorkflow(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load workflow",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const generateNodeId = () => `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -94,19 +125,61 @@ export default function WorkflowBuilder() {
   const saveWorkflow = async () => {
     setIsSaving(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Workflow saved:', workflow);
+      if (workflow.id) {
+        await workflowAPI.updateWorkflow(workflow.id, workflow);
+        toast({
+          title: "Success",
+          description: "Workflow updated successfully"
+        });
+      } else {
+        const newWorkflow = await workflowAPI.createWorkflow(workflow);
+        setWorkflow(newWorkflow);
+        toast({
+          title: "Success", 
+          description: "Workflow created successfully"
+        });
+      }
     } catch (error) {
-      console.error('Error saving workflow:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save workflow",
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleWorkflow = () => {
-    setWorkflow(prev => ({ ...prev, isActive: !prev.isActive }));
+  const toggleWorkflow = async () => {
+    try {
+      const newStatus = !workflow.isActive;
+      if (workflow.id) {
+        await workflowAPI.toggleWorkflow(workflow.id, newStatus);
+      }
+      setWorkflow(prev => ({ ...prev, isActive: newStatus }));
+      toast({
+        title: "Success",
+        description: `Workflow ${newStatus ? 'activated' : 'paused'}`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to toggle workflow",
+        variant: "destructive"
+      });
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Loading workflow...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
