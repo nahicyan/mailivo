@@ -78,16 +78,18 @@ export default function LandivoPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building className="h-5 w-5" />
-              Workflow
+              Automation
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
               Create & Manage Landivo Email Workflows
             </p>
-            <Button className="w-full">
-              Manage Events
-            </Button>
+            <Link href="/dashboard/landivo/workflow">
+              <Button className="w-full">
+                Manage Workflow
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
