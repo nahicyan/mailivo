@@ -8,6 +8,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Plus,
   Search,
   Filter,
@@ -17,31 +33,37 @@ import {
   TrendingUp,
   Calendar,
   Eye,
-  MousePointer
+  MousePointer,
+  Edit,
+  Copy,
+  Trash2,
+  BarChart3,
+  Play,
+  Pause,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { Campaign } from '@/types/campaign';
+import { toast } from 'sonner';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
 export default function ManageCampaignsPage() {
   const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCampaigns();
   }, []);
 
-const fetchCampaigns = async () => {
+  const fetchCampaigns = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
-      // Add source=landivo query parameter
       const response = await fetch(`${API_URL}/campaigns?source=landivo`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
@@ -49,11 +71,117 @@ const fetchCampaigns = async () => {
         credentials: 'include'
       });
       const data = await response.json();
-      setCampaigns(data.campaigns || data); // Handle both pagination and direct array
+      setCampaigns(data.campaigns || data);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
+      toast.error('Failed to load campaigns');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewDetails = (campaignId: string) => {
+    router.push(`/dashboard/landivo/campaigns/${campaignId}`);
+  };
+
+  const handleEditCampaign = (campaignId: string) => {
+    router.push(`/dashboard/landivo/campaigns/${campaignId}/edit`);
+  };
+
+  const handleViewAnalytics = (campaignId: string) => {
+    router.push(`/dashboard/landivo/campaigns/${campaignId}/analytics`);
+  };
+
+  const handleDuplicateCampaign = async (campaign: Campaign) => {
+    setDuplicating(campaign.id);
+    try {
+      const response = await fetch(`${API_URL}/campaigns/${campaign.id}/duplicate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) throw new Error('Failed to duplicate campaign');
+      
+      toast.success('Campaign duplicated successfully');
+      fetchCampaigns(); // Refresh the list
+    } catch (error) {
+      console.error('Error duplicating campaign:', error);
+      toast.error('Failed to duplicate campaign');
+    } finally {
+      setDuplicating(null);
+    }
+  };
+
+  const handleDeleteCampaign = (campaign: Campaign) => {
+    setCampaignToDelete(campaign);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!campaignToDelete) return;
+
+    try {
+      const response = await fetch(`${API_URL}/campaigns/${campaignToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete campaign');
+      
+      toast.success('Campaign deleted successfully');
+      fetchCampaigns(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      toast.error('Failed to delete campaign');
+    } finally {
+      setDeleteDialogOpen(false);
+      setCampaignToDelete(null);
+    }
+  };
+
+  const handleSendCampaign = async (campaignId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/campaigns/${campaignId}/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) throw new Error('Failed to send campaign');
+      
+      toast.success('Campaign sending initiated');
+      fetchCampaigns(); // Refresh the list
+    } catch (error) {
+      console.error('Error sending campaign:', error);
+      toast.error('Failed to send campaign');
+    }
+  };
+
+  const handlePauseCampaign = async (campaignId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/campaigns/${campaignId}/pause`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) throw new Error('Failed to pause campaign');
+      
+      toast.success('Campaign paused');
+      fetchCampaigns(); // Refresh the list
+    } catch (error) {
+      console.error('Error pausing campaign:', error);
+      toast.error('Failed to pause campaign');
     }
   };
 
@@ -68,6 +196,8 @@ const fetchCampaigns = async () => {
       case 'paused': return 'bg-yellow-100 text-yellow-800';
       case 'completed': return 'bg-blue-100 text-blue-800';
       case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'sending': return 'bg-purple-100 text-purple-800';
+      case 'sent': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -75,6 +205,12 @@ const fetchCampaigns = async () => {
   const handleCreateCampaign = () => {
     router.push('/dashboard/landivo/campaigns/create');
   };
+
+  // Calculate stats
+  const totalSent = campaigns.reduce((sum, c) => sum + (c.metrics?.sent || 0), 0);
+  const totalOpens = campaigns.reduce((sum, c) => sum + (c.metrics?.open || 0), 0);
+  const avgOpenRate = totalSent > 0 ? (totalOpens / totalSent * 100).toFixed(1) : '0';
+  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
   return (
     <div className="space-y-6">
@@ -127,9 +263,7 @@ const fetchCampaigns = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {campaigns.filter(c => c.status === 'active').length}
-                </p>
+                <p className="text-2xl font-bold text-green-600">{activeCampaigns}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -140,9 +274,7 @@ const fetchCampaigns = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Sent</p>
-                <p className="text-2xl font-bold">
-                  {formatNumber(campaigns.reduce((sum, c) => sum + c.metrics.sent, 0))}
-                </p>
+                <p className="text-2xl font-bold">{formatNumber(totalSent)}</p>
               </div>
               <Users className="h-8 w-8 text-purple-600" />
             </div>
@@ -153,12 +285,7 @@ const fetchCampaigns = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Avg. Open Rate</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {campaigns.length > 0
-                    ? `${((campaigns.reduce((sum, c) => sum + (c.metrics.open / c.metrics.sent * 100), 0) / campaigns.length)).toFixed(1)}%`
-                    : '0%'
-                  }
-                </p>
+                <p className="text-2xl font-bold text-blue-600">{avgOpenRate}%</p>
               </div>
               <Eye className="h-8 w-8 text-blue-600" />
             </div>
@@ -198,18 +325,73 @@ const fetchCampaigns = async () => {
           </Card>
         ) : (
           filteredCampaigns.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} onUpdate={fetchCampaigns} />
+            <CampaignCard 
+              key={campaign._id || campaign.id} 
+              campaign={campaign} 
+              onViewDetails={handleViewDetails}
+              onEdit={handleEditCampaign}
+              onDuplicate={handleDuplicateCampaign}
+              onDelete={handleDeleteCampaign}
+              onViewAnalytics={handleViewAnalytics}
+              onSend={handleSendCampaign}
+              onPause={handlePauseCampaign}
+              duplicating={duplicating === (campaign._id || campaign.id)}
+            />
           ))
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{campaignToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
 // Campaign Card Component
-function CampaignCard({ campaign, onUpdate }: { campaign: Campaign; onUpdate: () => void }) {
-  const openRate = campaign.metrics.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
-  const clickRate = campaign.metrics.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
+interface CampaignCardProps {
+  campaign: Campaign;
+  onViewDetails: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDuplicate: (campaign: Campaign) => void;
+  onDelete: (campaign: Campaign) => void;
+  onViewAnalytics: (id: string) => void;
+  onSend: (id: string) => void;
+  onPause: (id: string) => void;
+  duplicating: boolean;
+}
+
+function CampaignCard({ 
+  campaign, 
+  onViewDetails, 
+  onEdit, 
+  onDuplicate, 
+  onDelete, 
+  onViewAnalytics,
+  onSend,
+  onPause,
+  duplicating 
+}: CampaignCardProps) {
+  const campaignId = campaign._id || campaign.id;
+  const openRate = campaign.metrics?.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
+  const clickRate = campaign.metrics?.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -217,9 +399,14 @@ function CampaignCard({ campaign, onUpdate }: { campaign: Campaign; onUpdate: ()
       case 'paused': return 'bg-yellow-100 text-yellow-800';
       case 'completed': return 'bg-blue-100 text-blue-800';
       case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'sending': return 'bg-purple-100 text-purple-800';
+      case 'sent': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const canSend = campaign.status === 'draft' || campaign.status === 'paused';
+  const canPause = campaign.status === 'active' || campaign.status === 'sending';
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -237,15 +424,15 @@ function CampaignCard({ campaign, onUpdate }: { campaign: Campaign; onUpdate: ()
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Property</p>
-                <p className="font-medium">{campaign.property}</p>
+                <p className="font-medium truncate">{campaign.property}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Email List</p>
-                <p className="font-medium">{campaign.emailList}</p>
+                <p className="font-medium truncate">{campaign.emailList}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Template</p>
-                <p className="font-medium">{campaign.emailTemplate}</p>
+                <p className="font-medium truncate">{campaign.emailTemplate}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Schedule</p>
@@ -256,46 +443,76 @@ function CampaignCard({ campaign, onUpdate }: { campaign: Campaign; onUpdate: ()
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Volume</p>
-                <p className="font-medium">{formatNumber(campaign.emailVolume)}</p>
+                <p className="font-medium">{formatNumber(campaign.emailVolume || 0)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Sent</p>
-                <p className="font-medium text-blue-600">{formatNumber(campaign.metrics.sent)}</p>
+                <p className="font-medium text-blue-600">{formatNumber(campaign.metrics?.sent || 0)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Opens</p>
                 <p className="font-medium text-green-600">
-                  {formatNumber(campaign.metrics.open)} ({openRate.toFixed(1)}%)
+                  {formatNumber(campaign.metrics?.open || 0)} ({openRate.toFixed(1)}%)
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Clicks</p>
                 <p className="font-medium text-purple-600">
-                  {formatNumber(campaign.metrics.clicks)} ({clickRate.toFixed(1)}%)
+                  {formatNumber(campaign.metrics?.clicks || 0)} ({clickRate.toFixed(1)}%)
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Bounces</p>
-                <p className="font-medium text-red-600">{formatNumber(campaign.metrics.bounces)}</p>
+                <p className="font-medium text-red-600">{formatNumber(campaign.metrics?.bounces || 0)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Delivered</p>
-                <p className="font-medium text-blue-600">{formatNumber(campaign.metrics.successfulDeliveries)}</p>
+                <p className="font-medium text-blue-600">{formatNumber(campaign.metrics?.successfulDeliveries || 0)}</p>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
               <span>Created: {formatDate(campaign.createdAt)}</span>
-              <span>Mobile Opens: {formatNumber(campaign.metrics.mobileOpen)}</span>
-              <span>Did Not Open: {formatNumber(campaign.metrics.didNotOpen)}</span>
+              <span>Mobile Opens: {formatNumber(campaign.metrics?.mobileOpen || 0)}</span>
+              <span>Did Not Open: {formatNumber(campaign.metrics?.didNotOpen || 0)}</span>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => onViewDetails(campaignId)}
+              className="w-full sm:w-auto"
+            >
+              <Eye className="h-4 w-4 mr-2" />
               View Details
             </Button>
+            
+            {canSend && (
+              <Button 
+                size="sm" 
+                onClick={() => onSend(campaignId)}
+                className="w-full sm:w-auto"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Send
+              </Button>
+            )}
+
+            {canPause && (
+              <Button 
+                variant="outline"
+                size="sm" 
+                onClick={() => onPause(campaignId)}
+                className="w-full sm:w-auto"
+              >
+                <Pause className="h-4 w-4 mr-2" />
+                Pause
+              </Button>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -303,10 +520,32 @@ function CampaignCard({ campaign, onUpdate }: { campaign: Campaign; onUpdate: ()
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Edit Campaign</DropdownMenuItem>
-                <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                <DropdownMenuItem>View Analytics</DropdownMenuItem>
-                <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEdit(campaignId)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Campaign
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onDuplicate(campaign)}
+                  disabled={duplicating}
+                >
+                  {duplicating ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Copy className="h-4 w-4 mr-2" />
+                  )}
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onViewAnalytics(campaignId)}>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Analytics
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onDelete(campaign)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

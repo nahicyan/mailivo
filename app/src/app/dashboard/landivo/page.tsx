@@ -17,61 +17,7 @@ export default function LandivoPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Manage Campaigns
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create Manage & View Campaigns
-            </p>
-            <Link href="/dashboard/landivo/campaigns/manage/">
-              <Button className="w-full">
-                Manage Campaigns
-              </Button>
-            </Link>
-          </CardContent>
-       </Card>
-
-
-
-        <Card>
-         <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create & Manage Offer, Discounts & Other Events
-            </p>
-            <Button className="w-full">
-              Manage Events
-            </Button>
-          </CardContent>
-        </Card>
-
-                <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Email Lists
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Manage your Email Lists & Buyers
-            </p>
-            <Button className="w-full">
-              View Buyers
-            </Button>
-          </CardContent>
-        </Card>
-
+        
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -91,23 +37,94 @@ export default function LandivoPage() {
             </Link>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Manage Campaigns
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create Manage & View Campaigns
+            </p>
+            <Link href="/dashboard/landivo/campaigns/manage/">
+              <Button className="w-full">
+                Manage Campaigns
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
         
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building className="h-5 w-5" />
-              Properties
+              Group Campaign
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              View and manage your property listings for email campaigns
+              View and manage Special Multi-Property Campaings
             </p>
             <Button className="w-full">
               View Properties
             </Button>
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Workflow
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create & Manage Landivo Email Workflows
+            </p>
+            <Button className="w-full">
+              Manage Events
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Email Lists
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Manage your Email Lists & Buyers
+            </p>
+            <Button className="w-full">
+              View Buyers
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+             Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create & Manage Offer, Discounts & Other Events
+            </p>
+            <Button className="w-full">
+              Manage Events
+            </Button>
+          </CardContent>
+        </Card>
+
       </div>
 
       {/* Recent Properties - You can add this section */}
