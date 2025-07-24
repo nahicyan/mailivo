@@ -1,5 +1,5 @@
 // app/src/services/workflowAPI.ts
-import { api } from '@/lib/api';
+const API_BASE = process.env.NEXT_PUBLIC_MAILIVO_API_URL || 'https://api.mailivo.landivo.com';
 
 export interface WorkflowNode {
   id: string;
@@ -25,58 +25,120 @@ export interface Workflow {
   connections: WorkflowConnection[];
   createdAt?: string;
   updatedAt?: string;
+  lastRunAt?: string;
 }
 
-interface WorkflowParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: string;
+export interface WorkflowStats {
+  totalRuns: number;
+  successfulRuns: number;
+  failedRuns: number;
+  avgExecutionTime: number;
+  conversionRate: number;
 }
 
-export const workflowAPI = {
-  async getWorkflows(params?: WorkflowParams) {
-    const { data } = await api.get('/workflows', { params });
-    return data;
-  },
+export interface WorkflowExecution {
+  id: string;
+  workflowId: string;
+  contactId: string;
+  status: 'running' | 'completed' | 'failed' | 'paused';
+  startedAt: string;
+  completedAt?: string;
+  errors: any[];
+  results: Record<string, any>;
+}
 
-  async getWorkflow(id: string) {
-    const { data } = await api.get(`/workflows/${id}`);
-    return data;
-  },
+class WorkflowAPI {
+  private async request(endpoint: string, options: RequestInit = {}) {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
 
-  async createWorkflow(workflow: Partial<Workflow>) {
-    const { data } = await api.post('/workflows', workflow);
-    return data;
-  },
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
 
-  async updateWorkflow(id: string, workflow: Partial<Workflow>) {
-    const { data } = await api.put(`/workflows/${id}`, workflow);
-    return data;
-  },
+    return response.json();
+  }
+
+  async getWorkflows(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+    const queryString = params ? `?${new URLSearchParams(params as any)}` : '';
+    return this.request(`/workflows${queryString}`);
+  }
+
+  async getWorkflow(id: string): Promise<Workflow> {
+    return this.request(`/workflows/${id}`);
+  }
+
+  async createWorkflow(workflow: Partial<Workflow>): Promise<Workflow> {
+    return this.request('/workflows', {
+      method: 'POST',
+      body: JSON.stringify(workflow),
+    });
+  }
+
+  async updateWorkflow(id: string, workflow: Partial<Workflow>): Promise<Workflow> {
+    return this.request(`/workflows/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(workflow),
+    });
+  }
 
   async deleteWorkflow(id: string) {
-    const { data } = await api.delete(`/workflows/${id}`);
-    return data;
-  },
+    return this.request(`/workflows/${id}`, { method: 'DELETE' });
+  }
 
-  async toggleWorkflow(id: string, isActive: boolean) {
-    const { data } = await api.put(`/workflows/${id}`, { isActive });
-    return data;
-  },
+  async toggleWorkflow(id: string, isActive: boolean): Promise<Workflow> {
+    return this.request(`/workflows/${id}/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  }
 
-  async duplicateWorkflow(id: string) {
-    const { data } = await api.post(`/workflows/${id}/duplicate`);
-    return data;
-  },
+  async duplicateWorkflow(id: string): Promise<Workflow> {
+    return this.request(`/workflows/${id}/duplicate`, { method: 'POST' });
+  }
+
+  async getWorkflowStats(id: string): Promise<WorkflowStats> {
+    try {
+      return await this.request(`/workflows/${id}/stats`);
+    } catch (error) {
+      // Return empty stats if endpoint fails
+      return {
+        totalRuns: 0,
+        successfulRuns: 0,
+        failedRuns: 0,
+        avgExecutionTime: 0,
+        conversionRate: 0
+      };
+    }
+  }
 
   async getWorkflowExecutions(id: string, params?: { page?: number; limit?: number }) {
-    const { data } = await api.get(`/workflows/${id}/executions`, { params });
-    return data;
-  },
+    try {
+      const queryString = params ? `?${new URLSearchParams(params as any)}` : '';
+      return await this.request(`/workflows/${id}/executions${queryString}`);
+    } catch (error) {
+      // Return empty executions if endpoint fails
+      return {
+        executions: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+      };
+    }
+  }
 
   async executeWorkflow(id: string, contactIds: string[]) {
-    const { data } = await api.post(`/workflows/${id}/execute`, { contactIds });
-    return data;
-  },
-};
+    return this.request(`/workflows/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify({ contactIds }),
+    });
+  }
+}
+
+export const workflowAPI = new WorkflowAPI();
