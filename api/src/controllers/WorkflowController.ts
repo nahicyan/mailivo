@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Workflow, { IWorkflow } from '../models/Workflow';
+import Workflow from '../models/Workflow';
 import WorkflowExecution, { IWorkflowExecution } from '../models/WorkflowExecution';
 
 interface AuthRequest extends Request {

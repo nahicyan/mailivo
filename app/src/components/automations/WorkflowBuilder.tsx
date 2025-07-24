@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import WorkflowCanvas from './WorkflowCanvas';
 import NodePalette from './NodePalette';
 import WorkflowStats from './WorkflowStats';
@@ -52,7 +52,6 @@ export default function WorkflowBuilder({ workflowId }: WorkflowBuilderProps) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(!!workflowId);
-  const { toast } = useToast();
 
   // Load existing workflow if ID provided
   useEffect(() => {
@@ -67,11 +66,7 @@ export default function WorkflowBuilder({ workflowId }: WorkflowBuilderProps) {
       const data = await workflowAPI.getWorkflow(id);
       setWorkflow(data);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load workflow",
-        variant: "destructive"
-      });
+      toast.error('Failed to load workflow');
     } finally {
       setIsLoading(false);
     }
@@ -127,24 +122,14 @@ export default function WorkflowBuilder({ workflowId }: WorkflowBuilderProps) {
     try {
       if (workflow.id) {
         await workflowAPI.updateWorkflow(workflow.id, workflow);
-        toast({
-          title: "Success",
-          description: "Workflow updated successfully"
-        });
+        toast.success('Workflow updated successfully');
       } else {
         const newWorkflow = await workflowAPI.createWorkflow(workflow);
         setWorkflow(newWorkflow);
-        toast({
-          title: "Success", 
-          description: "Workflow created successfully"
-        });
+        toast.success('Workflow created successfully');
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save workflow",
-        variant: "destructive"
-      });
+      toast.error('Failed to save workflow');
     } finally {
       setIsSaving(false);
     }
@@ -157,16 +142,9 @@ export default function WorkflowBuilder({ workflowId }: WorkflowBuilderProps) {
         await workflowAPI.toggleWorkflow(workflow.id, newStatus);
       }
       setWorkflow(prev => ({ ...prev, isActive: newStatus }));
-      toast({
-        title: "Success",
-        description: `Workflow ${newStatus ? 'activated' : 'paused'}`
-      });
+      toast.success(`Workflow ${newStatus ? 'activated' : 'paused'}`);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to toggle workflow",
-        variant: "destructive"
-      });
+      toast.error('Failed to toggle workflow');
     }
   };
 
