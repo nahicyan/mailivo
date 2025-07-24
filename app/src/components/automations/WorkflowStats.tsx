@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Activity, 
   Clock, 
@@ -13,8 +14,12 @@ import {
   CheckCircle, 
   AlertCircle,
   Play,
-  Pause 
+  Pause,
+  Calendar,
+  Target,
+  BarChart3
 } from 'lucide-react';
+import { workflowAPI } from '@/services/workflowAPI';
 
 interface WorkflowNode {
   id: string;
@@ -40,61 +45,156 @@ interface Workflow {
   connections: WorkflowConnection[];
 }
 
+interface WorkflowStats {
+  totalRuns: number;
+  successfulRuns: number;
+  failedRuns: number;
+  avgExecutionTime: number;
+  conversionRate: number;
+}
+
+interface WorkflowExecution {
+  id: string;
+  status: 'running' | 'completed' | 'failed' | 'paused';
+  startedAt: string;
+  completedAt?: string;
+  contactId: string;
+}
+
 interface WorkflowStatsProps {
   workflow: Workflow;
 }
 
 export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
+  const [stats, setStats] = useState<WorkflowStats | null>(null);
+  const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const triggerCount = workflow.nodes.filter(n => n.type === 'trigger').length;
   const actionCount = workflow.nodes.filter(n => n.type === 'action').length;
   const conditionCount = workflow.nodes.filter(n => n.type === 'condition').length;
 
-  // Mock performance data - in real app this would come from API
-  const mockStats = {
-    totalExecutions: 1250,
-    successfulExecutions: 1180,
-    failedExecutions: 70,
-    avgExecutionTime: 45, // seconds
-    conversionRate: 24.5,
-    lastExecuted: new Date('2024-01-20'),
-    estimatedReach: 5000
+  useEffect(() => {
+    if (workflow.id) {
+      loadWorkflowStats();
+      loadRecentExecutions();
+    }
+  }, [workflow.id]);
+
+  const loadWorkflowStats = async () => {
+    try {
+      const statsData = await workflowAPI.getWorkflowStats(workflow.id);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Failed to load workflow stats:', error);
+      // Set default empty stats if API fails
+      setStats({
+        totalRuns: 0,
+        successfulRuns: 0,
+        failedRuns: 0,
+        avgExecutionTime: 0,
+        conversionRate: 0
+      });
+    }
   };
 
-  const successRate = ((mockStats.successfulExecutions / mockStats.totalExecutions) * 100).toFixed(1);
+  const loadRecentExecutions = async () => {
+    try {
+      const executionsData = await workflowAPI.getWorkflowExecutions(workflow.id, { limit: 5 });
+      setExecutions(executionsData.executions || []);
+    } catch (error) {
+      console.error('Failed to load executions:', error);
+      setExecutions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const successRate = stats ? 
+    stats.totalRuns > 0 ? ((stats.successfulRuns / stats.totalRuns) * 100).toFixed(1) : '0' 
+    : '0';
+
+  const formatExecutionTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds / 3600)}h`;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      completed: { variant: 'default' as const, className: 'bg-green-100 text-green-800', label: 'Success' },
+      failed: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800', label: 'Failed' },
+      running: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', label: 'Running' },
+      paused: { variant: 'outline' as const, className: 'bg-yellow-100 text-yellow-800', label: 'Paused' }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.failed;
+    return (
+      <Badge variant={config.variant} className={`text-xs ${config.className}`}>
+        {config.label}
+      </Badge>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-20 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Workflow Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Workflow Overview</CardTitle>
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <BarChart3 size={18} className="text-blue-600" />
+            Workflow Overview
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Total Nodes</span>
-            <Badge variant="secondary">{workflow.nodes.length}</Badge>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{workflow.nodes.length}</div>
+              <div className="text-xs text-gray-600">Total Nodes</div>
+            </div>
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{triggerCount}</div>
+              <div className="text-xs text-gray-600">Triggers</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{actionCount}</div>
+              <div className="text-xs text-gray-600">Actions</div>
+            </div>
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{conditionCount}</div>
+              <div className="text-xs text-gray-600">Conditions</div>
+            </div>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Triggers</span>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              {triggerCount}
-            </Badge>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Actions</span>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
-              {actionCount}
-            </Badge>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Conditions</span>
-            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-              {conditionCount}
-            </Badge>
-          </div>
+          
           <Separator />
+          
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Status</span>
+            <span className="text-sm font-medium text-gray-600">Status</span>
             <Badge variant={workflow.isActive ? 'default' : 'secondary'} className="flex items-center gap-1">
               {workflow.isActive ? (
                 <>
@@ -113,160 +213,144 @@ export default function WorkflowStats({ workflow }: WorkflowStatsProps) {
       </Card>
 
       {/* Performance Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Activity size={18} />
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Activity size={18} className="text-green-600" />
             Performance
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600">Success Rate</span>
-              <span className="font-medium">{successRate}%</span>
-            </div>
-            <Progress value={parseFloat(successRate)} className="h-2" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="text-center p-2 bg-green-50 rounded">
-              <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
-                <CheckCircle size={14} />
-                <span className="font-medium">{mockStats.successfulExecutions}</span>
+        <CardContent className="space-y-6">
+          {stats && stats.totalRuns > 0 ? (
+            <>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600 font-medium">Success Rate</span>
+                  <span className="font-bold text-lg">{successRate}%</span>
+                </div>
+                <Progress value={parseFloat(successRate)} className="h-3" />
               </div>
-              <div className="text-xs text-gray-600">Successful</div>
-            </div>
-            <div className="text-center p-2 bg-red-50 rounded">
-              <div className="flex items-center justify-center gap-1 text-red-600 mb-1">
-                <AlertCircle size={14} />
-                <span className="font-medium">{mockStats.failedExecutions}</span>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-green-50 rounded-xl border border-green-100">
+                  <div className="flex items-center justify-center gap-1 text-green-600 mb-2">
+                    <CheckCircle size={20} />
+                    <span className="font-bold text-xl">{stats.successfulRuns}</span>
+                  </div>
+                  <div className="text-xs text-gray-600 font-medium">Successful</div>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-xl border border-red-100">
+                  <div className="flex items-center justify-center gap-1 text-red-600 mb-2">
+                    <AlertCircle size={20} />
+                    <span className="font-bold text-xl">{stats.failedRuns}</span>
+                  </div>
+                  <div className="text-xs text-gray-600 font-medium">Failed</div>
+                </div>
               </div>
-              <div className="text-xs text-gray-600">Failed</div>
-            </div>
-          </div>
 
-          <Separator />
+              <Separator />
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 flex items-center gap-1">
-                <Users size={14} />
-                Total Executions
-              </span>
-              <span className="font-medium">{mockStats.totalExecutions.toLocaleString()}</span>
-            </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 flex items-center gap-2">
+                    <Users size={16} />
+                    Total Executions
+                  </span>
+                  <span className="font-bold text-lg">{stats.totalRuns.toLocaleString()}</span>
+                </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 flex items-center gap-1">
-                <Clock size={14} />
-                Avg. Execution Time
-              </span>
-              <span className="font-medium">{mockStats.avgExecutionTime}s</span>
-            </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 flex items-center gap-2">
+                    <Clock size={16} />
+                    Avg. Execution Time
+                  </span>
+                  <span className="font-bold text-lg">{formatExecutionTime(stats.avgExecutionTime)}</span>
+                </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 flex items-center gap-1">
-                <TrendingUp size={14} />
-                Conversion Rate
-              </span>
-              <span className="font-medium text-green-600">{mockStats.conversionRate}%</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Last Executed</span>
-              <span className="font-medium">
-                {mockStats.lastExecuted.toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-
-          <div className="text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Estimated Reach</span>
-              <span className="font-medium">
-                {mockStats.estimatedReach.toLocaleString()} contacts
-              </span>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-gray-700">Recent Executions</div>
-            <div className="space-y-1 text-xs text-gray-600">
-              <div className="flex justify-between">
-                <span>Jan 20, 2:30 PM</span>
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">Success</Badge>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 flex items-center gap-2">
+                    <TrendingUp size={16} />
+                    Conversion Rate
+                  </span>
+                  <span className="font-bold text-lg text-green-600">{stats.conversionRate.toFixed(1)}%</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Jan 20, 1:15 PM</span>
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">Success</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span>Jan 20, 12:00 PM</span>
-                <Badge variant="outline" className="text-xs bg-red-50 text-red-700">Failed</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span>Jan 19, 11:45 PM</span>
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">Success</Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Validation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Validation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {workflow.nodes.length === 0 ? (
-            <div className="text-sm text-amber-600 flex items-center gap-2">
-              <AlertCircle size={14} />
-              Add nodes to start building your workflow
-            </div>
-          ) : triggerCount === 0 ? (
-            <div className="text-sm text-amber-600 flex items-center gap-2">
-              <AlertCircle size={14} />
-              Add a trigger to activate this workflow
-            </div>
-          ) : actionCount === 0 ? (
-            <div className="text-sm text-amber-600 flex items-center gap-2">
-              <AlertCircle size={14} />
-              Add at least one action
-            </div>
+            </>
           ) : (
-            <div className="text-sm text-green-600 flex items-center gap-2">
-              <CheckCircle size={14} />
-              Workflow is ready to activate
+            <div className="text-center py-8">
+              <Target size={48} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500 font-medium">No execution data yet</p>
+              <p className="text-sm text-gray-400">Activate your workflow to start collecting metrics</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Tips */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">💡 Optimization Tips</CardTitle>
+      {/* Recent Activity */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Calendar size={18} className="text-purple-600" />
+            Recent Activity
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-xs text-gray-600">
-          <p>• Test with a small segment before full deployment</p>
-          <p>• Monitor open rates and adjust timing</p>
-          <p>• Use A/B testing for email content</p>
-          <p>• Add unsubscribe options in all emails</p>
-          <p>• Review performance weekly</p>
+        <CardContent>
+          {executions.length > 0 ? (
+            <div className="space-y-3">
+              {executions.map((execution, index) => (
+                <div key={execution.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900">
+                      {new Date(execution.startedAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                    <span className="text-xs text-gray-500">Contact: {execution.contactId}</span>
+                  </div>
+                  {getStatusBadge(execution.status)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Clock size={48} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500 font-medium">No recent activity</p>
+              <p className="text-sm text-gray-400">Execute your workflow to see activity here</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Validation */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold">Validation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {workflow.nodes.length === 0 ? (
+            <div className="text-sm text-amber-600 flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <AlertCircle size={16} />
+              <span>Add nodes to start building your workflow</span>
+            </div>
+          ) : triggerCount === 0 ? (
+            <div className="text-sm text-amber-600 flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <AlertCircle size={16} />
+              <span>Add a trigger to activate this workflow</span>
+            </div>
+          ) : actionCount === 0 ? (
+            <div className="text-sm text-amber-600 flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <AlertCircle size={16} />
+              <span>Add at least one action</span>
+            </div>
+          ) : (
+            <div className="text-sm text-green-600 flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+              <CheckCircle size={16} />
+              <span>Workflow is ready to activate</span>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
