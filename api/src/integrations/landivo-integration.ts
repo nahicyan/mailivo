@@ -1,7 +1,7 @@
 // Landivo integration utilities for property-based workflow automation
 
-import { WorkflowExecutionService } from '@/lib/workflow-execution-service';
-import { WorkflowDatabase } from '@/lib/workflow-database';
+import { WorkflowExecutionService } from '../services/workflow-execution-service';
+import { WorkflowDatabase } from '../models/workflow-database';
 
 export interface Property {
   id: string;

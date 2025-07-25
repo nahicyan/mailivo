@@ -9,7 +9,7 @@ import {
   EnhancedTriggerConfig,
   EnhancedActionConfig,
   EnhancedConditionConfig 
-} from '@/types/workflow';
+} from '../types/workflow';
 
 export interface ExecutionContext {
   contactId: string;

@@ -7,9 +7,9 @@ import {
   WorkflowExecution, 
   ScheduledWorkflowJob,
   WorkflowDatabase 
-} from '@/lib/workflow-database';
-import { WorkflowExecutionEngine } from '@/lib/workflow-execution';
-import { WorkflowValidator } from '@/lib/workflow-validation';
+} from '../models/workflow-database';
+import { WorkflowExecutionEngine } from '../lib/workflow-execution';
+import { WorkflowValidator } from '../lib/workflow-validation';
 
 export interface WorkflowJobData {
   type: 'execute_workflow' | 'continue_execution' | 'retry_execution' | 'schedule_check';

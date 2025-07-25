@@ -6,7 +6,7 @@ import {
   WorkflowTemplate, 
   WorkflowExecution,
   WORKFLOW_TEMPLATES 
-} from '../../../app/src/types/workflow';
+} from '../types/workflow';
 import { WorkflowValidator } from '../lib/workflow-validation';
 import { WorkflowExecutionEngine } from '../lib/workflow-execution';
 
