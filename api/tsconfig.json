@@ -5,6 +5,9 @@
     "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
+    "paths": {
+      "@mailivo/shared-types": ["../packages/shared-types/src"]
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

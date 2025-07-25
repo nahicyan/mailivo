@@ -34,7 +34,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { WorkflowNode as WorkflowNodeType, DelayConfig } from '@/types/workflow';
+import { WorkflowNode as WorkflowNodeType, DelayConfig } from '@mailivo/shared-types';
 
 interface WorkflowNodeProps {
   node: WorkflowNodeType;

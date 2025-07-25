@@ -19,9 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@ymailivo/shared-types": ["../packages/shared-types/src"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/lib/workflow-validation.ts", "../api/src/lib/workflow-execution.ts
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/lib/workflow-validation.ts", "../api/src/lib/workflow-execution.ts"],
   "exclude": ["node_modules"]
 }
