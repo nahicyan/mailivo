@@ -627,3 +627,4 @@ interface WorkflowService {
   getExecutions(filters: any, options: any): Promise<{ data: WorkflowExecution[]; pagination: any }>;
   getAnalytics(userId: string, period: string): Promise<any>;
 }
+export default WorkflowAPI;
