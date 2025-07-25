@@ -1,3 +1,4 @@
+// app/src/components/automation/NodePalette.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -32,7 +33,7 @@ import { WORKFLOW_TEMPLATES, WorkflowTemplate, WorkflowCategory } from '@mailivo
 interface NodePaletteProps {
   onAddNode: (type: string, subtype: string, title: string, config?: any) => void;
   onLoadTemplate: (template: WorkflowTemplate) => void;
-  currentNodes: any[];
+  currentNodes?: any[]; // Make currentNodes optional
   workflowCategory?: WorkflowCategory;
 }
 
@@ -169,71 +170,69 @@ const ACTION_TYPES = [
     configRequired: ['fields']
   },
   
-  // Timing actions
+  // Special actions
   { 
     id: 'wait', 
     label: 'Wait/Delay', 
     icon: Timer, 
-    color: 'bg-yellow-500',
+    color: 'bg-purple-500',
     category: 'timing',
-    description: 'Add delay between actions',
+    description: 'Add delay before next action',
     configRequired: ['duration', 'unit']
   },
-  
-  // Scoring actions
   { 
     id: 'score_lead', 
     label: 'Score Lead', 
     icon: Target, 
-    color: 'bg-indigo-500',
-    category: 'scoring',
-    description: 'Adjust lead score',
-    configRequired: ['points', 'reason']
+    color: 'bg-yellow-500',
+    category: 'analytics',
+    description: 'Update lead scoring',
+    configRequired: ['scoreChange']
   },
 ];
 
 const CONDITION_TYPES = [
-  // Email behavior conditions
+  // Engagement conditions
   { 
     id: 'email_status', 
     label: 'Email Status', 
-    icon: CheckCircle, 
+    icon: Mail, 
     color: 'bg-blue-500',
-    category: 'email',
-    description: 'Check email interaction status',
+    category: 'engagement',
+    description: 'Check email opened/clicked',
     paths: 2
   },
   { 
     id: 'engagement_score', 
     label: 'Engagement Score', 
     icon: Target, 
-    color: 'bg-purple-500',
+    color: 'bg-yellow-500',
     category: 'scoring',
     description: 'Check engagement level',
     paths: 2
   },
   
-  // Contact properties
+  // Contact data conditions
   { 
     id: 'contact_property', 
     label: 'Contact Property', 
     icon: Filter, 
-    color: 'bg-indigo-500',
-    category: 'contact',
-    description: 'Check contact field value',
+    color: 'bg-green-500',
+    category: 'data',
+    description: 'Check contact field values',
     paths: 2
   },
   { 
     id: 'list_membership', 
     label: 'List Membership', 
     icon: Users, 
-    color: 'bg-green-500',
-    category: 'contact',
+    color: 'bg-purple-500',
+    category: 'segmentation',
     description: 'Check if in specific list',
     paths: 2
   },
   
-  // Landivo conditions
+  // Landivo-specific conditions
   { 
     id: 'property_interest', 
     label: 'Property Interest', 
@@ -259,7 +258,7 @@ const CONDITION_TYPES = [
 export default function NodePalette({ 
   onAddNode, 
   onLoadTemplate, 
-  currentNodes, 
+  currentNodes = [], // Provide default empty array
   workflowCategory = 'custom' 
 }: NodePaletteProps) {
   const [activeTab, setActiveTab] = useState('templates');
@@ -271,15 +270,18 @@ export default function NodePalette({
     template.industry === 'general'
   );
 
-  const hasExistingTrigger = currentNodes.some(node => node.type === 'trigger');
+  // Safely check for existing trigger with default empty array
+  const hasExistingTrigger = currentNodes && currentNodes.length > 0 
+    ? currentNodes.some(node => node.type === 'trigger')
+    : false;
   
   const canAddTrigger = (triggerType: any) => {
     if (hasExistingTrigger) return false;
     
     // Check if required nodes exist
     if (triggerType.requires && triggerType.requires.length > 0) {
-      return triggerType.requires.some(req => 
-        currentNodes.some(node => node.subtype === req)
+      return triggerType.requires.some((req: string) => 
+        currentNodes && currentNodes.some(node => node.subtype === req)
       );
     }
     
@@ -294,7 +296,7 @@ export default function NodePalette({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {items.map(item => {
         const Icon = item.icon;
-        const canAdd = type === 'trigger' ? canAddTrigger(item) : true;
+        const canAdd = type === 'triggers' ? canAddTrigger(item) : true;
         
         return (
           <Card 
@@ -321,7 +323,7 @@ export default function NodePalette({
                       {item.category}
                     </Badge>
                   )}
-                  {type === 'trigger' && !canAdd && (
+                  {type === 'triggers' && !canAdd && (
                     <Badge variant="destructive" className="mt-2 text-xs">
                       {hasExistingTrigger ? 'One trigger only' : 'Requires setup'}
                     </Badge>
@@ -369,27 +371,28 @@ export default function NodePalette({
                         <div className="font-medium">{template.estimatedDuration}</div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Open Rate:</span>
-                        <div className="font-medium text-green-600">{template.expectedResults.openRate}</div>
+                        <span className="text-gray-500">Steps:</span>
+                        <div className="font-medium">{template.nodes.length}</div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Click Rate:</span>
-                        <div className="font-medium text-blue-600">{template.expectedResults.clickRate}</div>
+                        <span className="text-gray-500">Category:</span>
+                        <div className="font-medium capitalize">{template.category}</div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Conversion:</span>
-                        <div className="font-medium text-purple-600">{template.expectedResults.conversionRate}</div>
+                        <span className="text-gray-500">Success Rate:</span>
+                        <div className="font-medium">{template.expectedResults.successRate}</div>
                       </div>
                     </div>
+                    
+                    <Button 
+                      className="mt-4"
+                      size="sm"
+                      onClick={() => onLoadTemplate(template)}
+                    >
+                      <Play size={16} className="mr-2" />
+                      Use Template
+                    </Button>
                   </div>
-                  
-                  <Button 
-                    onClick={() => onLoadTemplate(template)}
-                    size="sm"
-                    className="ml-4"
-                  >
-                    Use Template
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -401,12 +404,12 @@ export default function NodePalette({
 
   return (
     <div className="space-y-6">
-      <Card className="border-0 shadow-sm">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Workflow Builder</CardTitle>
-          <p className="text-sm text-gray-600">
-            Build logical automation flows with triggers, conditions, and actions
-          </p>
+          <CardTitle className="flex items-center space-x-2">
+            <Zap className="text-blue-500" size={20} />
+            <span>Workflow Components</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -420,15 +423,18 @@ export default function NodePalette({
             <div className="mt-6">
               <TabsContent value="templates" className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Pre-built Workflows</h3>
-                  <Badge variant="outline">{relevantTemplates.length} available</Badge>
+                  <h3 className="font-medium">Pre-built Templates</h3>
+                  <Badge variant="outline">Quick start</Badge>
                 </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Start with proven workflow templates designed for common use cases.
+                </p>
                 {renderTemplateGrid()}
               </TabsContent>
               
               <TabsContent value="triggers" className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Workflow Triggers</h3>
+                  <h3 className="font-medium">Triggers</h3>
                   <Badge variant={hasExistingTrigger ? "destructive" : "default"}>
                     {hasExistingTrigger ? "1 trigger added" : "Choose a trigger"}
                   </Badge>
