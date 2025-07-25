@@ -6,9 +6,10 @@ const router = Router();
 // Apply authentication middleware to all routes
 router.use(authenticate);
 
-// Simple controller following your existing patterns
-const workflowController = {
-  async getWorkflows(req: any, res: any) {
+// Create WorkflowAPI controller class
+class WorkflowController {
+  // GET /api/workflows - List workflows with filtering and pagination
+  async getWorkflows(_req: any, res: any) {
     try {
       res.json({
         workflows: [],
@@ -16,72 +17,115 @@ const workflowController = {
         summary: { total: 0, active: 0, draft: 0, healthy: 0 }
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to retrieve workflows' });
+      res.status(500).json({
+        error: 'Failed to retrieve workflows',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async getWorkflow(req: any, res: any) {
+  // GET /api/workflows/:id - Get specific workflow
+  async getWorkflow(_req: any, res: any) {
     try {
-      res.json({ id: req.params.id, name: 'Sample Workflow', isActive: false });
+      res.status(404).json({ error: 'Workflow not found' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to retrieve workflow' });
+      res.status(500).json({
+        error: 'Failed to retrieve workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async createWorkflow(req: any, res: any) {
+  // POST /api/workflows - Create new workflow
+  async createWorkflow(_req: any, res: any) {
     try {
-      res.status(201).json({ id: 'new-workflow', ...req.body });
+      const mockWorkflow = {
+        id: 'mock_workflow_id',
+        name: 'New Workflow',
+        description: '',
+        isActive: false,
+        nodes: [],
+        connections: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      res.status(201).json(mockWorkflow);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to create workflow' });
+      res.status(500).json({
+        error: 'Failed to create workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async updateWorkflow(req: any, res: any) {
+  // PUT /api/workflows/:id - Update workflow
+  async updateWorkflow(_req: any, res: any) {
     try {
-      res.json({ id: req.params.id, ...req.body });
+      res.status(404).json({ error: 'Workflow not found' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to update workflow' });
+      res.status(500).json({
+        error: 'Failed to update workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async deleteWorkflow(req: any, res: any) {
+  // DELETE /api/workflows/:id - Delete workflow
+  async deleteWorkflow(_req: any, res: any) {
     try {
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ error: 'Failed to delete workflow' });
+      res.status(500).json({
+        error: 'Failed to delete workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async toggleWorkflow(req: any, res: any) {
+  // PATCH /api/workflows/:id/toggle - Toggle workflow
+  async toggleWorkflow(_req: any, res: any) {
     try {
-      res.json({ id: req.params.id, isActive: req.body.isActive });
+      res.status(404).json({ error: 'Workflow not found' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to toggle workflow' });
+      res.status(500).json({
+        error: 'Failed to toggle workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async duplicateWorkflow(req: any, res: any) {
+  // POST /api/workflows/:id/duplicate - Duplicate workflow
+  async duplicateWorkflow(_req: any, res: any) {
     try {
-      res.status(201).json({ id: 'duplicated-workflow', name: 'Copy of Workflow' });
+      res.status(404).json({ error: 'Workflow not found' });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to duplicate workflow' });
+      res.status(500).json({
+        error: 'Failed to duplicate workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async executeWorkflow(req: any, res: any) {
+  // POST /api/workflows/:id/execute - Execute workflow
+  async executeWorkflow(_req: any, res: any) {
     try {
-      res.json({ 
-        executions: [], 
-        totalContacts: req.body.contactIds?.length || 0,
+      res.json({
+        executions: [],
+        totalContacts: 0,
         successfulExecutions: 0,
         failedExecutions: 0
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to execute workflow' });
+      res.status(500).json({
+        error: 'Failed to execute workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async getWorkflowStats(req: any, res: any) {
+  // GET /api/workflows/:id/stats - Get workflow statistics
+  async getWorkflowStats(_req: any, res: any) {
     try {
       res.json({
         totalRuns: 0,
@@ -91,22 +135,30 @@ const workflowController = {
         conversionRate: 0
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to retrieve stats' });
+      res.status(500).json({
+        error: 'Failed to retrieve workflow stats',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async getWorkflowExecutions(req: any, res: any) {
+  // GET /api/workflows/:id/executions - Get workflow executions
+  async getWorkflowExecutions(_req: any, res: any) {
     try {
       res.json({
         data: [],
-        pagination: { total: 0, page: 1, limit: 10, totalPages: 0 }
+        pagination: { total: 0, page: 1, limit: 20, totalPages: 0 }
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to retrieve executions' });
+      res.status(500).json({
+        error: 'Failed to retrieve executions',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async getWorkflowTemplates(req: any, res: any) {
+  // GET /api/workflows/templates - Get workflow templates
+  async getWorkflowTemplates(_req: any, res: any) {
     try {
       res.json({
         templates: [],
@@ -114,51 +166,84 @@ const workflowController = {
         industries: []
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to retrieve templates' });
+      res.status(500).json({
+        error: 'Failed to retrieve templates',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async createFromTemplate(req: any, res: any) {
+  // POST /api/workflows/from-template - Create from template
+  async createFromTemplate(_req: any, res: any) {
     try {
-      res.status(201).json({ id: 'from-template', ...req.body });
+      res.status(201).json({
+        id: 'mock_workflow_from_template',
+        name: 'Workflow from Template',
+        template: { id: 'template_id', name: 'Template Name' }
+      });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to create from template' });
+      res.status(500).json({
+        error: 'Failed to create workflow from template',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async getWorkflowAnalytics(req: any, res: any) {
+  // GET /api/workflows/analytics - Get analytics
+  async getWorkflowAnalytics(_req: any, res: any) {
     try {
-      res.json({ analytics: 'placeholder' });
+      res.json({
+        overview: {
+          totalWorkflows: 0,
+          activeWorkflows: 0,
+          totalExecutions: 0,
+          successRate: 0
+        }
+      });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to retrieve analytics' });
+      res.status(500).json({
+        error: 'Failed to retrieve analytics',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async validateWorkflow(req: any, res: any) {
+  // POST /api/workflows/:id/validate - Validate workflow
+  async validateWorkflow(_req: any, res: any) {
     try {
-      res.json({ 
+      res.json({
         validation: { isValid: true, errors: [], warnings: [] },
         health: { score: 100, grade: 'A' },
         recommendations: [],
         canActivate: true
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to validate workflow' });
+      res.status(500).json({
+        error: 'Failed to validate workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  },
+  }
 
-  async testWorkflow(req: any, res: any) {
+  // POST /api/workflows/:id/test - Test workflow
+  async testWorkflow(_req: any, res: any) {
     try {
       res.json({
-        execution: { id: 'test-exec', status: 'completed' },
+        execution: { id: 'test_execution', status: 'completed' },
         testMode: true,
         message: 'Workflow test completed successfully'
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to test workflow' });
+      res.status(500).json({
+        error: 'Failed to test workflow',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
-};
+}
+
+// Create controller instance
+const workflowController = new WorkflowController();
 
 // Workflow CRUD routes
 router.get('/', workflowController.getWorkflows.bind(workflowController));
@@ -176,7 +261,7 @@ router.post('/:id/execute', workflowController.executeWorkflow.bind(workflowCont
 router.get('/:id/stats', workflowController.getWorkflowStats.bind(workflowController));
 router.get('/:id/executions', workflowController.getWorkflowExecutions.bind(workflowController));
 
-// Template routes
+// Template routes  
 router.get('/templates', workflowController.getWorkflowTemplates.bind(workflowController));
 router.post('/from-template', workflowController.createFromTemplate.bind(workflowController));
 
