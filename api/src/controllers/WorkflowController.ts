@@ -6,9 +6,9 @@ import {
   WorkflowTemplate, 
   WorkflowExecution,
   WORKFLOW_TEMPLATES 
-} from '@/types/workflow';
-import { WorkflowValidator } from '@/lib/workflow-validation';
-import { WorkflowExecutionEngine } from '@/lib/workflow-execution';
+} from '@mailivo/shared-types';
+import { WorkflowValidator } from '../lib/workflow-validation';
+import { WorkflowExecutionEngine } from '../lib/workflow-execution';
 
 export class WorkflowAPI {
   private workflowService: WorkflowService;
