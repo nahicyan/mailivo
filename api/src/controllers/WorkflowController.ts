@@ -9,6 +9,17 @@ interface AuthRequest extends Request {
 }
 
 class WorkflowController {
+  // Helper function to transform MongoDB document to frontend format
+  private transformWorkflow(workflow: any) {
+    if (!workflow) return null;
+    const transformed = workflow.toObject ? workflow.toObject() : workflow;
+    return {
+      ...transformed,
+      id: transformed._id.toString(),
+      _id: undefined // Remove _id from response
+    };
+  }
+
   // Get all workflows for user
   async getWorkflows(req: AuthRequest, res: Response): Promise<void> {
     try {
@@ -35,8 +46,11 @@ class WorkflowController {
 
       const total = await Workflow.countDocuments(filter);
 
+      // Transform workflows to include id field
+      const transformedWorkflows = workflows.map(w => this.transformWorkflow(w));
+
       res.json({
-        workflows,
+        workflows: transformedWorkflows,
         pagination: {
           page: parseInt(page as string),
           limit: parseInt(limit as string),
@@ -62,7 +76,7 @@ class WorkflowController {
         return;
       }
 
-      res.json(workflow);
+      res.json(this.transformWorkflow(workflow));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -82,7 +96,7 @@ class WorkflowController {
       const workflow = new Workflow(workflowData);
       await workflow.save();
 
-      res.status(201).json(workflow);
+      res.status(201).json(this.transformWorkflow(workflow));
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -105,7 +119,7 @@ class WorkflowController {
         return;
       }
 
-      res.json(workflow);
+      res.json(this.transformWorkflow(workflow));
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -151,7 +165,7 @@ class WorkflowController {
         return;
       }
 
-      res.json(workflow);
+      res.json(this.transformWorkflow(workflow));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -181,7 +195,7 @@ class WorkflowController {
 
       await duplicatedWorkflow.save();
 
-      res.status(201).json(duplicatedWorkflow);
+      res.status(201).json(this.transformWorkflow(duplicatedWorkflow));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
