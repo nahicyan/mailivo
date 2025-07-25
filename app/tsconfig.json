@@ -20,7 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@ymailivo/shared-types": ["../packages/shared-types/src"]
+      "@mailivo/shared-types": ["../packages/shared-types/src"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/lib/workflow-validation.ts", "../api/src/lib/workflow-execution.ts"],

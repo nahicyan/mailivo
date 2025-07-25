@@ -1,6 +1,6 @@
 // Workflow validation system to enforce logical automation flows
 
-import { WorkflowNode, WorkflowConnection, Workflow, WORKFLOW_VALIDATION_RULES } from '../types/workflow';
+import { WorkflowNode, WorkflowConnection, Workflow, WORKFLOW_VALIDATION_RULES } from '@mailivo/shared-types';
 
 export interface ValidationResult {
   isValid: boolean;

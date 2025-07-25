@@ -9,7 +9,7 @@ import {
   EnhancedTriggerConfig,
   EnhancedActionConfig,
   EnhancedConditionConfig 
-} from '../types/workflow';
+} from '@mailivo/shared-types';
 
 export interface ExecutionContext {
   contactId: string;

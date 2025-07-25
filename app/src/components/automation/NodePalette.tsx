@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WORKFLOW_TEMPLATES, WorkflowTemplate, WorkflowCategory } from '@/types/workflow';
+import { WORKFLOW_TEMPLATES, WorkflowTemplate, WorkflowCategory } from '@mailivo/shared-types';
 
 interface NodePaletteProps {
   onAddNode: (type: string, subtype: string, title: string, config?: any) => void;

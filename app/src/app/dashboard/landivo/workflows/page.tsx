@@ -32,7 +32,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Workflow, WorkflowCategory, WORKFLOW_TEMPLATES } from '@/types/workflow';
+import { Workflow, WorkflowCategory, WORKFLOW_TEMPLATES } from '@mailivo/shared-types';
 import Link from 'next/link';
 
 interface WorkflowWithHealth extends Workflow {

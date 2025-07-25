@@ -25,8 +25,8 @@ import {
   WorkflowConnection, 
   WorkflowTemplate,
   WorkflowCategory 
-} from '@/types/workflow';
-import { WorkflowValidator, getWorkflowHealthScore } from '@/lib/workflow-validation';
+} from '@mailivo/shared-types';
+import { WorkflowValidator, getWorkflowHealthScore } from '../../../../api/src/lib/workflow-validation';
 import NodePalette from '@/components/automation/NodePalette';
 import WorkflowNode from '@/components/automation/WorkflowNode';
 
