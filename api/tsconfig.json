@@ -17,6 +17,6 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*", "../app/src/services/contact.service.ts"],
+  "include": ["src/**/*", "../app/src/services/contact.service.ts", "../app/src/lib/workflow-execution.ts", "../app/src/lib/workflow-validation.ts"],
   "exclude": ["node_modules", "dist"]
 }
