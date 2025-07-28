@@ -32,10 +32,23 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Workflow, WorkflowCategory, WORKFLOW_TEMPLATES } from '@mailivo/shared-types';
+import { WorkflowCategory, WORKFLOW_TEMPLATES } from '@mailivo/shared-types';
 import { workflowAPI } from '@/services/workflowAPI';
 import { toast } from 'sonner';
 import Link from 'next/link';
+
+// Local interface definition to avoid shared-types resolution issues
+interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  nodes: any[];
+  connections: any[];
+  createdAt?: string;
+  updatedAt?: string;
+  lastRunAt?: string;
+}
 
 interface WorkflowWithHealth extends Workflow {
   validation: {
@@ -231,7 +244,7 @@ export default function WorkflowDashboard() {
               <p className="text-sm font-medium text-gray-600">Total Workflows</p>
               <p className="text-3xl font-bold text-gray-900">{summary.total}</p>
             </div>
-            <Workflow className="text-blue-500" size={24} />
+            <Zap className="text-blue-500" size={24} />
           </div>
         </CardContent>
       </Card>
