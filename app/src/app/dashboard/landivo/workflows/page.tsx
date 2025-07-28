@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Play, 
-  Pause, 
-  Copy, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Play,
+  Pause,
+  Copy,
+  Trash2,
   Edit3,
   Eye,
   AlertTriangle,
@@ -33,7 +33,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Workflow, WorkflowCategory, WORKFLOW_TEMPLATES } from '@mailivo/shared-types';
+import { workflowAPI } from '@/services/workflowAPI';
 import Link from 'next/link';
+
 
 interface WorkflowWithHealth extends Workflow {
   validation: {
@@ -84,14 +86,13 @@ export default function WorkflowDashboard() {
   const fetchWorkflows = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (categoryFilter !== 'all') params.append('category', categoryFilter);
-      if (statusFilter !== 'all') params.append('status', statusFilter);
+      const params: any = {};
+      if (searchTerm) params.search = searchTerm;
+      if (categoryFilter !== 'all') params.category = categoryFilter;
+      if (statusFilter !== 'all') params.status = statusFilter;
 
-      const response = await fetch(`/api/workflows?${params}`);
-      const data = await response.json();
-      
+      const data = await workflowAPI.getWorkflows(params);
+
       setWorkflows(data.workflows || []);
       setSummary(data.summary || { total: 0, active: 0, draft: 0, healthy: 0 });
     } catch (error) {
@@ -103,18 +104,8 @@ export default function WorkflowDashboard() {
 
   const handleToggleWorkflow = async (workflowId: string, isActive: boolean) => {
     try {
-      const response = await fetch(`/api/workflows/${workflowId}/toggle`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive })
-      });
-
-      if (response.ok) {
-        fetchWorkflows();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to toggle workflow');
-      }
+      await workflowAPI.toggleWorkflow(workflowId, isActive);
+      fetchWorkflows();
     } catch (error) {
       console.error('Failed to toggle workflow:', error);
     }
@@ -122,13 +113,8 @@ export default function WorkflowDashboard() {
 
   const handleDuplicateWorkflow = async (workflowId: string) => {
     try {
-      const response = await fetch(`/api/workflows/${workflowId}/duplicate`, {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        fetchWorkflows();
-      }
+      await workflowAPI.duplicateWorkflow(workflowId);
+      fetchWorkflows();
     } catch (error) {
       console.error('Failed to duplicate workflow:', error);
     }
@@ -138,16 +124,8 @@ export default function WorkflowDashboard() {
     if (!confirm('Are you sure you want to delete this workflow?')) return;
 
     try {
-      const response = await fetch(`/api/workflows/${workflowId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        fetchWorkflows();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to delete workflow');
-      }
+      await workflowAPI.deleteWorkflow(workflowId);
+      fetchWorkflows();
     } catch (error) {
       console.error('Failed to delete workflow:', error);
     }
@@ -198,12 +176,12 @@ export default function WorkflowDashboard() {
   };
 
   const filteredWorkflows = workflows.filter(workflow => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       workflow.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       workflow.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesCategory = categoryFilter === 'all' || workflow.category === categoryFilter;
-    const matchesStatus = statusFilter === 'all' || 
+    const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'active' && workflow.isActive) ||
       (statusFilter === 'draft' && !workflow.isActive) ||
       (statusFilter === 'healthy' && workflow.health.grade === 'A') ||
@@ -225,7 +203,7 @@ export default function WorkflowDashboard() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
@@ -237,7 +215,7 @@ export default function WorkflowDashboard() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
@@ -249,7 +227,7 @@ export default function WorkflowDashboard() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
@@ -281,7 +259,7 @@ export default function WorkflowDashboard() {
                 {workflow.health.grade}
               </Badge>
             </div>
-            
+
             <p className="text-gray-600 text-sm mb-3 line-clamp-2">
               {workflow.description || 'No description'}
             </p>
@@ -363,7 +341,7 @@ export default function WorkflowDashboard() {
                 Duplicate
               </DropdownMenuItem>
               <Separator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => handleDeleteWorkflow(workflow.id)}
                 className="text-red-600 focus:text-red-600"
               >
@@ -405,7 +383,7 @@ export default function WorkflowDashboard() {
         <DialogHeader>
           <DialogTitle>Choose a Workflow Template</DialogTitle>
         </DialogHeader>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {WORKFLOW_TEMPLATES.map(template => (
             <Card key={template.id} className="cursor-pointer hover:shadow-md transition-all duration-200">
@@ -414,7 +392,7 @@ export default function WorkflowDashboard() {
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 mb-1">{template.name}</h4>
                     <p className="text-sm text-gray-600 mb-2">{template.description}</p>
-                    
+
                     <div className="flex items-center space-x-2 mb-3">
                       <Badge variant="outline">{template.category.replace('_', ' ')}</Badge>
                       {template.industry && (
@@ -438,8 +416,8 @@ export default function WorkflowDashboard() {
                     </div>
                   </div>
                 </div>
-                
-                <Button 
+
+                <Button
                   onClick={() => createFromTemplate(template.id)}
                   className="w-full"
                   size="sm"
@@ -462,7 +440,7 @@ export default function WorkflowDashboard() {
           <h1 className="text-3xl font-bold text-gray-900">Workflows</h1>
           <p className="text-gray-600 mt-1">Automate your email marketing campaigns</p>
         </div>
-        
+
         <div className="flex items-center space-x-3">
           <Button variant="outline" onClick={() => setShowTemplateDialog(true)}>
             <Copy size={16} className="mr-2" />
@@ -495,7 +473,7 @@ export default function WorkflowDashboard() {
                 />
               </div>
             </div>
-            
+
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Category" />
@@ -511,7 +489,7 @@ export default function WorkflowDashboard() {
                 <SelectItem value="custom">Custom</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Status" />
