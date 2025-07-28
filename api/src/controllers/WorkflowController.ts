@@ -503,7 +503,7 @@ class WorkflowController {
   }
 
   // GET /api/workflows/templates - Get workflow templates
-  async getWorkflowTemplates(req: AuthRequest, res: Response): Promise<void> {
+  async getWorkflowTemplates(_req: AuthRequest, res: Response): Promise<void> {
     try {
       // Return basic templates for now
       const templates = [
