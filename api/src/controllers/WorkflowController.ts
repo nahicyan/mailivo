@@ -78,6 +78,11 @@ class WorkflowController {
               errorCount: 0,
               warningCount: 0
             },
+            health: {
+              grade: 'A',
+              score: 95,
+              lastCalculatedAt: new Date()
+            },
             stats: {
               ...workflowStats,
               conversionRate: workflowStats.totalRuns > 0 
