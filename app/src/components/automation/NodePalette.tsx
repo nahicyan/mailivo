@@ -114,7 +114,7 @@ const TRIGGER_TYPES = [
   },
   
   // E-commerce triggers
-  { 
+/*   { 
     id: 'cart_abandoned', 
     label: 'Cart Abandoned', 
     icon: ShoppingCart, 
@@ -122,7 +122,7 @@ const TRIGGER_TYPES = [
     category: 'ecommerce',
     description: 'Cart left inactive',
     requires: []
-  }
+  } */
 ];
 
 // Action types organized by functionality
@@ -232,7 +232,7 @@ const CONDITION_TYPES = [
   },
   
   // Purchase behavior
-  { 
+/*   { 
     id: 'purchase_history', 
     label: 'Purchase History', 
     icon: ShoppingCart, 
@@ -240,7 +240,7 @@ const CONDITION_TYPES = [
     category: 'ecommerce',
     description: 'Purchase activity',
     paths: 2
-  },
+  }, */
 ];
 
 export default function NodePalette({ 
