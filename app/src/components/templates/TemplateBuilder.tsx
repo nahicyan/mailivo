@@ -18,8 +18,17 @@ import { ComponentPalette } from './ComponentPalette';
 import { CanvasArea } from './CanvasArea';
 import { ComponentConfigurator } from './ComponentConfigurator';
 import { TemplatePreview } from './TemplatePreview';
-import { Save, Eye, Play, Settings, AlertTriangle } from 'lucide-react';
+import {
+  Eye,
+  Play,
+  Save,
+  Loader2,
+  AlertTriangle,
+  Clock,
+  CheckCircle
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 interface TemplateBuilderProps {
   template?: EmailTemplate;
@@ -164,7 +173,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
 
   const handleNameChange = (value: string) => {
     setCurrentTemplate(prev => ({ ...prev, name: value }));
-    
+
     // Clear name validation errors when user starts typing
     if (value.trim().length > 0) {
       setValidationErrors(prev => prev.filter(error => error.field !== 'name'));
@@ -173,7 +182,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
 
   const handleDescriptionChange = (value: string) => {
     setCurrentTemplate(prev => ({ ...prev, description: value }));
-    
+
     // Clear description validation errors when valid
     if (value.length <= 500) {
       setValidationErrors(prev => prev.filter(error => error.field !== 'description'));
@@ -182,7 +191,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
 
   const handleSave = async () => {
     setSaving(true);
-    
+
     try {
       // Validate template
       const errors = validateTemplate(currentTemplate);
@@ -206,7 +215,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
       toast.success('Template saved successfully!');
     } catch (error: any) {
       console.error('Save error:', error);
-      
+
       // Handle specific error cases
       if (error.response?.status === 409 || error.message?.includes('duplicate')) {
         setValidationErrors([{ field: 'name', message: 'A template with this name already exists' }]);
@@ -282,76 +291,140 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
             </div>
           )}
 
-          {/* Toolbar */}
-          <div className="border-b p-4 bg-white shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 min-w-0 flex-1">
-                <div className="min-w-0 flex-1">
-                  <div className="space-y-2">
-                    <div>
-                      <Label htmlFor="template-name">Template Name *</Label>
-                      <Input
-                        id="template-name"
-                        value={currentTemplate.name}
-                        onChange={(e) => handleNameChange(e.target.value)}
-                        className={`text-lg font-semibold ${getFieldError('name') ? 'border-red-500' : ''}`}
-                        placeholder="Template Name"
-                        required
-                      />
-                      {getFieldError('name') && (
-                        <p className="text-sm text-red-600 mt-1">{getFieldError('name')!.message}</p>
-                      )}
+          {/* Improved Toolbar with better spacing and organization */}
+          <div className="border-b bg-white shrink-0">
+            {/* Header with title and actions */}
+            <div className="px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Template Builder</h1>
+                  <p className="text-sm text-gray-600 mt-1">Design and customize your email template</p>
+                </div>
+
+                {/* Action Buttons - Improved layout */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPreviewMode(true)}
+                    className="flex items-center gap-2 px-4 py-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span className="hidden sm:inline">Preview</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => onTest(currentTemplate)}
+                    disabled={validationErrors.length > 0}
+                    className="flex items-center gap-2 px-4 py-2"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span className="hidden sm:inline">Test</span>
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || validationErrors.length > 0}
+                    className="flex items-center gap-2 px-4 py-2 min-w-[120px]"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="hidden sm:inline">Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        <span className="hidden sm:inline">Save Template</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Template Information Form - Improved layout */}
+            <div className="px-6 py-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Template Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="template-name" className="text-sm font-medium text-gray-700">
+                    Template Name *
+                  </Label>
+                  <Input
+                    id="template-name"
+                    value={currentTemplate.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className={`h-10 text-base ${getFieldError('name') ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`}
+                    placeholder="Enter template name"
+                    required
+                  />
+                  {getFieldError('name') && (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>{getFieldError('name')!.message}</span>
                     </div>
-                    <div>
-                      <Label htmlFor="template-description">Description</Label>
-                      <Input
-                        id="template-description"
-                        value={currentTemplate.description || ''}
-                        onChange={(e) => handleDescriptionChange(e.target.value)}
-                        className={`text-sm text-muted-foreground ${getFieldError('description') ? 'border-red-500' : ''}`}
-                        placeholder="Template description..."
-                        maxLength={500}
-                      />
-                      {getFieldError('description') && (
-                        <p className="text-sm text-red-600 mt-1">{getFieldError('description')!.message}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {currentTemplate.description?.length || 0}/500 characters
-                      </p>
+                  )}
+                </div>
+
+                {/* Template Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="template-description" className="text-sm font-medium text-gray-700">
+                    Description
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="template-description"
+                      value={currentTemplate.description || ''}
+                      onChange={(e) => handleDescriptionChange(e.target.value)}
+                      className={`h-10 text-base pr-16 ${getFieldError('description') ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`}
+                      placeholder="Add a description for your template"
+                      maxLength={500}
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <span className="text-xs text-gray-500 bg-white px-1">
+                        {currentTemplate.description?.length || 0}/500
+                      </span>
                     </div>
                   </div>
+                  {getFieldError('description') && (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>{getFieldError('description')!.message}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="flex gap-2 shrink-0">
-                <Button variant="outline" onClick={() => setPreviewMode(true)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Preview
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => onTest(currentTemplate)}
-                  disabled={validationErrors.length > 0}
-                >
-                  <Play className="mr-2 h-4 w-4" />
-                  Test
-                </Button>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={saving || validationErrors.length > 0}
-                >
-                  {saving ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Template
-                    </>
-                  )}
-                </Button>
+              {/* Template Stats and Quick Actions */}
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>{currentTemplate.components?.length || 0} Components</span>
+                    </div>
+                    {currentTemplate.updatedAt && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        <span>Last updated: {new Date(currentTemplate.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Status Indicator */}
+                  <div className="flex items-center gap-2">
+                    {validationErrors.length > 0 ? (
+                      <Badge variant="destructive" className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {validationErrors.length} Error{validationErrors.length > 1 ? 's' : ''}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Ready to save
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
