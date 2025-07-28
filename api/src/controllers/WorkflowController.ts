@@ -3,46 +3,50 @@ import { Response } from 'express';
 import Workflow from '../models/Workflow';
 import WorkflowExecution from '../models/WorkflowExecution';
 import { AuthRequest } from '../middleware/auth.middleware';
-// import { WorkflowValidator } from '../lib/workflow-validation'; // Optional
 
 class WorkflowController {
   
+  // Helper method to transform MongoDB documents
+  private transformWorkflow(workflow: any) {
+    if (!workflow) return null;
+    
+    const transformed = {
+      ...workflow,
+      id: workflow._id?.toString(),
+    };
+    
+    // Remove _id and __v from response
+    delete transformed._id;
+    delete transformed.__v;
+    
+    return transformed;
+  }
+
   // GET /api/workflows - List workflows with filtering and pagination
   async getWorkflows(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const {
-        page = 1,
-        limit = 10,
-        search,
-        status,
-        category
-      } = req.query;
-
+      const { page = 1, limit = 10, search, status, category } = req.query;
       const userId = req.user?._id;
+
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
-      // Build filter query
       const filter: any = { userId };
-      
       if (search) {
         filter.$or = [
           { name: { $regex: search, $options: 'i' } },
           { description: { $regex: search, $options: 'i' } }
         ];
       }
-      
-      if (status) {
+      if (status && status !== 'all') {
         filter.isActive = status === 'active';
       }
-      
-      if (category) {
+      if (category && category !== 'all') {
         filter.category = category;
       }
 
-      // Execute query with pagination
       const skip = (Number(page) - 1) * Number(limit);
       const [workflows, total] = await Promise.all([
         Workflow.find(filter)
@@ -53,35 +57,42 @@ class WorkflowController {
         Workflow.countDocuments(filter)
       ]);
 
-      // Add validation status and stats to each workflow
+      // Transform workflows with proper ID mapping and add metadata
       const workflowsWithMeta = await Promise.all(
-        workflows.map(async (workflow: any) => {
-          // Get basic stats from executions
+        workflows.map(async (workflow) => {
+          const workflowId = workflow._id.toString();
+          
+          // Get workflow statistics
           const stats = await WorkflowExecution.aggregate([
-            { $match: { workflowId: workflow._id.toString() } },
+            { $match: { workflowId } },
             {
               $group: {
                 _id: null,
                 totalRuns: { $sum: 1 },
                 successfulRuns: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
-                failedRuns: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } }
+                failedRuns: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } },
+                avgExecutionTime: { $avg: '$duration' }
               }
             }
           ]);
 
-          const workflowStats = stats[0] || { totalRuns: 0, successfulRuns: 0, failedRuns: 0 };
+          const workflowStats = stats[0] || { 
+            totalRuns: 0, 
+            successfulRuns: 0, 
+            failedRuns: 0, 
+            avgExecutionTime: 0 
+          };
 
           return {
-            ...workflow,
+            ...this.transformWorkflow(workflow),
             validation: {
               isValid: true,
               errorCount: 0,
               warningCount: 0
             },
             health: {
-              grade: 'A',
-              score: 95,
-              lastCalculatedAt: new Date()
+              score: 85,
+              grade: 'A'
             },
             stats: {
               ...workflowStats,
@@ -93,8 +104,17 @@ class WorkflowController {
         })
       );
 
+      // Calculate summary
+      const summary = {
+        total: total,
+        active: workflowsWithMeta.filter(w => w.isActive).length,
+        draft: workflowsWithMeta.filter(w => !w.isActive).length,
+        healthy: workflowsWithMeta.filter(w => w.health.grade === 'A').length
+      };
+
       res.json({
         workflows: workflowsWithMeta,
+        summary,
         pagination: {
           page: Number(page),
           limit: Number(limit),
@@ -120,6 +140,12 @@ class WorkflowController {
 
       if (!userId) {
         res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      // Validate ObjectId format to prevent casting errors
+      if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+        res.status(400).json({ error: 'Invalid workflow ID format' });
         return;
       }
 
@@ -156,15 +182,21 @@ class WorkflowController {
         avgExecutionTime: 0 
       };
 
+      // Transform and return workflow with proper ID
+      const transformedWorkflow = this.transformWorkflow(workflow);
+      
       res.json({
-        ...workflow,
+        ...transformedWorkflow,
         stats: {
           ...workflowStats,
           conversionRate: workflowStats.totalRuns > 0 
             ? (workflowStats.successfulRuns / workflowStats.totalRuns) * 100 
             : 0
         },
-        recentExecutions: executions
+        recentExecutions: executions.map(exec => ({
+          ...exec,
+          id: exec._id?.toString()
+        }))
       });
 
     } catch (error) {
@@ -195,7 +227,7 @@ class WorkflowController {
       const workflow = new Workflow(workflowData);
       await workflow.save();
 
-      res.status(201).json(workflow);
+      res.status(201).json(this.transformWorkflow(workflow.toObject()));
 
     } catch (error) {
       console.error('Error creating workflow:', error);
@@ -226,14 +258,14 @@ class WorkflowController {
         { _id: id, userId },
         updateData,
         { new: true, runValidators: true }
-      );
+      ).lean();
 
       if (!workflow) {
         res.status(404).json({ error: 'Workflow not found' });
         return;
       }
 
-      res.json(workflow);
+      res.json(this.transformWorkflow(workflow));
 
     } catch (error) {
       console.error('Error updating workflow:', error);
@@ -300,7 +332,7 @@ class WorkflowController {
       await workflow.save();
 
       res.json({
-        id: workflow._id,
+        id: workflow._id.toString(),
         isActive: workflow.isActive,
         message: `Workflow ${workflow.isActive ? 'activated' : 'deactivated'} successfully`
       });
@@ -344,7 +376,7 @@ class WorkflowController {
 
       await duplicatedWorkflow.save();
 
-      res.status(201).json(duplicatedWorkflow);
+      res.status(201).json(this.transformWorkflow(duplicatedWorkflow.toObject()));
 
     } catch (error) {
       console.error('Error duplicating workflow:', error);
@@ -437,7 +469,10 @@ class WorkflowController {
       ]);
 
       res.json({
-        data: executions,
+        data: executions.map(exec => ({
+          ...exec,
+          id: exec._id?.toString()
+        })),
         pagination: {
           page: Number(page),
           limit: Number(limit),
@@ -493,7 +528,7 @@ class WorkflowController {
       await execution.save();
 
       res.json({
-        executionId: execution._id,
+        executionId: execution._id.toString(),
         status: execution.status,
         message: testMode ? 'Workflow test completed successfully' : 'Workflow executed successfully'
       });
@@ -567,7 +602,7 @@ class WorkflowController {
       const workflow = new Workflow(templateWorkflow);
       await workflow.save();
 
-      res.status(201).json(workflow);
+      res.status(201).json(this.transformWorkflow(workflow.toObject()));
 
     } catch (error) {
       console.error('Error creating workflow from template:', error);
@@ -639,7 +674,7 @@ class WorkflowController {
 
       res.json({
         execution: { 
-          id: execution._id, 
+          id: execution._id.toString(), 
           status: 'completed' 
         },
         testMode: true,
