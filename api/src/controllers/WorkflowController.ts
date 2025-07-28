@@ -195,7 +195,7 @@ class WorkflowController {
         },
         recentExecutions: executions.map(exec => ({
           ...exec,
-          id: exec._id?.toString()
+          id: (exec._id as any)?.toString()
         }))
       });
 
@@ -332,7 +332,7 @@ class WorkflowController {
       await workflow.save();
 
       res.json({
-        id: workflow._id.toString(),
+        id: (workflow._id as any).toString(),
         isActive: workflow.isActive,
         message: `Workflow ${workflow.isActive ? 'activated' : 'deactivated'} successfully`
       });
@@ -471,7 +471,7 @@ class WorkflowController {
       res.json({
         data: executions.map(exec => ({
           ...exec,
-          id: exec._id?.toString()
+          id: (exec._id as any)?.toString()
         })),
         pagination: {
           page: Number(page),
@@ -528,7 +528,7 @@ class WorkflowController {
       await execution.save();
 
       res.json({
-        executionId: execution._id.toString(),
+        executionId: (execution._id as any).toString(),
         status: execution.status,
         message: testMode ? 'Workflow test completed successfully' : 'Workflow executed successfully'
       });
@@ -674,7 +674,7 @@ class WorkflowController {
 
       res.json({
         execution: { 
-          id: execution._id.toString(), 
+          id: (execution._id as any).toString(), 
           status: 'completed' 
         },
         testMode: true,
