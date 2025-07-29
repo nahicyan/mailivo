@@ -1,33 +1,58 @@
-// app/src/emails/components/PropertyHighlights.tsx
-import { Section } from '@react-email/components';
+import React from 'react';
 
-interface HighlightItem {
-  icon: string;
-  value: string;
-  label: string;
+interface HeaderProps {
+  className?: string;
+  showBottomBorder?: boolean;
 }
 
-interface PropertyHighlightsProps {
-  highlights: HighlightItem[];
-  backgroundColor?: string;
-}
-
-export function PropertyHighlights({ highlights, backgroundColor = 'white' }: PropertyHighlightsProps) {
+const Header: React.FC<HeaderProps> = ({ 
+  className = '', 
+  showBottomBorder = true
+}) => {
   return (
-    <Section className="px-6 py-6" style={{ backgroundColor }}>
-      <div className="grid grid-cols-4 gap-2">
-        {highlights.map((highlight, index) => (
-          <div key={index} className="text-center p-3">
-            <div className="w-12 h-12 bg-gray-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
-              <span className="text-xl">{highlight.icon}</span>
-            </div>
-            <div className="text-lg font-bold text-gray-900 mb-1">
-              {highlight.value}
-            </div>
-            <div className="text-xs text-gray-600">{highlight.label}</div>
+    <header className={`w-full ${className}`}>
+      {/* Email-optimized header with table-based layout for better compatibility */}
+      <div className="bg-white px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl">
+          {/* Logo container - centered with proper spacing */}
+          <div className="text-center">
+            <table className="w-full" cellPadding="0" cellSpacing="0" style={{ width: '100%' }}>
+              <tbody>
+                <tr>
+                  <td align="center" style={{ padding: '20px 0' }}>
+                    <img
+                      src="https://cdn.landivo.com/wp-content/uploads/2025/04/logo.svg"
+                      alt="Company Logo"
+                      className="inline-block max-w-full h-auto"
+                      style={{
+                        display: 'block',
+                        margin: '0 auto',
+                        maxWidth: '250px',
+                        width: 'auto',
+                        height: 'auto',
+                        maxHeight: '80px',
+                      }}
+                      width="250"
+                      height="80"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        ))}
+        </div>
       </div>
-    </Section>
+      
+      {/* Elegant bottom border */}
+      {showBottomBorder && (
+        <div className="border-b-2 border-gray-200" style={{ borderBottom: '2px solid #e5e7eb' }}></div>
+      )}
+    </header>
   );
-}
+};
+
+// Named export
+export { Header };
+
+// Default export
+export default Header;
