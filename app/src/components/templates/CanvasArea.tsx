@@ -112,7 +112,6 @@ function SortableComponent({
 
 
       case 'property-image':
-        // Define availableImages within this case scope
         const availableImages = (() => {
           try {
             if (!propertyData?.imageUrls) return [];
@@ -124,11 +123,25 @@ function SortableComponent({
           }
         })();
 
+        const selectedIndex = component.props.selectedImageIndex || 0;
+        const selectedImage = availableImages[selectedIndex];
+
         return (
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-            <div className="w-full h-32 bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
-              <ImageIcon className="h-8 w-8 text-gray-400" />
-            </div>
+            {selectedImage ? (
+              <img
+                src={`https://api.landivo.com/${selectedImage}`}
+                alt="Property preview"
+                className="w-full h-32 object-cover rounded-lg mb-2"
+                onError={(e) => {
+                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZjNmNGY2Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjk3NTg2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSBOb3QgRm91bmQ8L3RleHQ+PC9zdmc+';
+                }}
+              />
+            ) : (
+              <div className="w-full h-32 bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
+                <ImageIcon className="h-8 w-8 text-gray-400" />
+              </div>
+            )}
             <p className="text-sm text-gray-600">
               Property Image ({availableImages.length} images)
             </p>

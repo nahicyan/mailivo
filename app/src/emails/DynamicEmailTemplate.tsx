@@ -106,7 +106,7 @@ export function DynamicEmailTemplate({ template, data }: DynamicEmailTemplatePro
             streetAddress={propertyData?.streetAddress}
             city={propertyData?.city}
             state={propertyData?.state}
-            serverURL={serverURL}
+            serverURL={props.serverURL}
             {...props}
           />
         );
