@@ -19,11 +19,11 @@ interface ComponentConfiguratorProps {
   onUpdateTemplate: (template: EmailTemplate) => void;
 }
 
-export function ComponentConfigurator({ 
-  component, 
-  onUpdate, 
-  template, 
-  onUpdateTemplate 
+export function ComponentConfigurator({
+  component,
+  onUpdate,
+  template,
+  onUpdateTemplate,
 }: ComponentConfiguratorProps) {
   // Handle case where no component is selected
   if (!component) {
@@ -46,11 +46,11 @@ export function ComponentConfigurator({
                 Select a component from the canvas to configure its settings
               </p>
             </div>
-            
+
             {/* Template Global Settings */}
             <div className="space-y-4 pt-4 border-t">
               <h4 className="font-medium text-gray-900">Template Settings</h4>
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Background Color</Label>
                 <div className="flex gap-2">
@@ -111,8 +111,8 @@ export function ComponentConfigurator({
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Font Family</Label>
-                <Select 
-                  value={template.settings?.fontFamily || 'Arial, sans-serif'} 
+                <Select
+                  value={template.settings?.fontFamily || 'Arial, sans-serif'}
                   onValueChange={(val) => onUpdateTemplate({
                     ...template,
                     settings: {
@@ -195,14 +195,14 @@ export function ComponentConfigurator({
     const keys = key.split('.');
     const newProps = { ...component.props };
     let current = newProps;
-    
+
     for (let i = 0; i < keys.length - 1; i++) {
       if (!current[keys[i]]) current[keys[i]] = {};
       current = current[keys[i]];
     }
-    
+
     current[keys[keys.length - 1]] = value;
-    
+
     // Update the component using the onUpdate callback
     onUpdate(component.id, { props: newProps });
   };
@@ -266,8 +266,8 @@ export function ComponentConfigurator({
 
       case 'select':
         return (
-          <Select 
-            value={getStringValue(field.key)} 
+          <Select
+            value={getStringValue(field.key)}
             onValueChange={(val) => setValue(field.key, val)}
           >
             <SelectTrigger>
@@ -285,10 +285,10 @@ export function ComponentConfigurator({
 
       case 'array':
         return (
-          <ArrayField 
-            field={field} 
-            value={getArrayValue(field.key)} 
-            setValue={setValue} 
+          <ArrayField
+            field={field}
+            value={getArrayValue(field.key)}
+            setValue={setValue}
           />
         );
 
@@ -296,6 +296,89 @@ export function ComponentConfigurator({
         return null;
     }
   };
+  // Special handling for property-image component
+  if (component.type === 'property-image') {
+    // Get available images from template context or property data
+    const propertyData = template.propertyData; // You'll need to pass this
+    const availableImages = React.useMemo(() => {
+      if (!propertyData?.imageUrls) return [];
+      try {
+        return Array.isArray(propertyData.imageUrls)
+          ? propertyData.imageUrls
+          : JSON.parse(propertyData.imageUrls);
+      } catch {
+        return [];
+      }
+    }, [propertyData?.imageUrls]);
+
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              🖼️ Property Image
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-96">
+            <div className="space-y-4">
+              {/* Image Selection Dropdown */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Select Image</Label>
+                <Select
+                  value={component.props.selectedImageIndex?.toString() || '0'}
+                  onValueChange={(value) => setValue('selectedImageIndex', parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an image..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableImages.map((imagePath: string, index: number) => (
+                      <SelectItem key={index} value={index.toString()}>
+                        Image {index + 1} - {imagePath.split('/').pop()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  {availableImages.length} images available
+                </p>
+              </div>
+
+              {/* Image Preview */}
+              {availableImages.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Preview</Label>
+                  <div className="border rounded-lg overflow-hidden">
+                    <img
+                      src={`https://api.landivo.com/${availableImages[component.props.selectedImageIndex || 0]}`}
+                      alt="Selected property image"
+                      className="w-full h-32 object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDIwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZjNmNGY2Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjk3NTg2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5JbWFnZSBOb3QgRm91bmQ8L3RleHQ+Cjwvc3ZnPgo=';
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Render other standard fields */}
+              {definition.configFields?.filter(field => field.key !== 'selectedImageIndex').map(field => (
+                <div key={field.key} className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                  </Label>
+                  {renderField(field)}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="h-full">
@@ -305,9 +388,9 @@ export function ComponentConfigurator({
             {definition.icon && <span>{definition.icon}</span>}
             {definition.name}
           </CardTitle>
-          <Button 
-            variant="destructive" 
-            size="sm" 
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={() => onUpdate(component.id, { _delete: true })}
           >
             <Trash2 className="h-4 w-4" />
@@ -342,12 +425,12 @@ function ArrayField({ field, value, setValue }: {
   setValue: (key: string, value: any) => void;
 }) {
   const addItem = () => {
-    const newItem = field.key.includes('highlights') 
+    const newItem = field.key.includes('highlights')
       ? { icon: '📏', value: 'New Value', label: 'Label' }
       : field.key.includes('details')
-      ? { label: 'Detail', value: 'Value' }
-      : 'New Item';
-    
+        ? { label: 'Detail', value: 'Value' }
+        : 'New Item';
+
     setValue(field.key, [...value, newItem]);
   };
 
@@ -357,7 +440,7 @@ function ArrayField({ field, value, setValue }: {
 
   const updateItem = (index: number, updates: any) => {
     const newValue = [...value];
-    newValue[index] = typeof newValue[index] === 'object' 
+    newValue[index] = typeof newValue[index] === 'object'
       ? { ...newValue[index], ...updates }
       : updates;
     setValue(field.key, newValue);

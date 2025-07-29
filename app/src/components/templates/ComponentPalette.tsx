@@ -24,11 +24,10 @@ function DraggableComponent({ type, definition, onAdd }: {
   });
 
   return (
-    <Card 
+    <Card
       ref={setNodeRef}
-      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
-        isDragging ? 'opacity-30' : ''
-      }`}
+      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${isDragging ? 'opacity-30' : ''
+        }`}
       {...listeners}
       {...attributes}
     >
@@ -63,7 +62,7 @@ function DraggableComponent({ type, definition, onAdd }: {
 export function ComponentPalette({ onAddComponent }: ComponentPaletteProps) {
   const categories = {
     layout: ['header', 'footer', 'spacer'],
-    content: ['text', 'property-highlights', 'property-details'],
+    content: ['text', 'property-highlights', 'property-details', 'property-image'],
     interactive: ['payment-calculator', 'buyer-guidelines']
   };
 

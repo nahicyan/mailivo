@@ -21,6 +21,36 @@ export const componentDefinitions: ComponentDefinition[] = [
     ]
   },
   {
+  type: 'property-image',
+  name: 'Property Image',
+  icon: '🖼️',
+  description: 'Display property images with selection dropdown',
+  defaultProps: {
+    selectedImageIndex: 0,
+    width: '100%',
+    height: 'auto',
+    borderRadius: '8px',
+    showCaption: true,
+    linkToProperty: false,
+    backgroundColor: 'transparent',
+    padding: '20px',
+    captionText: '',
+    propertyUrl: '#'
+  },
+  configFields: [
+    { key: 'selectedImageIndex', label: 'Selected Image', type: 'number', required: false },
+    { key: 'width', label: 'Width', type: 'text', placeholder: '100%' },
+    { key: 'height', label: 'Height', type: 'text', placeholder: 'auto' },
+    { key: 'borderRadius', label: 'Border Radius', type: 'text', placeholder: '8px' },
+    { key: 'showCaption', label: 'Show Caption', type: 'boolean' },
+    { key: 'captionText', label: 'Custom Caption', type: 'text', placeholder: 'Leave empty for auto caption' },
+    { key: 'linkToProperty', label: 'Link to Property', type: 'boolean' },
+    { key: 'propertyUrl', label: 'Property URL', type: 'text', placeholder: 'https://example.com/property/123' },
+    { key: 'backgroundColor', label: 'Background Color', type: 'color' },
+    { key: 'padding', label: 'Padding', type: 'text', placeholder: '20px' }
+  ]
+},
+  {
     type: 'property-highlights',
     name: 'Property Highlights',
     icon: '⭐',

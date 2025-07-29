@@ -1,7 +1,7 @@
 // app/src/types/template.ts
 export interface EmailComponent {
   id: string;
-  type: 'header' | 'property-highlights' | 'property-details' | 'payment-calculator' | 'buyer-guidelines' | 'footer' | 'spacer' | 'text';
+  type: 'header' | 'property-image' | 'property-highlights' | 'property-details' | 'payment-calculator' | 'buyer-guidelines' | 'footer' | 'spacer' | 'text';
   name: string;
   icon: string;
   props: Record<string, any>;

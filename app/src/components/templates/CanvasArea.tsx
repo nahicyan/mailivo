@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { componentDefinitions } from '@/data/componentDefinitions';
-import { 
-  GripVertical, 
-  Trash2, 
-  Settings, 
+import {
+  GripVertical,
+  Trash2,
+  Settings,
   Eye,
   Home,
   FileText,
@@ -19,7 +19,8 @@ import {
   Info,
   Mail,
   Minus,
-  Plus
+  Plus,
+  ImageIcon
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -40,12 +41,12 @@ interface SortableComponentProps {
   propertyData: LandivoProperty | null;
 }
 
-function SortableComponent({ 
-  component, 
-  isSelected, 
-  onSelect, 
+function SortableComponent({
+  component,
+  isSelected,
+  onSelect,
   onRemove,
-  propertyData 
+  propertyData
 }: SortableComponentProps) {
   const {
     attributes,
@@ -63,11 +64,12 @@ function SortableComponent({
   };
 
   const definition = componentDefinitions.find(def => def.type === component.type);
-  
+
   // Get icon for component type
   const getComponentIcon = (type: string) => {
     switch (type) {
       case 'header': return <Home className="h-4 w-4" />;
+      case 'property-image': return <Home className="h-4 w-4" />;
       case 'property-highlights': return <Eye className="h-4 w-4" />;
       case 'property-details': return <FileText className="h-4 w-4" />;
       case 'payment-calculator': return <Calculator className="h-4 w-4" />;
@@ -82,16 +84,16 @@ function SortableComponent({
   // Render component preview with real data
   const renderComponentPreview = () => {
     const props = { ...component.props, ...propertyData };
-    
+
     switch (component.type) {
       case 'header':
         return (
-          <div 
+          <div
             className="p-6 text-center"
-            style={{ 
+            style={{
               backgroundColor: props.backgroundColor || '#f8f9fa',
-              backgroundImage: props.imageUrl || propertyData?.primaryImageUrl 
-                ? `url(${props.imageUrl || propertyData?.primaryImageUrl})` 
+              backgroundImage: props.imageUrl || propertyData?.primaryImageUrl
+                ? `url(${props.imageUrl || propertyData?.primaryImageUrl})`
                 : 'none',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
@@ -107,7 +109,25 @@ function SortableComponent({
             </p>
           </div>
         );
-      
+
+
+      case 'property-image':
+        return (
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+            <div className="w-full h-32 bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
+              <ImageIcon className="h-8 w-8 text-gray-400" />
+            </div>
+            <p className="text-sm text-gray-600">
+              Property Image ({availableImages?.length || 0} images)
+            </p>
+            {props.showCaption && (
+              <p className="text-xs text-gray-500 mt-1">
+                {props.captionText || propertyData?.title || 'Property Caption'}
+              </p>
+            )}
+          </div>
+        );
+
       case 'property-highlights':
         return (
           <div className="p-6 bg-gray-50">
@@ -127,7 +147,7 @@ function SortableComponent({
             </div>
           </div>
         );
-      
+
       case 'property-details':
         return (
           <div className="p-6">
@@ -144,7 +164,7 @@ function SortableComponent({
             </div>
           </div>
         );
-      
+
       case 'payment-calculator':
         return (
           <div className="p-6 bg-blue-50">
@@ -169,7 +189,7 @@ function SortableComponent({
             </div>
           </div>
         );
-      
+
       case 'buyer-guidelines':
         return (
           <div className="p-6 bg-green-50">
@@ -182,7 +202,7 @@ function SortableComponent({
             </div>
           </div>
         );
-      
+
       case 'footer':
         return (
           <div className="p-6 bg-gray-800 text-white text-center">
@@ -195,11 +215,11 @@ function SortableComponent({
             </div>
           </div>
         );
-      
+
       case 'spacer':
         return (
-          <div 
-            style={{ 
+          <div
+            style={{
               height: props.height || 20,
               backgroundColor: props.backgroundColor || 'transparent',
               borderTop: '1px dashed #ddd',
@@ -210,27 +230,27 @@ function SortableComponent({
             Spacer ({props.height || 20}px)
           </div>
         );
-      
+
       case 'text':
         return (
-          <div 
+          <div
             className="p-6"
             style={{ backgroundColor: props.backgroundColor }}
           >
-            <div 
-              style={{ 
+            <div
+              style={{
                 textAlign: props.textAlign || 'left',
                 fontSize: (props.fontSize || 14) + 'px',
                 color: props.color || '#000000',
                 lineHeight: '1.5'
               }}
-              dangerouslySetInnerHTML={{ 
-                __html: props.content || 'Add your text content here...' 
+              dangerouslySetInnerHTML={{
+                __html: props.content || 'Add your text content here...'
               }}
             />
           </div>
         );
-      
+
       default:
         return (
           <div className="p-6 text-center text-gray-500">
@@ -248,12 +268,11 @@ function SortableComponent({
       style={style}
       className={`group relative ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
     >
-      <Card 
-        className={`cursor-pointer transition-all duration-200 ${
-          isSelected 
-            ? 'border-blue-500 shadow-md' 
-            : 'hover:border-gray-400 hover:shadow-sm'
-        }`}
+      <Card
+        className={`cursor-pointer transition-all duration-200 ${isSelected
+          ? 'border-blue-500 shadow-md'
+          : 'hover:border-gray-400 hover:shadow-sm'
+          }`}
         onClick={onSelect}
       >
         {/* Component Header */}
@@ -266,9 +285,9 @@ function SortableComponent({
             >
               <GripVertical className="h-4 w-4 text-gray-500" />
             </div>
-            
+
             {getComponentIcon(component.type)}
-            
+
             <div>
               <span className="text-sm font-medium">
                 {definition?.name || component.type}
@@ -278,7 +297,7 @@ function SortableComponent({
               </Badge>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1">
             {component.props?.visible !== false && (
               <Eye className="h-3 w-3 text-green-600" />
@@ -315,9 +334,8 @@ function DroppableCanvas({ children, isEmpty }: { children: React.ReactNode; isE
     return (
       <div
         ref={setNodeRef}
-        className={`flex-1 flex items-center justify-center bg-gray-50 min-h-96 border-2 border-dashed transition-colors ${
-          isOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
-        }`}
+        className={`flex-1 flex items-center justify-center bg-gray-50 min-h-96 border-2 border-dashed transition-colors ${isOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
+          }`}
       >
         <div className="text-center">
           <div className="w-24 h-24 mx-auto mb-4 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -394,7 +412,7 @@ export function CanvasArea({
                     </Badge>
                   </div>
                 </div>
-                
+
                 <div className="max-w-2xl mx-auto">
                   {template.components
                     .sort((a, b) => a.order - b.order)
