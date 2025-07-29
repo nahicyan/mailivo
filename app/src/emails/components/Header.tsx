@@ -2,44 +2,57 @@ import React from 'react';
 
 interface HeaderProps {
   className?: string;
+  showBottomBorder?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ className = '' }) => {
+function Header({ 
+  className = '', 
+  showBottomBorder = true
+}: HeaderProps) {
   return (
     <header className={`w-full ${className}`}>
-      {/* Main header container with gradient background */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-100 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl">
-          {/* Logo container with centered alignment */}
-          <div className="flex items-center justify-center">
-            <div className="flex items-center space-x-4">
-              {/* Logo image */}
-              <div className="flex-shrink-0">
-                <img
-                  src="https://cdn.landivo.com/wp-content/uploads/2025/04/logo.svg"
-                  alt="Company Logo"
-                  className="h-12 w-auto sm:h-16 md:h-20 transition-all duration-300 hover:scale-105"
-                  style={{
-                    maxWidth: '200px',
-                    height: 'auto',
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* Optional tagline section */}
-          <div className="mt-4 text-center">
-            <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+      {/* Email-optimized header with table-based layout for better compatibility */}
+      <div className="bg-white px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl">
+          {/* Logo container - centered with proper spacing */}
+          <div className="text-center">
+            <table className="w-full" cellPadding="0" cellSpacing="0" style={{ width: '100%' }}>
+              <tbody>
+                <tr>
+                  <td align="center" style={{ padding: '20px 0' }}>
+                    <img
+                      src="https://cdn.landivo.com/wp-content/uploads/2025/04/logo.svg"
+                      alt="Company Logo"
+                      className="inline-block max-w-full h-auto"
+                      style={{
+                        display: 'block',
+                        margin: '0 auto',
+                        maxWidth: '250px',
+                        width: 'auto',
+                        height: 'auto',
+                        maxHeight: '80px',
+                      }}
+                      width="250"
+                      height="80"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
       
-      {/* Bottom border accent */}
-      <div className="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+      {/* Elegant bottom border */}
+      {showBottomBorder && (
+        <div className="border-b-2 border-gray-200" style={{ borderBottom: '2px solid #e5e7eb' }}></div>
+      )}
     </header>
   );
-};
+}
 
-// Default export
+// Named export to match your import pattern
+export { Header };
+
+// Default export for flexibility
 export default Header;
