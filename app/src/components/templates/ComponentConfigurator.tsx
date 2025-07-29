@@ -1,5 +1,6 @@
 // app/src/components/templates/ComponentConfigurator.tsx
 import React from 'react';
+import { useMemo } from 'react';
 import { EmailComponent, ComponentConfigField, EmailTemplate } from '@/types/template';
 import { componentDefinitions } from '@/data/componentDefinitions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -301,9 +302,7 @@ export function ComponentConfigurator({
   };
   // Special handling for property-image component
   if (component.type === 'property-image') {
-    // Get available images from template context or property data
-    const propertyData = template.propertyData; // You'll need to pass this
-    const availableImages = React.useMemo(() => {
+    const availableImages = useMemo(() => {
       if (!propertyData?.imageUrls) return [];
       try {
         return Array.isArray(propertyData.imageUrls)
@@ -311,7 +310,6 @@ export function ComponentConfigurator({
           : JSON.parse(propertyData.imageUrls);
       } catch {
         return [];
-
       }
     }, [propertyData?.imageUrls]);
     console.log('PropertyData in ComponentConfigurator:', propertyData);
