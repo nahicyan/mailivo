@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2, Plus, Settings } from 'lucide-react';
+import { LandivoProperty } from '@/types/landivo';
 
 interface ComponentConfiguratorProps {
   component: EmailComponent | null;
