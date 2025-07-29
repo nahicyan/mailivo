@@ -507,6 +507,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                   onUpdate={handleUpdateComponent}
                   template={currentTemplate}
                   onUpdateTemplate={setCurrentTemplate}
+                  propertyData={selectedProperty}
                 />
               </div>
             </ScrollArea>

@@ -17,6 +17,7 @@ interface ComponentConfiguratorProps {
   onUpdate: (componentId: string, updates: Partial<EmailComponent>) => void;
   template: EmailTemplate;
   onUpdateTemplate: (template: EmailTemplate) => void;
+  propertyData?: LandivoProperty | null;
 }
 
 export function ComponentConfigurator({
@@ -24,6 +25,7 @@ export function ComponentConfigurator({
   onUpdate,
   template,
   onUpdateTemplate,
+  propertyData,
 }: ComponentConfiguratorProps) {
   // Handle case where no component is selected
   if (!component) {
