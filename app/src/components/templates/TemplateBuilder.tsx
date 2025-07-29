@@ -115,6 +115,8 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
     const newComponent: EmailComponent = {
       id: `${componentType}-${Date.now()}`,
       type: componentType,
+      name: definition.name,
+      icon: definition.icon,
       order: currentTemplate.components.length,
       props: { ...definition.defaultProps }
     };
