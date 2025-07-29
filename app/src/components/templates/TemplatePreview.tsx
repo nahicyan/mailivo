@@ -15,6 +15,16 @@ export function TemplatePreview({ template, data }: TemplatePreviewProps) {
   const [loading, setLoading] = useState(true);
   const [propertyData, setPropertyData] = useState<LandivoProperty | null>(null);
 
+  // Clean HTML to remove scripts and event handlers for email safety
+  const cleanHtmlForEmail = (html: string): string => {
+    return html
+      .replace(/<script[^>]*>.*?<\/script>/gis, '')
+      .replace(/on\w+="[^"]*"/gi, '')
+      .replace(/javascript:/gi, '')
+      .replace(/vbscript:/gi, '')
+      .replace(/<link[^>]*rel=["']?stylesheet["']?[^>]*>/gi, ''); // Remove external stylesheets for email safety
+  };
+
   // Fetch real property data from Landivo API
   useEffect(() => {
     const fetchPropertyData = async () => {
@@ -52,10 +62,12 @@ export function TemplatePreview({ template, data }: TemplatePreviewProps) {
             data: templateData
           })
         );
-        setHtmlContent(html);
+        
+        // Clean the HTML before setting it
+        setHtmlContent(cleanHtmlForEmail(html));
       } catch (error) {
         console.error('Error generating preview:', error);
-        setHtmlContent('<p>Error generating preview</p>');
+        setHtmlContent('<p style="color: red; padding: 20px; text-align: center;">Error generating preview</p>');
       } finally {
         setLoading(false);
       }
