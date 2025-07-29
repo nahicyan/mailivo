@@ -1,5 +1,6 @@
 // app/src/components/templates/CanvasArea.tsx
 import { useSortable } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { EmailComponent, EmailTemplate } from '@/types/template';
 import { LandivoProperty } from '@/types/landivo';
@@ -12,14 +13,13 @@ import {
   Trash2, 
   Settings, 
   Eye,
-  EyeOff,
   Home,
-  DollarSign,
   FileText,
   Calculator,
   Info,
   Mail,
-  Minus
+  Minus,
+  Plus
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -62,7 +62,7 @@ function SortableComponent({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const definition = componentDefinitions[component.type];
+  const definition = componentDefinitions.find(def => def.type === component.type);
   
   // Get icon for component type
   const getComponentIcon = (type: string) => {
@@ -306,31 +306,28 @@ function SortableComponent({
   );
 }
 
-export function CanvasArea({
-  template,
-  selectedComponent,
-  onSelectComponent,
-  onRemoveComponent,
-  onUpdateComponent,
-  propertyData
-}: CanvasAreaProps) {
-  if (template.components.length === 0) {
+function DroppableCanvas({ children, isEmpty }: { children: React.ReactNode; isEmpty: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'canvas-drop-zone',
+  });
+
+  if (isEmpty) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
+      <div
+        ref={setNodeRef}
+        className={`flex-1 flex items-center justify-center bg-gray-50 min-h-96 border-2 border-dashed transition-colors ${
+          isOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
+        }`}
+      >
         <div className="text-center">
           <div className="w-24 h-24 mx-auto mb-4 bg-gray-200 rounded-lg flex items-center justify-center">
-            <Mail className="h-12 w-12 text-gray-400" />
+            <Plus className="h-12 w-12 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             Start Building Your Template
           </h3>
           <p className="text-gray-600 mb-4 max-w-sm">
-            Drag components from the left panel to create your email template. 
-            {propertyData && (
-              <span className="block mt-2 text-sm text-green-600">
-                Property Address For Preview: {propertyData.title}, {propertyData.city}, {propertyData.state}
-              </span>
-            )}
+            Drag components from the left panel to create your email template.
           </p>
           <div className="flex flex-col gap-2 text-sm text-gray-500">
             <div className="flex items-center justify-center gap-2">
@@ -344,66 +341,87 @@ export function CanvasArea({
   }
 
   return (
+    <div ref={setNodeRef} className="flex-1">
+      {children}
+    </div>
+  );
+}
+
+export function CanvasArea({
+  template,
+  selectedComponent,
+  onSelectComponent,
+  onRemoveComponent,
+  onUpdateComponent,
+  propertyData
+}: CanvasAreaProps) {
+  const isEmpty = template.components.length === 0;
+
+  return (
     <div className="flex-1 bg-gray-50">
-      <ScrollArea className="h-full">
-        <div className="p-6 space-y-4">
-          {/* Template Header Info */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-gray-900">{template.name}</h2>
-                <p className="text-sm text-gray-600">{template.components.length} components</p>
-              </div>
-              {propertyData && (
-                <div className="text-right">
-                  <p className="text-sm font-medium text-green-700">
-                    Using Landivo Proeprty For Preview
-                  </p>
-                  <p className="text-xs text-green-600">
-                    {propertyData.title} • {propertyData.city}, {propertyData.state}
-                  </p>
+      <DroppableCanvas isEmpty={isEmpty}>
+        {!isEmpty && (
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-4">
+              {/* Template Header Info */}
+              <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-semibold text-gray-900">{template.name}</h2>
+                    <p className="text-sm text-gray-600">{template.components.length} components</p>
+                  </div>
+                  {propertyData && (
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-green-700">
+                        Using Real Property Data
+                      </p>
+                      <p className="text-xs text-green-600">
+                        {propertyData.title} • {propertyData.city}, {propertyData.state}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Email Preview Container */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden border">
-            <div className="bg-gray-100 px-4 py-2 border-b">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Mail className="h-4 w-4" />
-                <span>Email Preview</span>
-                <Badge variant="outline" className="text-xs">
-                  {template.components.length} components
-                </Badge>
+              {/* Email Preview Container */}
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden border">
+                <div className="bg-gray-100 px-4 py-2 border-b">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Mail className="h-4 w-4" />
+                    <span>Email Preview</span>
+                    <Badge variant="outline" className="text-xs">
+                      {template.components.length} components
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div className="max-w-2xl mx-auto">
+                  {template.components
+                    .sort((a, b) => a.order - b.order)
+                    .map((component) => (
+                      <SortableComponent
+                        key={component.id}
+                        component={component}
+                        isSelected={selectedComponent?.id === component.id}
+                        onSelect={() => onSelectComponent(component)}
+                        onRemove={() => onRemoveComponent(component.id)}
+                        propertyData={propertyData}
+                      />
+                    ))}
+                </div>
+              </div>
+
+              {/* Add Component Hint */}
+              <div className="text-center py-8">
+                <div className="inline-flex items-center gap-2 text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
+                  <Settings className="h-4 w-4" />
+                  <span>Drag more components from the left panel to continue building</span>
+                </div>
               </div>
             </div>
-            
-            <div className="max-w-2xl mx-auto">
-              {template.components
-                .sort((a, b) => a.order - b.order)
-                .map((component) => (
-                  <SortableComponent
-                    key={component.id}
-                    component={component}
-                    isSelected={selectedComponent?.id === component.id}
-                    onSelect={() => onSelectComponent(component)}
-                    onRemove={() => onRemoveComponent(component.id)}
-                    propertyData={propertyData}
-                  />
-                ))}
-            </div>
-          </div>
-
-          {/* Add Component Hint */}
-          <div className="text-center py-8">
-            <div className="inline-flex items-center gap-2 text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
-              <Settings className="h-4 w-4" />
-              <span>Drag more components from the left panel to continue building</span>
-            </div>
-          </div>
-        </div>
-      </ScrollArea>
+          </ScrollArea>
+        )}
+      </DroppableCanvas>
     </div>
   );
 }

@@ -106,33 +106,9 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
     return errors;
   };
 
-  // Handle drag end
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    if (active.id !== over.id) {
-      setCurrentTemplate(prev => ({
-        ...prev,
-        components: arrayMove(
-          prev.components,
-          prev.components.findIndex(comp => comp.id === active.id),
-          prev.components.findIndex(comp => comp.id === over.id)
-        ).map((comp, index) => ({ ...comp, order: index }))
-      }));
-    }
-  }, []);
-
-  // Handle drag start
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
   // Handle adding component
   const handleAddComponent = useCallback((componentType: string) => {
-    const definition = componentDefinitions[componentType];
+    const definition = componentDefinitions.find(def => def.type === componentType);
     if (!definition) return;
 
     const newComponent: EmailComponent = {
@@ -149,6 +125,38 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
 
     setSelectedComponent(newComponent);
   }, [currentTemplate.components.length]);
+
+  // Handle drag end
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    // Handle dropping from palette to canvas
+    if (active.data.current?.type === 'palette-item') {
+      const componentType = active.data.current.componentType;
+      handleAddComponent(componentType);
+      return;
+    }
+
+    // Handle reordering within canvas
+    if (active.id !== over.id) {
+      setCurrentTemplate(prev => ({
+        ...prev,
+        components: arrayMove(
+          prev.components,
+          prev.components.findIndex(comp => comp.id === active.id),
+          prev.components.findIndex(comp => comp.id === over.id)
+        ).map((comp, index) => ({ ...comp, order: index }))
+      }));
+    }
+  }, [handleAddComponent]);
+
+  // Handle drag start
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
 
   // Handle removing component
   const handleRemoveComponent = useCallback((componentId: string) => {
@@ -416,19 +424,17 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
           onDragEnd={handleDragEnd}
         >
           {/* Left Sidebar - Component Palette */}
-          <div className="w-80 border-r bg-white flex flex-col">
-            <div className="p-4 border-b">
+          <div className="w-80 border-r bg-white flex flex-col h-full">
+            <div className="p-4 border-b flex-shrink-0">
               <h2 className="font-semibold text-gray-900">Email Components</h2>
               <p className="text-sm text-gray-600 mt-1">
                 Drag components to build your template
               </p>
             </div>
             
-            <ScrollArea className="flex-1">
-              <div className="p-4">
-                <ComponentPalette onAddComponent={handleAddComponent} />
-              </div>
-            </ScrollArea>
+            <div className="flex-1 overflow-hidden">
+              <ComponentPalette onAddComponent={handleAddComponent} />
+            </div>
           </div>
 
           {/* Main Canvas Area */}
@@ -463,11 +469,13 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                 </SortableContext>
               </TabsContent>
 
-              <TabsContent value="preview" className="flex-1 m-0 p-0">
-                <TemplatePreview 
-                  template={currentTemplate} 
-                  data={selectedProperty || undefined}
-                />
+              <TabsContent value="preview" className="flex-1 m-0 p-0 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <TemplatePreview 
+                    template={currentTemplate} 
+                    data={selectedProperty || undefined}
+                  />
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </div>

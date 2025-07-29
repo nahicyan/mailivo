@@ -141,7 +141,7 @@ export function ComponentConfigurator({
   }
 
   // Find component definition - with null check
-  const definition = componentDefinitions[component.type];
+  const definition = componentDefinitions.find(def => def.type === component.type);
   if (!definition) {
     return (
       <Card className="h-full">

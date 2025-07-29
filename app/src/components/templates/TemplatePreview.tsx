@@ -84,12 +84,12 @@ export function TemplatePreview({ template, data }: TemplatePreviewProps) {
   }
 
   return (
-    <div className="h-full bg-gray-100 p-4">
+    <div className="bg-gray-100 p-4">
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
         {/* Property info header for debugging */}
         {propertyData && (
           <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 text-xs text-blue-700">
-            Property In Use: {propertyData.streetAddress}, {propertyData.city}, {propertyData.state}
+            Using real property: {propertyData.title} in {propertyData.city}, {propertyData.state}
           </div>
         )}
         <iframe
