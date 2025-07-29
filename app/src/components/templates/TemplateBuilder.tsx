@@ -276,7 +276,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50" style={{ transform: 'scale(0.8)', transformOrigin: 'top left', width: '133.33%', height: '133.33%' }}>
       {/* Header */}
       <div className="border-b bg-white shadow-sm">
         <div className="px-6 py-4">
