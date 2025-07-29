@@ -69,7 +69,7 @@ function SortableComponent({
   const getComponentIcon = (type: string) => {
     switch (type) {
       case 'header': return <Home className="h-4 w-4" />;
-      case 'property-image': return <Home className="h-4 w-4" />;
+      case 'property-image': return <ImageIcon className="h-4 w-4" />;
       case 'property-highlights': return <Eye className="h-4 w-4" />;
       case 'property-details': return <FileText className="h-4 w-4" />;
       case 'payment-calculator': return <Calculator className="h-4 w-4" />;
@@ -112,13 +112,25 @@ function SortableComponent({
 
 
       case 'property-image':
+        // Define availableImages within this case scope
+        const availableImages = (() => {
+          try {
+            if (!propertyData?.imageUrls) return [];
+            return Array.isArray(propertyData.imageUrls)
+              ? propertyData.imageUrls
+              : JSON.parse(propertyData.imageUrls);
+          } catch {
+            return [];
+          }
+        })();
+
         return (
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
             <div className="w-full h-32 bg-gray-200 rounded-lg mb-2 flex items-center justify-center">
               <ImageIcon className="h-8 w-8 text-gray-400" />
             </div>
             <p className="text-sm text-gray-600">
-              Property Image ({availableImages?.length || 0} images)
+              Property Image ({availableImages.length} images)
             </p>
             {props.showCaption && (
               <p className="text-xs text-gray-500 mt-1">

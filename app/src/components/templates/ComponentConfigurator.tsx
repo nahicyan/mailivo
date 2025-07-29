@@ -1,5 +1,5 @@
 // app/src/components/templates/ComponentConfigurator.tsx
-import { useState } from 'react';
+import React from 'react';
 import { EmailComponent, ComponentConfigField, EmailTemplate } from '@/types/template';
 import { componentDefinitions } from '@/data/componentDefinitions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
