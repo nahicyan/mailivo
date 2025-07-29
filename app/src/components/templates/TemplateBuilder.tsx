@@ -1,7 +1,7 @@
 // app/src/components/templates/TemplateBuilder.tsx
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { EmailComponent, EmailTemplate } from '@/types/template';
+import { LandivoProperty } from '@/types/landivo';
 import { componentDefinitions } from '@/data/componentDefinitions';
 import { ComponentPalette } from './ComponentPalette';
 import { CanvasArea } from './CanvasArea';
@@ -65,6 +66,8 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
   const [previewMode, setPreviewMode] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [saving, setSaving] = useState(false);
+  const [propertyData, setPropertyData] = useState<LandivoProperty | null>(null);
+  const [loadingProperty, setLoadingProperty] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -74,41 +77,92 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
     })
   );
 
+  // Fetch real property data from Landivo API
+  useEffect(() => {
+    const fetchPropertyData = async () => {
+      try {
+        setLoadingProperty(true);
+        const response = await fetch('https://api.landivo.com/residency/allresd');
+        if (!response.ok) {
+          throw new Error('Failed to fetch properties');
+        }
+        const properties: LandivoProperty[] = await response.json();
+        
+        // Use the first property if available
+        if (properties && properties.length > 0) {
+          setPropertyData(properties[0]);
+          console.log('Loaded property data for template builder:', properties[0].title);
+        } else {
+          console.warn('No properties found from API');
+        }
+      } catch (error) {
+        console.error('Error fetching property data:', error);
+        toast.error('Failed to load property data. Template preview may not display correctly.');
+      } finally {
+        setLoadingProperty(false);
+      }
+    };
+
+    fetchPropertyData();
+  }, []);
+
   // Validation function
   const validateTemplate = (template: EmailTemplate): ValidationError[] => {
     const errors: ValidationError[] = [];
-
-    // Validate name
+    
     if (!template.name || template.name.trim().length === 0) {
       errors.push({ field: 'name', message: 'Template name is required' });
-    } else if (template.name.trim().length > 100) {
-      errors.push({ field: 'name', message: 'Template name cannot exceed 100 characters' });
     }
-
-    // Validate components
-    if (!template.components || template.components.length === 0) {
-      errors.push({ field: 'components', message: 'Template must have at least one component' });
+    
+    if (template.name && template.name.length > 100) {
+      errors.push({ field: 'name', message: 'Template name must be less than 100 characters' });
     }
-
-    // Validate description length
+    
     if (template.description && template.description.length > 500) {
-      errors.push({ field: 'description', message: 'Description cannot exceed 500 characters' });
+      errors.push({ field: 'description', message: 'Description must be less than 500 characters' });
+    }
+
+    if (template.components.length === 0) {
+      errors.push({ field: 'components', message: 'Template must have at least one component' });
     }
 
     return errors;
   };
 
-  const addComponent = useCallback((componentType: string) => {
-    const definition = componentDefinitions.find(def => def.type === componentType);
+  // Handle drag end
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    if (active.id !== over.id) {
+      setCurrentTemplate(prev => ({
+        ...prev,
+        components: arrayMove(
+          prev.components,
+          prev.components.findIndex(comp => comp.id === active.id),
+          prev.components.findIndex(comp => comp.id === over.id)
+        ).map((comp, index) => ({ ...comp, order: index }))
+      }));
+    }
+  }, []);
+
+  // Handle drag start
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  // Handle adding component
+  const handleAddComponent = useCallback((componentType: string) => {
+    const definition = componentDefinitions[componentType];
     if (!definition) return;
 
     const newComponent: EmailComponent = {
       id: `${componentType}-${Date.now()}`,
-      type: componentType as any,
-      name: definition.name,
-      icon: definition.icon,
-      props: { ...definition.defaultProps },
-      order: currentTemplate.components.length
+      type: componentType,
+      order: currentTemplate.components.length,
+      props: { ...definition.defaultProps }
     };
 
     setCurrentTemplate(prev => ({
@@ -116,369 +170,392 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
       components: [...prev.components, newComponent]
     }));
 
-    // Clear validation errors for components if we now have components
-    setValidationErrors(prev => prev.filter(error => error.field !== 'components'));
+    setSelectedComponent(newComponent);
   }, [currentTemplate.components.length]);
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
+  // Handle removing component
+  const handleRemoveComponent = useCallback((componentId: string) => {
+    setCurrentTemplate(prev => ({
+      ...prev,
+      components: prev.components
+        .filter(comp => comp.id !== componentId)
+        .map((comp, index) => ({ ...comp, order: index }))
+    }));
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-
-    setActiveId(null);
-
-    if (!over) {
-      return;
+    if (selectedComponent?.id === componentId) {
+      setSelectedComponent(null);
     }
+  }, [selectedComponent]);
 
-    // Handle dropping from palette to canvas
-    if (active.data.current?.type === 'palette-item') {
-      const componentType = active.data.current.componentType;
-      addComponent(componentType);
-      return;
-    }
-
-    // Handle reordering within canvas
-    if (active.id !== over.id && over.id !== 'canvas-area') {
-      const oldIndex = currentTemplate.components.findIndex(item => item.id === active.id);
-      const newIndex = currentTemplate.components.findIndex(item => item.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        setCurrentTemplate(prev => ({
-          ...prev,
-          components: arrayMove(prev.components, oldIndex, newIndex)
-        }));
-      }
-    }
-  }, [currentTemplate.components, addComponent]);
-
-  const updateComponent = useCallback((id: string, props: Record<string, any>) => {
+  // Handle updating component
+  const handleUpdateComponent = useCallback((componentId: string, updates: Partial<EmailComponent>) => {
     setCurrentTemplate(prev => ({
       ...prev,
       components: prev.components.map(comp =>
-        comp.id === id ? { ...comp, props: { ...comp.props, ...props } } : comp
+        comp.id === componentId ? { ...comp, ...updates } : comp
       )
     }));
+
+    if (selectedComponent?.id === componentId) {
+      setSelectedComponent(prev => prev ? { ...prev, ...updates } : null);
+    }
+  }, [selectedComponent]);
+
+  // Handle template name change with validation
+  const handleNameChange = useCallback((name: string) => {
+    setCurrentTemplate(prev => ({ ...prev, name }));
+    
+    // Clear name-related validation errors
+    setValidationErrors(prev => prev.filter(error => error.field !== 'name'));
   }, []);
 
-  const removeComponent = useCallback((id: string) => {
-    setCurrentTemplate(prev => ({
-      ...prev,
-      components: prev.components.filter(comp => comp.id !== id)
-    }));
-    setSelectedComponent(null);
+  // Handle template description change
+  const handleDescriptionChange = useCallback((description: string) => {
+    setCurrentTemplate(prev => ({ ...prev, description }));
+    
+    // Clear description-related validation errors
+    setValidationErrors(prev => prev.filter(error => error.field !== 'description'));
   }, []);
 
-  const handleNameChange = (value: string) => {
-    setCurrentTemplate(prev => ({ ...prev, name: value }));
+  // Handle save
+  const handleSave = useCallback(async () => {
+    const errors = validateTemplate(currentTemplate);
+    setValidationErrors(errors);
 
-    // Clear name validation errors when user starts typing
-    if (value.trim().length > 0) {
-      setValidationErrors(prev => prev.filter(error => error.field !== 'name'));
+    if (errors.length > 0) {
+      toast.error('Please fix validation errors before saving');
+      return;
     }
-  };
 
-  const handleDescriptionChange = (value: string) => {
-    setCurrentTemplate(prev => ({ ...prev, description: value }));
-
-    // Clear description validation errors when valid
-    if (value.length <= 500) {
-      setValidationErrors(prev => prev.filter(error => error.field !== 'description'));
-    }
-  };
-
-  const handleSave = async () => {
     setSaving(true);
-
     try {
-      // Validate template
-      const errors = validateTemplate(currentTemplate);
-      setValidationErrors(errors);
-
-      if (errors.length > 0) {
-        toast.error('Please fix validation errors before saving');
-        setSaving(false);
-        return;
-      }
-
-      // Ensure components is properly formatted as an array
       const templateToSave = {
         ...currentTemplate,
-        name: currentTemplate.name.trim(),
-        components: currentTemplate.components || [],
         updatedAt: new Date().toISOString()
       };
-
+      
       await onSave(templateToSave);
-      toast.success('Template saved successfully!');
-    } catch (error: any) {
-      console.error('Save error:', error);
-
-      // Handle specific error cases
-      if (error.response?.status === 409 || error.message?.includes('duplicate')) {
-        setValidationErrors([{ field: 'name', message: 'A template with this name already exists' }]);
-        toast.error('A template with this name already exists');
-      } else if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error('Failed to save template');
-      }
+      setCurrentTemplate(templateToSave);
+      toast.success('Template saved successfully');
+    } catch (error) {
+      console.error('Error saving template:', error);
+      toast.error('Failed to save template');
     } finally {
       setSaving(false);
     }
-  };
+  }, [currentTemplate, onSave]);
 
+  // Get field validation error
   const getFieldError = (field: string) => {
     return validationErrors.find(error => error.field === field);
   };
 
+  // Show preview mode
   if (previewMode) {
     return (
       <div className="h-screen flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Template Preview</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setPreviewMode(false)}>
-              Back to Editor
-            </Button>
-            <Button onClick={() => onTest(currentTemplate)}>
-              <Play className="mr-2 h-4 w-4" />
-              Send Test
-            </Button>
+        <div className="border-b bg-white px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => setPreviewMode(false)}
+              >
+                Back to Editor
+              </Button>
+              <div>
+                <h2 className="text-xl font-semibold">{currentTemplate.name}</h2>
+                <p className="text-sm text-gray-600">Template Preview</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => onTest(currentTemplate)}
+                disabled={validationErrors.length > 0}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Send Test
+              </Button>
+            </div>
           </div>
         </div>
         <div className="flex-1">
-          <TemplatePreview template={currentTemplate} />
+          <TemplatePreview 
+            template={currentTemplate} 
+            data={propertyData || undefined}
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex overflow-hidden">
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        {/* Left Sidebar - Component Palette */}
-        <div className="w-80 border-r bg-gray-50 flex flex-col">
-          <div className="p-4 border-b bg-white">
-            <h2 className="text-lg font-semibold">Email Components</h2>
-          </div>
-          <div className="flex-1 min-h-0">
-            <ComponentPalette onAddComponent={addComponent} />
-          </div>
-        </div>
-
-        {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Validation Errors */}
-          {validationErrors.length > 0 && (
-            <div className="p-4 bg-red-50 border-b">
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-1">
-                    {validationErrors.map((error, index) => (
-                      <div key={index}>{error.message}</div>
-                    ))}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {/* Improved Toolbar with better spacing and organization */}
-          <div className="border-b bg-white shrink-0">
-            {/* Header with title and actions */}
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Template Builder</h1>
-                  <p className="text-sm text-gray-600 mt-1">Design and customize your email template</p>
-                </div>
-
-                {/* Action Buttons - Improved layout */}
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPreviewMode(true)}
-                    className="flex items-center gap-2 px-4 py-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span className="hidden sm:inline">Preview</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => onTest(currentTemplate)}
-                    disabled={validationErrors.length > 0}
-                    className="flex items-center gap-2 px-4 py-2"
-                  >
-                    <Play className="h-4 w-4" />
-                    <span className="hidden sm:inline">Test</span>
-                  </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={saving || validationErrors.length > 0}
-                    className="flex items-center gap-2 px-4 py-2 min-w-[120px]"
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="hidden sm:inline">Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        <span className="hidden sm:inline">Save Template</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Template Information Form - Improved layout */}
-            <div className="px-6 py-5">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Template Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="template-name" className="text-sm font-medium text-gray-700">
-                    Template Name *
-                  </Label>
-                  <Input
-                    id="template-name"
-                    value={currentTemplate.name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    className={`h-10 text-base ${getFieldError('name') ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`}
-                    placeholder="Enter template name"
-                    required
-                  />
-                  {getFieldError('name') && (
-                    <div className="flex items-center gap-2 text-sm text-red-600">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>{getFieldError('name')!.message}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Template Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="template-description" className="text-sm font-medium text-gray-700">
-                    Description
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="template-description"
-                      value={currentTemplate.description || ''}
-                      onChange={(e) => handleDescriptionChange(e.target.value)}
-                      className={`h-10 text-base pr-16 ${getFieldError('description') ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`}
-                      placeholder="Add a description for your template"
-                      maxLength={500}
-                    />
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <span className="text-xs text-gray-500 bg-white px-1">
-                        {currentTemplate.description?.length || 0}/500
-                      </span>
-                    </div>
-                  </div>
-                  {getFieldError('description') && (
-                    <div className="flex items-center gap-2 text-sm text-red-600">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>{getFieldError('description')!.message}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Template Stats and Quick Actions */}
-              <div className="mt-6 pt-4 border-t border-gray-100">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span>{currentTemplate.components?.length || 0} Components</span>
-                    </div>
-                    {currentTemplate.updatedAt && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="h-4 w-4" />
-                        <span>Last updated: {new Date(currentTemplate.updatedAt).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Quick Status Indicator */}
-                  <div className="flex items-center gap-2">
-                    {validationErrors.length > 0 ? (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {validationErrors.length} Error{validationErrors.length > 1 ? 's' : ''}
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3" />
-                        Ready to save
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Canvas */}
-          <div className="flex-1 flex min-h-0">
-            <div className="flex-1 p-6 bg-gray-100">
-              <CanvasArea
-                components={currentTemplate.components}
-                selectedComponent={selectedComponent}
-                onSelectComponent={setSelectedComponent}
-                onUpdateComponent={updateComponent}
-                onRemoveComponent={removeComponent}
-              />
-              {getFieldError('components') && (
-                <div className="mt-4 text-center">
-                  <Alert variant="destructive" className="inline-block">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {getFieldError('components')!.message}
-                    </AlertDescription>
-                  </Alert>
-                </div>
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header */}
+      <div className="border-b bg-white shadow-sm">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Template Builder</h1>
+              <p className="text-sm text-gray-600 mt-1">Design and customize your email template</p>
+              {propertyData && (
+                <p className="text-xs text-green-600 mt-1">
+                  Using real property data: {propertyData.title}
+                </p>
+              )}
+              {loadingProperty && (
+                <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading property data...
+                </p>
               )}
             </div>
 
-            {/* Right Sidebar - Component Configurator */}
-            {selectedComponent && (
-              <div className="w-80 border-l bg-white">
-                <ComponentConfigurator
-                  component={selectedComponent}
-                  onUpdate={(props) => updateComponent(selectedComponent.id, props)}
-                  onRemove={() => removeComponent(selectedComponent.id)}
-                />
-              </div>
-            )}
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setPreviewMode(true)}
+                className="flex items-center gap-2 px-4 py-2"
+                disabled={loadingProperty}
+              >
+                <Eye className="h-4 w-4" />
+                <span className="hidden sm:inline">Preview</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => onTest(currentTemplate)}
+                disabled={validationErrors.length > 0 || loadingProperty}
+                className="flex items-center gap-2 px-4 py-2"
+              >
+                <Play className="h-4 w-4" />
+                <span className="hidden sm:inline">Test</span>
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving || validationErrors.length > 0}
+                className="flex items-center gap-2 px-4 py-2 min-w-[120px]"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="hidden sm:inline">Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    <span className="hidden sm:inline">Save Template</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
-        <DragOverlay dropAnimation={null}>
-          {activeId && activeId.startsWith('palette-') ? (
-            <Card className="w-64 bg-white border shadow-xl opacity-95">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📧</span>
-                  <div>
-                    <h4 className="text-sm font-medium">Adding component...</h4>
-                  </div>
+        {/* Template Information Form */}
+        <div className="px-6 py-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Template Name */}
+            <div className="space-y-2">
+              <Label htmlFor="template-name" className="text-sm font-medium text-gray-700">
+                Template Name *
+              </Label>
+              <Input
+                id="template-name"
+                value={currentTemplate.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className={`h-10 text-base ${getFieldError('name') ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''}`}
+                placeholder="Enter template name..."
+                maxLength={100}
+              />
+              {getFieldError('name') && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {getFieldError('name')?.message}
+                </p>
+              )}
+            </div>
+
+            {/* Template Description */}
+            <div className="space-y-2">
+              <Label htmlFor="template-description" className="text-sm font-medium text-gray-700">
+                Description
+              </Label>
+              <Input
+                id="template-description"
+                value={currentTemplate.description}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+                className={`h-10 text-base ${getFieldError('description') ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''}`}
+                placeholder="Add a description for your template..."
+                maxLength={500}
+              />
+              <div className="flex justify-between items-center">
+                {getFieldError('description') && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {getFieldError('description')?.message}
+                  </p>
+                )}
+                <span className="text-xs text-gray-500 ml-auto">
+                  {currentTemplate.description.length}/500
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Template Stats */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-1">
+                <CheckCircle className="h-4 w-4 text-blue-500" />
+                <span>{currentTemplate.components.length} Components</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 text-green-500" />
+                <span>Last updated: {currentTemplate.updatedAt ? new Date(currentTemplate.updatedAt).toLocaleDateString() : 'Never'}</span>
+              </div>
+            </div>
+            
+            {/* Ready to save indicator */}
+            <div className="flex items-center gap-2">
+              {validationErrors.length === 0 ? (
+                <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Ready to save
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-300">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {validationErrors.length} error{validationErrors.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          {/* Left Sidebar - Component Palette */}
+          <div className="w-80 border-r bg-white flex flex-col">
+            <div className="p-4 border-b">
+              <h2 className="font-semibold text-gray-900">Email Components</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Drag components to build your template
+              </p>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-4">
+                <ComponentPalette onAddComponent={handleAddComponent} />
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Main Canvas Area */}
+          <div className="flex-1 flex flex-col">
+            <Tabs defaultValue="canvas" className="flex-1 flex flex-col">
+              <div className="border-b bg-white px-4">
+                <TabsList className="h-12">
+                  <TabsTrigger value="canvas" className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded"></div>
+                    Canvas
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Email Preview
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="canvas" className="flex-1 m-0 p-0">
+                <SortableContext
+                  items={currentTemplate.components.map(comp => comp.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <CanvasArea
+                    template={currentTemplate}
+                    selectedComponent={selectedComponent}
+                    onSelectComponent={setSelectedComponent}
+                    onRemoveComponent={handleRemoveComponent}
+                    onUpdateComponent={handleUpdateComponent}
+                    propertyData={propertyData}
+                  />
+                </SortableContext>
+              </TabsContent>
+
+              <TabsContent value="preview" className="flex-1 m-0 p-0">
+                <TemplatePreview 
+                  template={currentTemplate} 
+                  data={propertyData || undefined}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Right Sidebar - Component Configuration */}
+          <div className="w-80 border-l bg-white flex flex-col">
+            <div className="p-4 border-b">
+              <h2 className="font-semibold text-gray-900">
+                {selectedComponent ? 'Component Settings' : 'Template Settings'}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {selectedComponent 
+                  ? `Configure ${componentDefinitions[selectedComponent.type]?.name}`
+                  : 'Select a component to configure'
+                }
+              </p>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-4">
+                <ComponentConfigurator
+                  component={selectedComponent}
+                  onUpdate={handleUpdateComponent}
+                  template={currentTemplate}
+                  onUpdateTemplate={setCurrentTemplate}
+                />
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activeId ? (
+              <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
+                <div className="text-sm font-medium text-gray-900">
+                  Moving component...
                 </div>
-              </CardContent>
-            </Card>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
+
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <div className="border-t bg-red-50 px-6 py-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="text-sm font-medium text-red-800">
+                Please fix the following errors:
+              </h4>
+              <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error.message}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

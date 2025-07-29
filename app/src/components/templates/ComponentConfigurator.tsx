@@ -1,6 +1,6 @@
 // app/src/components/templates/ComponentConfigurator.tsx
 import { useState } from 'react';
-import { EmailComponent, ComponentConfigField } from '@/types/template';
+import { EmailComponent, ComponentConfigField, EmailTemplate } from '@/types/template';
 import { componentDefinitions } from '@/data/componentDefinitions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,17 +10,157 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Settings } from 'lucide-react';
 
 interface ComponentConfiguratorProps {
-  component: EmailComponent;
-  onUpdate: (props: Record<string, any>) => void;
-  onRemove: () => void;
+  component: EmailComponent | null;
+  onUpdate: (componentId: string, updates: Partial<EmailComponent>) => void;
+  template: EmailTemplate;
+  onUpdateTemplate: (template: EmailTemplate) => void;
 }
 
-export function ComponentConfigurator({ component, onUpdate, onRemove }: ComponentConfiguratorProps) {
-  const definition = componentDefinitions.find(def => def.type === component.type);
-  if (!definition) return null;
+export function ComponentConfigurator({ 
+  component, 
+  onUpdate, 
+  template, 
+  onUpdateTemplate 
+}: ComponentConfiguratorProps) {
+  // Handle case where no component is selected
+  if (!component) {
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Template Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-center py-8">
+              <Settings className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No Component Selected
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Select a component from the canvas to configure its settings
+              </p>
+            </div>
+            
+            {/* Template Global Settings */}
+            <div className="space-y-4 pt-4 border-t">
+              <h4 className="font-medium text-gray-900">Template Settings</h4>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Background Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={template.settings?.backgroundColor || '#f9fafb'}
+                    onChange={(e) => onUpdateTemplate({
+                      ...template,
+                      settings: {
+                        ...template.settings,
+                        backgroundColor: e.target.value
+                      }
+                    })}
+                    className="w-16 h-9 p-1"
+                  />
+                  <Input
+                    value={template.settings?.backgroundColor || '#f9fafb'}
+                    onChange={(e) => onUpdateTemplate({
+                      ...template,
+                      settings: {
+                        ...template.settings,
+                        backgroundColor: e.target.value
+                      }
+                    })}
+                    placeholder="#f9fafb"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Primary Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={template.settings?.primaryColor || '#16a34a'}
+                    onChange={(e) => onUpdateTemplate({
+                      ...template,
+                      settings: {
+                        ...template.settings,
+                        primaryColor: e.target.value
+                      }
+                    })}
+                    className="w-16 h-9 p-1"
+                  />
+                  <Input
+                    value={template.settings?.primaryColor || '#16a34a'}
+                    onChange={(e) => onUpdateTemplate({
+                      ...template,
+                      settings: {
+                        ...template.settings,
+                        primaryColor: e.target.value
+                      }
+                    })}
+                    placeholder="#16a34a"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Font Family</Label>
+                <Select 
+                  value={template.settings?.fontFamily || 'Arial, sans-serif'} 
+                  onValueChange={(val) => onUpdateTemplate({
+                    ...template,
+                    settings: {
+                      ...template.settings,
+                      fontFamily: val
+                    }
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select font" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Arial, sans-serif">Arial</SelectItem>
+                    <SelectItem value="Helvetica, sans-serif">Helvetica</SelectItem>
+                    <SelectItem value="Georgia, serif">Georgia</SelectItem>
+                    <SelectItem value="Times New Roman, serif">Times New Roman</SelectItem>
+                    <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Find component definition - with null check
+  const definition = componentDefinitions[component.type];
+  if (!definition) {
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Unknown Component
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <p className="text-red-600">
+              Component type "{component.type}" not found
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const getValue = (key: string): any => {
     const keys = key.split('.');
@@ -62,7 +202,9 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
     }
     
     current[keys[keys.length - 1]] = value;
-    onUpdate(newProps);
+    
+    // Update the component using the onUpdate callback
+    onUpdate(component.id, { props: newProps });
   };
 
   const renderField = (field: ComponentConfigField) => {
@@ -160,10 +302,14 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <span>{component.icon}</span>
-            {component.name}
+            {definition.icon && <span>{definition.icon}</span>}
+            {definition.name}
           </CardTitle>
-          <Button variant="destructive" size="sm" onClick={onRemove}>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={() => onUpdate(component.id, { _delete: true })}
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -171,13 +317,16 @@ export function ComponentConfigurator({ component, onUpdate, onRemove }: Compone
       <CardContent>
         <ScrollArea className="h-96">
           <div className="space-y-4">
-            {definition.configFields.map(field => (
+            {definition.configFields?.map(field => (
               <div key={field.key} className="space-y-2">
                 <Label className="text-sm font-medium">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
                 </Label>
                 {renderField(field)}
+                {field.description && (
+                  <p className="text-xs text-gray-500">{field.description}</p>
+                )}
               </div>
             ))}
           </div>
@@ -195,56 +344,60 @@ function ArrayField({ field, value, setValue }: {
   const addItem = () => {
     const newItem = field.key.includes('highlights') 
       ? { icon: '📏', value: 'New Value', label: 'Label' }
-      : field.key.includes('Details')
-      ? { label: 'Label', value: 'Value' }
+      : field.key.includes('details')
+      ? { label: 'Detail', value: 'Value' }
       : 'New Item';
     
     setValue(field.key, [...value, newItem]);
-  };
-
-  const updateItem = (index: number, newValue: any) => {
-    const newArray = [...value];
-    newArray[index] = newValue;
-    setValue(field.key, newArray);
   };
 
   const removeItem = (index: number) => {
     setValue(field.key, value.filter((_, i) => i !== index));
   };
 
+  const updateItem = (index: number, updates: any) => {
+    const newValue = [...value];
+    newValue[index] = typeof newValue[index] === 'object' 
+      ? { ...newValue[index], ...updates }
+      : updates;
+    setValue(field.key, newValue);
+  };
+
   return (
     <div className="space-y-2">
       {value.map((item, index) => (
-        <div key={index} className="border rounded p-3 space-y-2">
+        <div key={index} className="flex gap-2 items-center p-2 border rounded">
           {typeof item === 'object' ? (
-            <div className="space-y-2">
-              {Object.entries(item).map(([key, val]) => (
-                <div key={key}>
-                  <Label className="text-xs">{key}</Label>
-                  <Input
-                    value={String(val || '')}
-                    onChange={(e) => updateItem(index, { ...item, [key]: e.target.value })}
-                  />
-                </div>
-              ))}
+            <div className="flex-1 grid grid-cols-2 gap-2">
+              <Input
+                placeholder="Label"
+                value={item.label || ''}
+                onChange={(e) => updateItem(index, { label: e.target.value })}
+              />
+              <Input
+                placeholder="Value"
+                value={item.value || ''}
+                onChange={(e) => updateItem(index, { value: e.target.value })}
+              />
             </div>
           ) : (
             <Input
-              value={String(item || '')}
+              className="flex-1"
+              value={item}
               onChange={(e) => updateItem(index, e.target.value)}
             />
           )}
           <Button
             size="sm"
-            variant="destructive"
+            variant="ghost"
             onClick={() => removeItem(index)}
           >
-            Remove
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       ))}
       <Button size="sm" variant="outline" onClick={addItem}>
-        <Plus className="h-4 w-4 mr-2" />
+        <Plus className="h-3 w-3 mr-1" />
         Add Item
       </Button>
     </div>
