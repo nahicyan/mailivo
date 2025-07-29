@@ -310,8 +310,11 @@ export function ComponentConfigurator({
           : JSON.parse(propertyData.imageUrls);
       } catch {
         return [];
+
       }
     }, [propertyData?.imageUrls]);
+    console.log('PropertyData in ComponentConfigurator:', propertyData);
+    console.log('ImageUrls:', propertyData?.imageUrls);
 
     return (
       <Card className="h-full">
