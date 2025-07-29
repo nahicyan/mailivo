@@ -341,7 +341,7 @@ function DroppableCanvas({ children, isEmpty }: { children: React.ReactNode; isE
   }
 
   return (
-    <div ref={setNodeRef} className="flex-1">
+    <div ref={setNodeRef} className="flex-1 h-full">
       {children}
     </div>
   );
