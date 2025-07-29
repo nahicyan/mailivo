@@ -81,20 +81,21 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
   const handlePropertySelect = (property: LandivoProperty) => {
     setSelectedProperty(property);
     console.log('Selected property for preview:', property.title);
+    console.log('Property imageUrls:', property.imageUrls);
   };
 
   // Validation function
   const validateTemplate = (template: EmailTemplate): ValidationError[] => {
     const errors: ValidationError[] = [];
-    
+
     if (!template.name || template.name.trim().length === 0) {
       errors.push({ field: 'name', message: 'Template name is required' });
     }
-    
+
     if (template.name && template.name.length > 100) {
       errors.push({ field: 'name', message: 'Template name must be less than 100 characters' });
     }
-    
+
     if (template.description && template.description.length > 500) {
       errors.push({ field: 'description', message: 'Description must be less than 500 characters' });
     }
@@ -189,7 +190,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
   // Handle template name change with validation
   const handleNameChange = useCallback((name: string) => {
     setCurrentTemplate(prev => ({ ...prev, name }));
-    
+
     // Clear name-related validation errors
     setValidationErrors(prev => prev.filter(error => error.field !== 'name'));
   }, []);
@@ -197,7 +198,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
   // Handle template description change
   const handleDescriptionChange = useCallback((description: string) => {
     setCurrentTemplate(prev => ({ ...prev, description }));
-    
+
     // Clear description-related validation errors
     setValidationErrors(prev => prev.filter(error => error.field !== 'description'));
   }, []);
@@ -218,7 +219,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
         ...currentTemplate,
         updatedAt: new Date().toISOString()
       };
-      
+
       await onSave(templateToSave);
       setCurrentTemplate(templateToSave);
       toast.success('Template saved successfully');
@@ -266,8 +267,8 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
           </div>
         </div>
         <div className="flex-1">
-          <TemplatePreview 
-            template={currentTemplate} 
+          <TemplatePreview
+            template={currentTemplate}
             data={selectedProperty || undefined}
           />
         </div>
@@ -397,7 +398,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                 <span>Last updated: {currentTemplate.updatedAt ? new Date(currentTemplate.updatedAt).toLocaleDateString() : 'Never'}</span>
               </div>
             </div>
-            
+
             {/* Ready to save indicator */}
             <div className="flex items-center gap-2">
               {validationErrors.length === 0 ? (
@@ -431,7 +432,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                 Drag components to build your template
               </p>
             </div>
-            
+
             <div className="flex-1 overflow-hidden">
               <ComponentPalette onAddComponent={handleAddComponent} />
             </div>
@@ -475,8 +476,8 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                 <div className="h-full bg-gray-100">
                   <ScrollArea className="h-full">
                     <div className="p-4">
-                      <TemplatePreview 
-                        template={currentTemplate} 
+                      <TemplatePreview
+                        template={currentTemplate}
                         data={selectedProperty || undefined}
                       />
                     </div>
@@ -493,13 +494,13 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                 {selectedComponent ? 'Component Settings' : 'Template Settings'}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                {selectedComponent 
+                {selectedComponent
                   ? `Configure ${componentDefinitions[selectedComponent.type]?.name}`
                   : 'Select a component to configure'
                 }
               </p>
             </div>
-            
+
             <ScrollArea className="flex-1">
               <div className="p-4">
                 <ComponentConfigurator
