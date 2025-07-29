@@ -438,9 +438,9 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
           </div>
 
           {/* Main Canvas Area */}
-          <div className="flex-1 flex flex-col">
-            <Tabs defaultValue="canvas" className="flex-1 flex flex-col">
-              <div className="border-b bg-white px-4">
+          <div className="flex-1 flex flex-col min-w-0">
+            <Tabs defaultValue="canvas" className="flex-1 flex flex-col h-full">
+              <div className="border-b bg-white px-4 flex-shrink-0">
                 <TabsList className="h-12">
                   <TabsTrigger value="canvas" className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded"></div>
@@ -453,29 +453,35 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                 </TabsList>
               </div>
 
-              <TabsContent value="canvas" className="flex-1 m-0 p-0">
-                <SortableContext
-                  items={currentTemplate.components.map(comp => comp.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <CanvasArea
-                    template={currentTemplate}
-                    selectedComponent={selectedComponent}
-                    onSelectComponent={setSelectedComponent}
-                    onRemoveComponent={handleRemoveComponent}
-                    onUpdateComponent={handleUpdateComponent}
-                    propertyData={selectedProperty}
-                  />
-                </SortableContext>
+              <TabsContent value="canvas" className="flex-1 m-0 p-0 overflow-hidden">
+                <div className="h-full">
+                  <SortableContext
+                    items={currentTemplate.components.map(comp => comp.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <CanvasArea
+                      template={currentTemplate}
+                      selectedComponent={selectedComponent}
+                      onSelectComponent={setSelectedComponent}
+                      onRemoveComponent={handleRemoveComponent}
+                      onUpdateComponent={handleUpdateComponent}
+                      propertyData={selectedProperty}
+                    />
+                  </SortableContext>
+                </div>
               </TabsContent>
 
               <TabsContent value="preview" className="flex-1 m-0 p-0 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <TemplatePreview 
-                    template={currentTemplate} 
-                    data={selectedProperty || undefined}
-                  />
-                </ScrollArea>
+                <div className="h-full bg-gray-100">
+                  <ScrollArea className="h-full">
+                    <div className="p-4">
+                      <TemplatePreview 
+                        template={currentTemplate} 
+                        data={selectedProperty || undefined}
+                      />
+                    </div>
+                  </ScrollArea>
+                </div>
               </TabsContent>
             </Tabs>
           </div>

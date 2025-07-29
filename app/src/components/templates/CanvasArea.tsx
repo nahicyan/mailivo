@@ -358,7 +358,7 @@ export function CanvasArea({
   const isEmpty = template.components.length === 0;
 
   return (
-    <div className="flex-1 bg-gray-50">
+    <div className="flex-1 h-full bg-gray-50">
       <DroppableCanvas isEmpty={isEmpty}>
         {!isEmpty && (
           <ScrollArea className="h-full">
