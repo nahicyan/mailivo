@@ -328,7 +328,7 @@ export function CanvasArea({
             Drag components from the left panel to create your email template. 
             {propertyData && (
               <span className="block mt-2 text-sm text-green-600">
-                ✓ Using real property data: {propertyData.title}
+                Property Address For Preview: {propertyData.title}, {propertyData.city}, {propertyData.state}
               </span>
             )}
           </p>
@@ -357,7 +357,7 @@ export function CanvasArea({
               {propertyData && (
                 <div className="text-right">
                   <p className="text-sm font-medium text-green-700">
-                    Using Real Property Data
+                    Using Landivo Proeprty For Preview
                   </p>
                   <p className="text-xs text-green-600">
                     {propertyData.title} • {propertyData.city}, {propertyData.state}

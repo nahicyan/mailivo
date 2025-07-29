@@ -1,7 +1,7 @@
 // app/src/components/templates/TemplateBuilder.tsx
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { ComponentPalette } from './ComponentPalette';
 import { CanvasArea } from './CanvasArea';
 import { ComponentConfigurator } from './ComponentConfigurator';
 import { TemplatePreview } from './TemplatePreview';
+import { PropertySelector } from './PropertySelector';
 import {
   Eye,
   Play,
@@ -66,8 +67,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
   const [previewMode, setPreviewMode] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [saving, setSaving] = useState(false);
-  const [propertyData, setPropertyData] = useState<LandivoProperty | null>(null);
-  const [loadingProperty, setLoadingProperty] = useState(true);
+  const [selectedProperty, setSelectedProperty] = useState<LandivoProperty | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -77,34 +77,11 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
     })
   );
 
-  // Fetch real property data from Landivo API
-  useEffect(() => {
-    const fetchPropertyData = async () => {
-      try {
-        setLoadingProperty(true);
-        const response = await fetch('https://api.landivo.com/residency/allresd');
-        if (!response.ok) {
-          throw new Error('Failed to fetch properties');
-        }
-        const properties: LandivoProperty[] = await response.json();
-        
-        // Use the first property if available
-        if (properties && properties.length > 0) {
-          setPropertyData(properties[0]);
-          console.log('Loaded property data for template builder:', properties[0].title);
-        } else {
-          console.warn('No properties found from API');
-        }
-      } catch (error) {
-        console.error('Error fetching property data:', error);
-        toast.error('Failed to load property data. Template preview may not display correctly.');
-      } finally {
-        setLoadingProperty(false);
-      }
-    };
-
-    fetchPropertyData();
-  }, []);
+  // Handle property selection
+  const handlePropertySelect = (property: LandivoProperty) => {
+    setSelectedProperty(property);
+    console.log('Selected property for preview:', property.title);
+  };
 
   // Validation function
   const validateTemplate = (template: EmailTemplate): ValidationError[] => {
@@ -283,7 +260,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
         <div className="flex-1">
           <TemplatePreview 
             template={currentTemplate} 
-            data={propertyData || undefined}
+            data={selectedProperty || undefined}
           />
         </div>
       </div>
@@ -299,17 +276,6 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Template Builder</h1>
               <p className="text-sm text-gray-600 mt-1">Design and customize your email template</p>
-              {propertyData && (
-                <p className="text-xs text-green-600 mt-1">
-                  Using real property data: {propertyData.title}
-                </p>
-              )}
-              {loadingProperty && (
-                <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading property data...
-                </p>
-              )}
             </div>
 
             {/* Action Buttons */}
@@ -318,7 +284,6 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                 variant="outline"
                 onClick={() => setPreviewMode(true)}
                 className="flex items-center gap-2 px-4 py-2"
-                disabled={loadingProperty}
               >
                 <Eye className="h-4 w-4" />
                 <span className="hidden sm:inline">Preview</span>
@@ -326,7 +291,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
               <Button
                 variant="outline"
                 onClick={() => onTest(currentTemplate)}
-                disabled={validationErrors.length > 0 || loadingProperty}
+                disabled={validationErrors.length > 0}
                 className="flex items-center gap-2 px-4 py-2"
               >
                 <Play className="h-4 w-4" />
@@ -355,7 +320,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
 
         {/* Template Information Form */}
         <div className="px-6 py-5">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Template Name */}
             <div className="space-y-2">
               <Label htmlFor="template-name" className="text-sm font-medium text-gray-700">
@@ -401,6 +366,14 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                   {currentTemplate.description.length}/500
                 </span>
               </div>
+            </div>
+
+            {/* Property Selector */}
+            <div className="space-y-2">
+              <PropertySelector
+                selectedProperty={selectedProperty}
+                onPropertySelect={handlePropertySelect}
+              />
             </div>
           </div>
 
@@ -485,7 +458,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
                     onSelectComponent={setSelectedComponent}
                     onRemoveComponent={handleRemoveComponent}
                     onUpdateComponent={handleUpdateComponent}
-                    propertyData={propertyData}
+                    propertyData={selectedProperty}
                   />
                 </SortableContext>
               </TabsContent>
@@ -493,7 +466,7 @@ export function TemplateBuilder({ template, onSave, onPreview, onTest }: Templat
               <TabsContent value="preview" className="flex-1 m-0 p-0">
                 <TemplatePreview 
                   template={currentTemplate} 
-                  data={propertyData || undefined}
+                  data={selectedProperty || undefined}
                 />
               </TabsContent>
             </Tabs>

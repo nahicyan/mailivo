@@ -213,7 +213,7 @@ export function DynamicEmailTemplate({ template, data }: DynamicEmailTemplatePro
                 color: '#0277bd',
                 borderBottom: '1px solid #b3e5fc'
               }}>
-                <div>Using property: {propertyData.title} | {propertyData.city}, {propertyData.state}</div>
+                <div>Using property: {propertyData.streetAddress}, {propertyData.city}, {propertyData.state}</div>
               </Section>
             )}
             
