@@ -23,8 +23,8 @@ interface CampaignJob {
 }
 
 class EmailQueueService {
-  private emailQueue: Bull.Queue<EmailJob>;
-  private campaignQueue: Bull.Queue<CampaignJob>;
+  private emailQueue!: Bull.Queue<EmailJob>;
+  private campaignQueue!: Bull.Queue<CampaignJob>;
   private emailJobProcessor: EmailJobProcessor;
   private campaignProcessor: CampaignProcessor;
 

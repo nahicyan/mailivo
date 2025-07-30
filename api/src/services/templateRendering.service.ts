@@ -104,7 +104,7 @@ class TemplateRenderingService {
     }
   }
 
-  private generateEmailHTML(template: any, propertyData: LandivoProperty, contactData: any): string {
+  private generateEmailHTML(template: any, propertyData: LandivoProperty, _contactData: any): string {
     // Process property data
     const processedPropertyData = this.processPropertyData(propertyData);
     
@@ -115,7 +115,7 @@ class TemplateRenderingService {
     let componentsHTML = '';
     
     for (const component of sortedComponents) {
-      componentsHTML += this.renderComponent(component, processedPropertyData, contactData);
+      componentsHTML += this.renderComponent(component, processedPropertyData, _contactData);
     }
 
     // Wrap in email structure
@@ -150,7 +150,7 @@ class TemplateRenderingService {
     `;
   }
 
-  private renderComponent(component: EmailComponent, propertyData: any, contactData: any): string {
+  private renderComponent(component: EmailComponent, propertyData: any, _contactData: any): string {
     const props = { ...component.props, ...propertyData };
 
     switch (component.type) {
@@ -258,7 +258,7 @@ class TemplateRenderingService {
     };
   }
 
-  private generateTextContent(propertyData: LandivoProperty, contactData: any): string {
+  private generateTextContent(propertyData: LandivoProperty, _contactData: any): string {
     return `
 ${propertyData.title}
 ${propertyData.city}, ${propertyData.state}
@@ -278,7 +278,7 @@ Unsubscribe: {{unsubscribeLink}}
     `.trim();
   }
 
-  private generateSubject(templateName: string, propertyData: LandivoProperty, contactData: any): string {
+  private generateSubject(_templateName: string, propertyData: LandivoProperty, contactData: any): string {
     const firstName = contactData.firstName || contactData.first_name || '';
     const greeting = firstName ? `${firstName}, ` : '';
     

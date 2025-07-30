@@ -93,9 +93,10 @@ export default function ManageCampaignsPage() {
   };
 
   const handleDuplicateCampaign = async (campaign: Campaign) => {
-    setDuplicating(campaign.id);
+    const campaignId = campaign._id || campaign.id; // Use consistent ID resolution
+    setDuplicating(campaignId);
     try {
-      const response = await fetch(`${API_URL}/campaigns/${campaign.id}/duplicate`, {
+      const response = await fetch(`${API_URL}/campaigns/${campaignId}/duplicate`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
@@ -103,13 +104,16 @@ export default function ManageCampaignsPage() {
         credentials: 'include'
       });
 
-      if (!response.ok) throw new Error('Failed to duplicate campaign');
-      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to duplicate campaign');
+      }
+
       toast.success('Campaign duplicated successfully');
-      fetchCampaigns(); // Refresh the list
+      fetchCampaigns();
     } catch (error) {
       console.error('Error duplicating campaign:', error);
-      toast.error('Failed to duplicate campaign');
+      toast.error(`Failed to duplicate campaign: ${error.message}`);
     } finally {
       setDuplicating(null);
     }
@@ -123,8 +127,9 @@ export default function ManageCampaignsPage() {
   const confirmDelete = async () => {
     if (!campaignToDelete) return;
 
+    const campaignId = campaignToDelete._id || campaignToDelete.id; // Use consistent ID resolution
     try {
-      const response = await fetch(`${API_URL}/campaigns/${campaignToDelete.id}`, {
+      const response = await fetch(`${API_URL}/campaigns/${campaignId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
@@ -132,13 +137,16 @@ export default function ManageCampaignsPage() {
         credentials: 'include'
       });
 
-      if (!response.ok) throw new Error('Failed to delete campaign');
-      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete campaign');
+      }
+
       toast.success('Campaign deleted successfully');
-      fetchCampaigns(); // Refresh the list
+      fetchCampaigns();
     } catch (error) {
       console.error('Error deleting campaign:', error);
-      toast.error('Failed to delete campaign');
+      toast.error(`Failed to delete campaign: ${error.message}`);
     } finally {
       setDeleteDialogOpen(false);
       setCampaignToDelete(null);
@@ -156,7 +164,7 @@ export default function ManageCampaignsPage() {
       });
 
       if (!response.ok) throw new Error('Failed to send campaign');
-      
+
       toast.success('Campaign sending initiated');
       fetchCampaigns(); // Refresh the list
     } catch (error) {
@@ -176,7 +184,7 @@ export default function ManageCampaignsPage() {
       });
 
       if (!response.ok) throw new Error('Failed to pause campaign');
-      
+
       toast.success('Campaign paused');
       fetchCampaigns(); // Refresh the list
     } catch (error) {
@@ -325,9 +333,9 @@ export default function ManageCampaignsPage() {
           </Card>
         ) : (
           filteredCampaigns.map((campaign) => (
-            <CampaignCard 
-              key={campaign._id || campaign.id} 
-              campaign={campaign} 
+            <CampaignCard
+              key={campaign._id || campaign.id}
+              campaign={campaign}
               onViewDetails={handleViewDetails}
               onEdit={handleEditCampaign}
               onDuplicate={handleDuplicateCampaign}
@@ -352,7 +360,7 @@ export default function ManageCampaignsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -378,16 +386,16 @@ interface CampaignCardProps {
   duplicating: boolean;
 }
 
-function CampaignCard({ 
-  campaign, 
-  onViewDetails, 
-  onEdit, 
-  onDuplicate, 
-  onDelete, 
+function CampaignCard({
+  campaign,
+  onViewDetails,
+  onEdit,
+  onDuplicate,
+  onDelete,
   onViewAnalytics,
   onSend,
   onPause,
-  duplicating 
+  duplicating
 }: CampaignCardProps) {
   const campaignId = campaign._id || campaign.id;
   const openRate = campaign.metrics?.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
@@ -480,19 +488,19 @@ function CampaignCard({
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => onViewDetails(campaignId)}
               className="w-full sm:w-auto"
             >
               <Eye className="h-4 w-4 mr-2" />
               View Details
             </Button>
-            
+
             {canSend && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 onClick={() => onSend(campaignId)}
                 className="w-full sm:w-auto"
               >
@@ -502,9 +510,9 @@ function CampaignCard({
             )}
 
             {canPause && (
-              <Button 
+              <Button
                 variant="outline"
-                size="sm" 
+                size="sm"
                 onClick={() => onPause(campaignId)}
                 className="w-full sm:w-auto"
               >
@@ -524,7 +532,7 @@ function CampaignCard({
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Campaign
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => onDuplicate(campaign)}
                   disabled={duplicating}
                 >
@@ -539,7 +547,7 @@ function CampaignCard({
                   <BarChart3 className="h-4 w-4 mr-2" />
                   View Analytics
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => onDelete(campaign)}
                   className="text-red-600 focus:text-red-600"
                 >
