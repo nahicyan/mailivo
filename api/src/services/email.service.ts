@@ -1,151 +1,104 @@
 // api/src/services/email.service.ts
-import nodemailer from 'nodemailer';
-import sgMail from '@sendgrid/mail';
-import { SentMessageInfo } from 'nodemailer/lib/smtp-transport';
+import { smtpService } from './smtp.service';
+import { sendGridService } from './sendgrid.service';
 import { logger } from '../utils/logger';
+import { EmailOptions, EmailResult } from './smtp.service';
 
-interface EmailOptions {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-  from?: string;
-  replyTo?: string;
-  headers?: Record<string, string>;
-}
+type EmailProvider = 'smtp' | 'sendgrid' | 'auto';
 
-interface DeliverabilityMetrics {
-  bounceRate: number;
-  complaintRate: number;
-  deliveryRate: number;
-  reputationScore: number;
+interface EmailServiceConfig {
+  primaryProvider: EmailProvider;
+  fallbackEnabled: boolean;
+  spamScoreThreshold: number;
 }
 
 class EmailService {
-  private smtpTransporter: nodemailer.Transporter;
-  private useSendGrid: boolean;
+  private config: EmailServiceConfig;
 
   constructor() {
-    // Initialize SendGrid if API key is available
-    if (process.env.SENDGRID_API_KEY) {
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      this.useSendGrid = true;
-      logger.info('SendGrid initialized for email delivery');
-    } else {
-      this.useSendGrid = false;
-    }
-
-    // Initialize SMTP as fallback or primary
-    this.smtpTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_PORT === '465',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      // Deliverability optimizations
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      rateLimit: 10, // emails per second
-    });
-
-    this.smtpTransporter.verify((error) => {
-      if (error) {
-        logger.error('SMTP Connection Error:', error);
-      } else {
-        logger.info('SMTP Server ready for emails');
-      }
-    });
+    this.config = {
+      primaryProvider: 'smtp', // Use SMTP as primary for now
+      fallbackEnabled: true,
+      spamScoreThreshold: 7,
+    };
   }
 
-  async sendEmail(options: EmailOptions): Promise<SentMessageInfo> {
-    // Add deliverability headers
-    const enhancedOptions = this.addDeliverabilityHeaders(options);
-
+  async sendEmail(options: EmailOptions): Promise<EmailResult> {
     try {
-      if (this.useSendGrid) {
-        return await this.sendViaSendGrid(enhancedOptions);
-      } else {
-        return await this.sendViaSMTP(enhancedOptions);
+      // Add tracking pixels and unsubscribe links
+      const enhancedOptions = this.enhanceEmailContent(options);
+      
+      // Try primary provider
+      const result = await this.sendWithProvider(enhancedOptions, this.config.primaryProvider);
+      
+      if (result.success) {
+        return result;
       }
+
+      // Try fallback if enabled
+      if (this.config.fallbackEnabled) {
+        logger.info(`Primary provider failed, trying fallback`, {
+          primary: this.config.primaryProvider,
+          error: result.error
+        });
+        
+        const fallbackProvider = this.config.primaryProvider === 'smtp' ? 'sendgrid' : 'smtp';
+        return await this.sendWithProvider(enhancedOptions, fallbackProvider);
+      }
+
+      return result;
     } catch (error) {
-      logger.error('Email send error:', error);
-      
-      // Try fallback if primary method fails
-      if (this.useSendGrid) {
-        logger.info('SendGrid failed, attempting SMTP fallback');
-        return await this.sendViaSMTP(enhancedOptions);
-      }
-      
-      throw error;
+      logger.error('Email service error:', error);
+      return {
+        success: false,
+        error: error.message,
+        provider: this.config.primaryProvider
+      };
     }
   }
 
-  private addDeliverabilityHeaders(options: EmailOptions): EmailOptions {
+  private async sendWithProvider(options: EmailOptions, provider: EmailProvider): Promise<EmailResult> {
+    switch (provider) {
+      case 'smtp':
+        return await smtpService.sendEmail(options);
+      
+      case 'sendgrid':
+        return await sendGridService.sendEmail(options);
+      
+      case 'auto':
+        // For now, auto means prefer SMTP
+        return await this.sendWithProvider(options, 'smtp');
+      
+      default:
+        throw new Error(`Unknown email provider: ${provider}`);
+    }
+  }
+
+  private enhanceEmailContent(options: EmailOptions): EmailOptions {
+    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+    
     const headers = {
-      'List-Unsubscribe': `<${process.env.NEXT_PUBLIC_SERVER_URL}/unsubscribe>`,
+      'List-Unsubscribe': `<${baseUrl}/api/track/unsubscribe>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       'X-Mailer': 'Mailivo-Platform',
-      'X-Priority': '3',
-      'X-MSMail-Priority': 'Normal',
-      'Message-ID': `<${Date.now()}@${process.env.EMAIL_DOMAIN || 'mailivo.com'}>`,
       ...options.headers,
     };
 
     return { ...options, headers };
   }
 
-  private async sendViaSendGrid(options: EmailOptions): Promise<SentMessageInfo> {
-    const msg = {
-      to: options.to,
-      from: options.from || process.env.SENDGRID_FROM_EMAIL || 'noreply@mailivo.com',
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-      replyTo: options.replyTo,
-      headers: options.headers,
-      // SendGrid-specific anti-spam features
-      trackingSettings: {
-        clickTracking: { enable: true },
-        openTracking: { enable: true },
-        subscriptionTracking: { enable: false },
-      },
-      mailSettings: {
-        sandboxMode: { enable: process.env.NODE_ENV === 'development' },
-      },
-    };
-
-    const [response] = await sgMail.send(msg);
+  async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
+    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+    const trackingPixel = `<img src="${baseUrl}/api/track/open/${trackingId}" width="1" height="1" style="display:none;" />`;
     
-    return {
-      messageId: response.headers['x-message-id'],
-      response: response.statusCode.toString(),
-      envelope: { from: msg.from, to: [msg.to] },
-      accepted: [msg.to],
-      rejected: [],
-      pending: [],
-    };
+    // Add tracking pixel before closing body tag
+    if (htmlContent.includes('</body>')) {
+      return htmlContent.replace('</body>', `${trackingPixel}</body>`);
+    } else {
+      return htmlContent + trackingPixel;
+    }
   }
 
-  private async sendViaSMTP(options: EmailOptions): Promise<SentMessageInfo> {
-    const mailOptions = {
-      from: options.from || `"${process.env.EMAIL_FROM_NAME || 'Mailivo'}" <${process.env.SMTP_USER}>`,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-      replyTo: options.replyTo || process.env.SMTP_USER,
-      headers: options.headers,
-    };
-
-    const info = await this.smtpTransporter.sendMail(mailOptions);
-    logger.info('Email sent via SMTP:', info.messageId);
-    return info;
-  }
-
-  // Spam score checking before sending
   async checkSpamScore(content: string, subject: string): Promise<number> {
     let score = 0;
     
@@ -181,83 +134,82 @@ class EmailService {
     const linkCount = (content.match(/<a/g) || []).length;
     if (linkCount > 10) score += 2;
 
-    return Math.min(score, 10); // Cap at 10
+    return Math.min(score, 10);
   }
 
-  // Domain reputation monitoring
-  async checkDomainReputation(): Promise<DeliverabilityMetrics> {
-    // This would integrate with reputation monitoring APIs
-    // For now, return mock data structure
-    return {
-      bounceRate: 0.02,
-      complaintRate: 0.001,
-      deliveryRate: 0.98,
-      reputationScore: 8.5,
-    };
-  }
-
-  // Bounce handling
-  async handleBounce(messageId: string, bounceType: 'hard' | 'soft', reason: string) {
-    logger.warn(`Email bounce detected:`, { messageId, bounceType, reason });
-    
-    // Update tracking record
-    // Implementation depends on your tracking system
-    
-    if (bounceType === 'hard') {
-      // Mark contact as undeliverable
-      // Add to suppression list
-    }
-  }
-
-  // Rate limiting check
-  async canSendEmail(): Promise<boolean> {
-    // Check current sending rate vs limits
-    // This would check Redis for current rate
-    return true; // Simplified for now
-  }
-
-  // Bulk sending optimization
-  async sendBulkEmails(emails: EmailOptions[]): Promise<SentMessageInfo[]> {
-    const results: SentMessageInfo[] = [];
-    const batchSize = 50; // Send in batches
-
-    for (let i = 0; i < emails.length; i += batchSize) {
-      const batch = emails.slice(i, i + batchSize);
-      const batchPromises = batch.map(email => this.sendEmail(email));
-      
-      try {
-        const batchResults = await Promise.allSettled(batchPromises);
-        
-        batchResults.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
-            results.push(result.value);
-          } else {
-            logger.error(`Batch email ${i + index} failed:`, result.reason);
-          }
-        });
-
-        // Delay between batches to respect rate limits
-        if (i + batchSize < emails.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      } catch (error) {
-        logger.error('Batch sending error:', error);
-      }
-    }
-
-    return results;
-  }
-
-  // Email validation
   validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  // Generate unsubscribe link
   generateUnsubscribeLink(contactId: string, campaignId: string): string {
+    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
     const token = Buffer.from(`${contactId}:${campaignId}`).toString('base64');
-    return `${process.env.NEXT_PUBLIC_SERVER_URL}/unsubscribe?token=${token}`;
+    return `${baseUrl}/api/track/unsubscribe?token=${token}`;
+  }
+
+  // Configuration methods
+  setPrimaryProvider(provider: EmailProvider): void {
+    this.config.primaryProvider = provider;
+    logger.info(`Email service primary provider set to: ${provider}`);
+  }
+
+  setFallbackEnabled(enabled: boolean): void {
+    this.config.fallbackEnabled = enabled;
+    logger.info(`Email service fallback ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  // Status and testing
+  async getServiceStatus() {
+    const smtpStatus = smtpService.getConnectionStatus();
+    const sendGridStatus = sendGridService.getConnectionStatus();
+    
+    return {
+      primary: this.config.primaryProvider,
+      fallback: this.config.fallbackEnabled,
+      providers: {
+        smtp: smtpStatus,
+        sendgrid: sendGridStatus
+      }
+    };
+  }
+
+  async testConnection(provider?: EmailProvider): Promise<boolean> {
+    const testProvider = provider || this.config.primaryProvider;
+    
+    switch (testProvider) {
+      case 'smtp':
+        return await smtpService.testConnection();
+      case 'sendgrid':
+        return await sendGridService.testConnection();
+      default:
+        return false;
+    }
+  }
+
+  async sendTestEmail(to: string, campaignData: {
+    subject: string;
+    htmlContent: string;
+    textContent?: string;
+  }): Promise<EmailResult> {
+    const testSubject = `[TEST] ${campaignData.subject}`;
+    
+    const testBanner = `
+      <div style="background-color: #fbbf24; color: #000; padding: 10px; text-align: center; font-weight: bold;">
+        This is a test email - Not sent to actual recipients
+      </div>
+    `;
+    
+    const htmlWithBanner = campaignData.htmlContent.includes('<body>')
+      ? campaignData.htmlContent.replace('<body>', `<body>${testBanner}`)
+      : `${testBanner}${campaignData.htmlContent}`;
+
+    return this.sendEmail({
+      to,
+      subject: testSubject,
+      html: htmlWithBanner,
+      text: campaignData.textContent ? `[TEST EMAIL]\n\n${campaignData.textContent}` : undefined,
+    });
   }
 }
 

@@ -1,57 +1,52 @@
 // api/src/routes/tracking.routes.ts
 import { Router, Request, Response } from 'express';
 import { EmailTracking } from '../models/EmailTracking.model';
-import { Campaign } from '../models/Campaign.model';
+import { Campaign } from '../models/Campaign';
+import { Contact } from '../models/Contact.model';
 import { logger } from '../utils/logger';
-import geoip from 'geoip-lite';
 
 const router = Router();
 
 // Track email opens
-router.get('/open/:trackingId', async (req: Request, res: Response) => {
+router.get('/open/:trackingId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { trackingId } = req.params;
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('User-Agent');
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.get('User-Agent') || '';
 
     // Find tracking record
     const tracking = await EmailTracking.findById(trackingId);
+    
+    // Always return tracking pixel regardless of tracking record status
+    const pixel = Buffer.from(
+      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      'base64'
+    );
+    
+    res.set({
+      'Content-Type': 'image/gif',
+      'Content-Length': pixel.length.toString(),
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    });
+
     if (!tracking) {
-      // Return 1x1 transparent pixel even if not found
-      const pixel = Buffer.from(
-        'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-        'base64'
-      );
-      
-      res.set({
-        'Content-Type': 'image/gif',
-        'Content-Length': pixel.length.toString(),
-        'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-      });
-      
-      return res.end(pixel);
+      res.end(pixel);
+      return;
     }
 
-    // Get location from IP
-    const location = geoip.lookup(ipAddress);
-
-    // Update tracking record
+    // Update tracking record only if not already opened
     if (!tracking.openedAt) {
       tracking.status = 'opened';
       tracking.openedAt = new Date();
       tracking.ipAddress = ipAddress;
       tracking.userAgent = userAgent;
-      
-      if (location) {
-        tracking.location = {
-          country: location.country,
-          city: location.city,
-        };
-      }
 
       // Update campaign metrics
       await Campaign.findByIdAndUpdate(tracking.campaignId, {
-        $inc: { 'metrics.opened': 1 }
+        $inc: { 
+          'metrics.opened': 1,
+          'metrics.open': 1 // Legacy support
+        }
       });
     }
 
@@ -68,26 +63,13 @@ router.get('/open/:trackingId', async (req: Request, res: Response) => {
       campaignId: tracking.campaignId,
       contactId: tracking.contactId,
       ipAddress,
-      location: location?.city,
     });
 
-    // Return 1x1 transparent pixel
-    const pixel = Buffer.from(
-      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-      'base64'
-    );
-    
-    res.set({
-      'Content-Type': 'image/gif',
-      'Content-Length': pixel.length.toString(),
-      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-    });
-    
     res.end(pixel);
   } catch (error) {
     logger.error('Error tracking email open:', error);
     
-    // Still return pixel even on error
+    // Return pixel even on error
     const pixel = Buffer.from(
       'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
       'base64'
@@ -99,57 +81,60 @@ router.get('/open/:trackingId', async (req: Request, res: Response) => {
 });
 
 // Track email clicks
-router.get('/click/:trackingId', async (req: Request, res: Response) => {
+router.get('/click/:trackingId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { trackingId } = req.params;
     const { url } = req.query;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
 
-    if (!url) {
-      return res.status(400).json({ error: 'URL parameter required' });
+    if (!url || typeof url !== 'string') {
+      res.status(400).json({ error: 'URL parameter required' });
+      return;
     }
 
     // Find tracking record
     const tracking = await EmailTracking.findById(trackingId);
-    if (!tracking) {
-      return res.redirect(url as string);
-    }
+    
+    if (tracking) {
+      // Update tracking record only if not already clicked
+      if (!tracking.clickedAt) {
+        tracking.status = 'clicked';
+        tracking.clickedAt = new Date();
 
-    // Update tracking record
-    if (!tracking.clickedAt) {
-      tracking.status = 'clicked';
-      tracking.clickedAt = new Date();
+        // Update campaign metrics
+        await Campaign.findByIdAndUpdate(tracking.campaignId, {
+          $inc: { 
+            'metrics.clicked': 1,
+            'metrics.clicks': 1 // Legacy support
+          }
+        });
+      }
 
-      // Update campaign metrics
-      await Campaign.findByIdAndUpdate(tracking.campaignId, {
-        $inc: { 'metrics.clicked': 1 }
+      // Add to clicks array
+      tracking.clicks.push({
+        url: url,
+        clickedAt: new Date(),
+        ipAddress,
+      });
+
+      await tracking.save();
+
+      logger.info(`Email clicked: ${trackingId}`, {
+        campaignId: tracking.campaignId,
+        contactId: tracking.contactId,
+        url,
+        ipAddress,
       });
     }
 
-    // Add to clicks array
-    tracking.clicks.push({
-      url: url as string,
-      clickedAt: new Date(),
-      ipAddress,
-    });
-
-    await tracking.save();
-
-    logger.info(`Email clicked: ${trackingId}`, {
-      campaignId: tracking.campaignId,
-      contactId: tracking.contactId,
-      url,
-      ipAddress,
-    });
-
     // Redirect to actual URL
-    res.redirect(url as string);
+    res.redirect(url);
   } catch (error) {
     logger.error('Error tracking email click:', error);
     
-    // Redirect to URL even on error
-    if (req.query.url) {
-      res.redirect(req.query.url as string);
+    // Redirect to URL even on error if it exists
+    if (req.query.url && typeof req.query.url === 'string') {
+      res.redirect(req.query.url);
     } else {
       res.status(500).json({ error: 'Tracking error' });
     }
@@ -157,20 +142,20 @@ router.get('/click/:trackingId', async (req: Request, res: Response) => {
 });
 
 // Unsubscribe endpoint
-router.get('/unsubscribe', async (req: Request, res: Response) => {
+router.get('/unsubscribe', async (req: Request, res: Response): Promise<void> => {
   try {
     const { token } = req.query;
     
-    if (!token) {
-      return res.status(400).send('Invalid unsubscribe link');
+    if (!token || typeof token !== 'string') {
+      res.status(400).send('Invalid unsubscribe link');
+      return;
     }
 
     // Decode token
-    const decoded = Buffer.from(token as string, 'base64').toString();
+    const decoded = Buffer.from(token, 'base64').toString();
     const [contactId, campaignId] = decoded.split(':');
 
     // Find and update contact
-    const Contact = require('../models/Contact.model').Contact;
     const contact = await Contact.findByIdAndUpdate(contactId, {
       subscribed: false,
       unsubscribedAt: new Date(),
@@ -178,7 +163,8 @@ router.get('/unsubscribe', async (req: Request, res: Response) => {
     });
 
     if (!contact) {
-      return res.status(404).send('Contact not found');
+      res.status(404).send('Contact not found');
+      return;
     }
 
     logger.info(`Contact unsubscribed: ${contactId}`, { campaignId });
@@ -212,9 +198,14 @@ router.get('/unsubscribe', async (req: Request, res: Response) => {
 });
 
 // SendGrid webhook handler
-router.post('/webhooks/sendgrid', async (req: Request, res: Response) => {
+router.post('/webhooks/sendgrid', async (req: Request, res: Response): Promise<void> => {
   try {
     const events = req.body;
+
+    if (!Array.isArray(events)) {
+      res.status(400).json({ error: 'Invalid webhook payload' });
+      return;
+    }
 
     for (const event of events) {
       await processWebhookEvent(event);
@@ -228,7 +219,7 @@ router.post('/webhooks/sendgrid', async (req: Request, res: Response) => {
 });
 
 // Process webhook events
-async function processWebhookEvent(event: any) {
+async function processWebhookEvent(event: any): Promise<void> {
   try {
     const { event: eventType, email, timestamp, reason, sg_message_id } = event;
 
@@ -248,7 +239,10 @@ async function processWebhookEvent(event: any) {
         tracking.deliveredAt = new Date(timestamp * 1000);
         
         await Campaign.findByIdAndUpdate(tracking.campaignId, {
-          $inc: { 'metrics.delivered': 1 }
+          $inc: { 
+            'metrics.delivered': 1,
+            'metrics.successfulDeliveries': 1 // Legacy support
+          }
         });
         break;
 
@@ -258,7 +252,10 @@ async function processWebhookEvent(event: any) {
         tracking.bounceReason = reason;
         
         await Campaign.findByIdAndUpdate(tracking.campaignId, {
-          $inc: { 'metrics.bounced': 1 }
+          $inc: { 
+            'metrics.bounced': 1,
+            'metrics.bounces': 1 // Legacy support
+          }
         });
         break;
 
@@ -279,7 +276,10 @@ async function processWebhookEvent(event: any) {
           tracking.openedAt = new Date(timestamp * 1000);
           
           await Campaign.findByIdAndUpdate(tracking.campaignId, {
-            $inc: { 'metrics.opened': 1 }
+            $inc: { 
+              'metrics.opened': 1,
+              'metrics.open': 1 // Legacy support
+            }
           });
         }
 
@@ -296,7 +296,10 @@ async function processWebhookEvent(event: any) {
           tracking.clickedAt = new Date(timestamp * 1000);
           
           await Campaign.findByIdAndUpdate(tracking.campaignId, {
-            $inc: { 'metrics.clicked': 1 }
+            $inc: { 
+              'metrics.clicked': 1,
+              'metrics.clicks': 1 // Legacy support
+            }
           });
         }
 

@@ -32,22 +32,24 @@ class EmailQueueService {
   constructor() {
     // Initialize Redis connection
     this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
+      lazyConnect: true,
     });
 
     // Initialize email sending queue
     this.emailQueue = new Bull<EmailJob>('email-sending', {
       redis: {
-        host: process.env.REDIS_HOST || 'localhost',
         port: parseInt(process.env.REDIS_PORT || '6379'),
+        host: process.env.REDIS_HOST || 'localhost',
       },
       defaultJobOptions: {
-        removeOnComplete: 100, // Keep last 100 completed jobs
-        removeOnFail: 50,      // Keep last 50 failed jobs
-        attempts: 3,           // Retry failed jobs 3 times
+        removeOnComplete: 100,
+        removeOnFail: 50,
+        attempts: 3,
         backoff: {
           type: 'exponential',
-          delay: 30000,        // Start with 30 second delay
+          delay: 30000,
         },
       },
     });
@@ -55,8 +57,8 @@ class EmailQueueService {
     // Initialize campaign processing queue
     this.campaignQueue = new Bull<CampaignJob>('campaign-processing', {
       redis: {
-        host: process.env.REDIS_HOST || 'localhost',
         port: parseInt(process.env.REDIS_PORT || '6379'),
+        host: process.env.REDIS_HOST || 'localhost',
       },
       defaultJobOptions: {
         removeOnComplete: 10,
@@ -65,27 +67,26 @@ class EmailQueueService {
       },
     });
 
-    this.setupEmailQueueProcessor();
-    this.setupCampaignQueueProcessor();
-    this.setupQueueEvents();
+    this.setupProcessors();
+    this.setupEventHandlers();
   }
 
-  private setupEmailQueueProcessor() {
-    // Process individual email sending with rate limiting
-    this.emailQueue.process('send-email', 5, async (job) => {
+  private setupProcessors() {
+    // Process individual emails
+    this.emailQueue.process('send-email', 3, async (job) => {
       const { campaignId, contactId, email, personalizedContent, trackingId } = job.data;
       
       try {
         // Check rate limiting
         await this.checkRateLimit();
 
-        // Add tracking parameters to content
-        const htmlWithTracking = this.addTrackingPixels(
+        // Add tracking pixels to content
+        const htmlWithTracking = await emailService.addTrackingPixel(
           personalizedContent.htmlContent,
           trackingId
         );
 
-        // Send email via email service
+        // Send email
         const result = await emailService.sendEmail({
           to: email,
           subject: personalizedContent.subject,
@@ -93,48 +94,51 @@ class EmailQueueService {
           text: personalizedContent.textContent,
         });
 
-        // Update tracking record
-        await EmailTracking.findByIdAndUpdate(trackingId, {
-          status: 'sent',
-          sentAt: new Date(),
-          messageId: result.messageId,
-        });
+        if (result.success) {
+          // Update tracking record
+          await EmailTracking.findByIdAndUpdate(trackingId, {
+            status: 'sent',
+            sentAt: new Date(),
+            messageId: result.messageId,
+          });
 
-        // Update campaign metrics
-        await this.updateCampaignMetrics(campaignId, 'sent');
+          // Update campaign metrics
+          await this.updateCampaignMetrics(campaignId, 'sent');
 
-        logger.info(`Email sent successfully`, {
-          campaignId,
-          contactId,
-          email,
-          messageId: result.messageId,
-        });
+          logger.info(`Email sent successfully`, {
+            campaignId,
+            contactId,
+            email,
+            messageId: result.messageId,
+            provider: result.provider,
+          });
 
-        return { success: true, messageId: result.messageId };
+          return { success: true, messageId: result.messageId };
+        } else {
+          throw new Error(result.error || 'Email sending failed');
+        }
       } catch (error) {
         logger.error(`Email sending failed`, {
           campaignId,
           contactId,
           email,
-          error: error instanceof Error ? error.message : String(error),
+          error: error.message,
         });
 
         // Update tracking record with error
         await EmailTracking.findByIdAndUpdate(trackingId, {
           status: 'failed',
-          error: error instanceof Error ? error.message : String(error),
+          error: error.message,
         });
 
         // Update campaign metrics
-        await this.updateCampaignMetrics(campaignId, 'bounces');
+        await this.updateCampaignMetrics(campaignId, 'bounced');
 
         throw error;
       }
     });
-  }
 
-  private setupCampaignQueueProcessor() {
-    // Process campaign sending by batching contacts
+    // Process campaigns
     this.campaignQueue.process('process-campaign', 1, async (job) => {
       const { campaignId, userId } = job.data;
       
@@ -148,22 +152,8 @@ class EmailQueueService {
         campaign.status = 'sending';
         await campaign.save();
 
-        // Get all contacts for this campaign
-        let contacts;
-        if (campaign.audienceType === 'segment') {
-          contacts = await Contact.find({
-            userId,
-            segments: { $in: campaign.segments },
-            subscribed: true,
-          });
-        } else if (campaign.audienceType === 'landivo') {
-          // Get contacts from Landivo integration
-          const landivoLists = (campaign as any).landivoEmailLists || [];
-          contacts = await this.getLandivoContacts(landivoLists);
-        } else {
-          // All contacts
-          contacts = await Contact.find({ userId, subscribed: true });
-        }
+        // Get contacts based on audience type
+        const contacts = await this.getContactsForCampaign(campaign, userId);
 
         logger.info(`Processing campaign ${campaignId} for ${contacts.length} contacts`);
 
@@ -172,10 +162,7 @@ class EmailQueueService {
         for (const contact of contacts) {
           const trackingId = await this.createTrackingRecord(campaignId, contact._id);
           
-          const personalizedContent = await this.personalizeContent(
-            campaign,
-            contact
-          );
+          const personalizedContent = await this.personalizeContent(campaign, contact);
 
           emailJobs.push({
             campaignId,
@@ -186,14 +173,14 @@ class EmailQueueService {
           });
         }
 
-        // Add all email jobs to queue with delay to respect rate limits
+        // Add jobs to queue with delays
         for (let i = 0; i < emailJobs.length; i++) {
           await this.emailQueue.add('send-email', emailJobs[i], {
-            delay: i * 1000, // 1 second delay between emails
+            delay: i * 2000, // 2 second delay between emails
           });
         }
 
-        // Update campaign with initial metrics
+        // Update campaign metrics
         campaign.metrics.totalRecipients = contacts.length;
         await campaign.save();
 
@@ -205,13 +192,13 @@ class EmailQueueService {
       } catch (error) {
         logger.error(`Campaign processing failed`, {
           campaignId,
-          error: error instanceof Error ? error.message : String(error),
+          error: error.message,
         });
 
         // Update campaign status to failed
         await Campaign.findByIdAndUpdate(campaignId, {
           status: 'failed',
-          error: error instanceof Error ? error.message : String(error),
+          error: error.message,
         });
 
         throw error;
@@ -219,13 +206,13 @@ class EmailQueueService {
     });
   }
 
-  private setupQueueEvents() {
+  private setupEventHandlers() {
     this.emailQueue.on('completed', (job, result) => {
       logger.info(`Email job completed: ${job.id}`, result);
     });
 
     this.emailQueue.on('failed', (job, err) => {
-      logger.error(`Email job failed: ${job.id}`, err);
+      logger.error(`Email job failed: ${job.id}`, err.message);
     });
 
     this.campaignQueue.on('completed', (job, result) => {
@@ -233,30 +220,27 @@ class EmailQueueService {
     });
 
     this.campaignQueue.on('failed', (job, err) => {
-      logger.error(`Campaign job failed: ${job.id}`, err);
+      logger.error(`Campaign job failed: ${job.id}`, err.message);
     });
   }
 
   private async checkRateLimit(): Promise<void> {
     const key = 'email_rate_limit';
-    const limit = 100; // 100 emails per hour
-    const window = 3600; // 1 hour in seconds
+    const limit = 60; // 60 emails per hour for SMTP
+    const window = 3600; // 1 hour
 
-    const current = await this.redis.incr(key);
-    if (current === 1) {
-      await this.redis.expire(key, window);
+    try {
+      const current = await this.redis.incr(key);
+      if (current === 1) {
+        await this.redis.expire(key, window);
+      }
+
+      if (current > limit) {
+        throw new Error('Rate limit exceeded');
+      }
+    } catch (error) {
+      logger.warn('Rate limit check failed, proceeding anyway:', error.message);
     }
-
-    if (current > limit) {
-      throw new Error('Rate limit exceeded');
-    }
-  }
-
-  private addTrackingPixels(htmlContent: string, trackingId: string): string {
-    const trackingPixel = `<img src="${process.env.NEXT_PUBLIC_SERVER_URL}/api/track/open/${trackingId}" width="1" height="1" style="display:none;" />`;
-    
-    // Add tracking pixel before closing body tag
-    return htmlContent.replace('</body>', `${trackingPixel}</body>`);
   }
 
   private async createTrackingRecord(campaignId: string, contactId: string): Promise<string> {
@@ -268,7 +252,7 @@ class EmailQueueService {
     });
     
     await tracking.save();
-    return (tracking._id as any).toString();
+    return tracking._id.toString();
   }
 
   private async personalizeContent(campaign: any, contact: any) {
@@ -276,52 +260,64 @@ class EmailQueueService {
     let htmlContent = campaign.htmlContent;
     let textContent = campaign.textContent;
 
-    // Basic personalization
+    // Basic personalization replacements
     const replacements = {
-      '{{firstName}}': contact.firstName || 'Friend',
-      '{{lastName}}': contact.lastName || '',
+      '{{firstName}}': contact.firstName || contact.first_name || 'Friend',
+      '{{lastName}}': contact.lastName || contact.last_name || '',
       '{{email}}': contact.email,
-      '{{companyName}}': contact.companyName || '',
+      '{{name}}': `${contact.firstName || contact.first_name || ''} ${contact.lastName || contact.last_name || ''}`.trim() || 'Friend',
     };
 
+    // Apply replacements
     for (const [placeholder, value] of Object.entries(replacements)) {
-      subject = subject.replace(new RegExp(placeholder, 'g'), value);
-      htmlContent = htmlContent.replace(new RegExp(placeholder, 'g'), value);
+      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      subject = subject.replace(regex, value);
+      htmlContent = htmlContent.replace(regex, value);
       if (textContent) {
-        textContent = textContent.replace(new RegExp(placeholder, 'g'), value);
+        textContent = textContent.replace(regex, value);
       }
     }
 
     return { subject, htmlContent, textContent };
   }
 
-  private async getLandivoContacts(emailListIds: string[]): Promise<any[]> {
-    // Implement Landivo API integration to get contacts
-    // This would call your Landivo service to get contacts from specific lists
-    const contacts: any[] = [];
-    
-    for (const listId of emailListIds) {
-      try {
-        // Replace with actual Landivo API call
-        const listContacts = await this.fetchLandivoList(listId);
-        contacts.push(...listContacts);
-      } catch (error) {
-        logger.error(`Failed to fetch Landivo list ${listId}:`, error);
-      }
+  private async getContactsForCampaign(campaign: any, userId: string) {
+    let contacts = [];
+
+    if (campaign.audienceType === 'segment' && campaign.segments?.length > 0) {
+      contacts = await Contact.find({
+        userId,
+        segments: { $in: campaign.segments },
+        subscribed: true,
+      });
+    } else if (campaign.audienceType === 'landivo' && campaign.landivoEmailLists?.length > 0) {
+      // Handle Landivo contacts - simplified for now
+      contacts = await Contact.find({
+        userId,
+        source: 'landivo',
+        subscribed: true,
+      });
+    } else {
+      // All contacts
+      contacts = await Contact.find({ 
+        userId, 
+        subscribed: true 
+      });
     }
 
     return contacts;
   }
 
-  private async fetchLandivoList(_listId: string): Promise<any[]> {
-    // Implement actual Landivo API integration
-    // For now, return empty array
-    return [];
-  }
-
   private async updateCampaignMetrics(campaignId: string, metric: string) {
-    const updateQuery: any = {};
+    const updateQuery = {};
     updateQuery[`metrics.${metric}`] = 1;
+
+    // Also update legacy metrics for backward compatibility
+    if (metric === 'sent') {
+      updateQuery['metrics.sent'] = 1;
+    } else if (metric === 'bounced') {
+      updateQuery['metrics.bounces'] = 1;
+    }
 
     await Campaign.findByIdAndUpdate(
       campaignId,
@@ -330,7 +326,7 @@ class EmailQueueService {
     );
   }
 
-  // Public methods for campaign management
+  // Public methods
   async sendCampaign(campaignId: string, userId: string): Promise<void> {
     await this.campaignQueue.add('process-campaign', {
       campaignId,
@@ -339,7 +335,7 @@ class EmailQueueService {
   }
 
   async pauseCampaign(campaignId: string): Promise<void> {
-    // Remove all pending email jobs for this campaign
+    // Remove pending email jobs for this campaign
     const jobs = await this.emailQueue.getJobs(['waiting', 'delayed']);
     const campaignJobs = jobs.filter(job => job.data.campaignId === campaignId);
     
@@ -351,6 +347,8 @@ class EmailQueueService {
     await Campaign.findByIdAndUpdate(campaignId, {
       status: 'paused',
     });
+
+    logger.info(`Campaign ${campaignId} paused`);
   }
 
   async getQueueStats() {
@@ -369,6 +367,13 @@ class EmailQueueService {
         active: campaignActive.length,
       },
     };
+  }
+
+  // Cleanup method
+  async close(): Promise<void> {
+    await this.emailQueue.close();
+    await this.campaignQueue.close();
+    await this.redis.disconnect();
   }
 }
 
