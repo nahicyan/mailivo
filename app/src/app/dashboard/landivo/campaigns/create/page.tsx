@@ -93,34 +93,49 @@ export default function CreateCampaignPage() {
 
     const handlePrevious = () => setCurrentStep(currentStep - 1);
 
-    const handleSubmit = async () => {
-        if (!validateStep(currentStep)) return;
+const handleSubmit = async () => {
+    if (!validateStep(currentStep)) return;
 
-        setLoading(true);
-        try {
-            const response = await fetch(`${API_URL}/campaigns`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    ...formData,
-                    source: 'landivo',
-                    scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined
-                })
-            });
+    setLoading(true);
+    try {
+        // Get the selected email template to extract subject and content
+        const selectedTemplate = templates?.find((t: any) => t.id === formData.emailTemplate || t._id === formData.emailTemplate);
+        
+        const response = await fetch(`${API_URL}/campaigns`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                ...formData,
+                source: 'landivo',
+                scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
+                // Add the required fields
+                subject: selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
+                htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
+                textContent: selectedTemplate?.textContent || '',
+                // Map Landivo fields to standard campaign fields
+                audienceType: 'landivo',
+                segments: [formData.emailList],
+                estimatedRecipients: formData.emailVolume
+            })
+        });
 
-            if (!response.ok) throw new Error('Failed to create campaign');
-            router.push('/dashboard/landivo/campaigns/manage');
-        } catch (error) {
-            setErrors({ submit: 'Failed to create campaign. Please try again.' });
-        } finally {
-            setLoading(false);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create campaign');
         }
-    };
-
+        
+        router.push('/dashboard/landivo/campaigns/manage');
+    } catch (error: any) {
+        console.error('Campaign creation error:', error);
+        setErrors({ submit: error.message || 'Failed to create campaign. Please try again.' });
+    } finally {
+        setLoading(false);
+    }
+};
     const hasErrors = propertiesError || listsError || templatesError;
 
     const stepProps = {
