@@ -57,9 +57,15 @@ export default function ManageCampaignsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [emailLists, setEmailLists] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
 
   useEffect(() => {
     fetchCampaigns();
+    fetchProperties();
+    fetchEmailLists();
+    fetchTemplates();
   }, []);
 
   const fetchCampaigns = async () => {
@@ -78,6 +84,90 @@ export default function ManageCampaignsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+      const response = await fetch(`${serverURL}/residency/allresd/`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Properties data:', data); // Debug log
+        setProperties(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    }
+  };
+
+  const fetchEmailLists = async () => {
+    try {
+      const response = await fetch(`${API_URL}/landivo-email-lists`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Email lists data:', data); // Debug log
+        setEmailLists(Array.isArray(data) ? data : (data.emailLists || []));
+      }
+    } catch (error) {
+      console.error('Error fetching email lists:', error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch(`${API_URL}/templates`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Templates data:', data); // Debug log
+        setTemplates(Array.isArray(data) ? data : (data.templates || []));
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const getPropertyAddress = (propertyId: string) => {
+    if (!Array.isArray(properties)) {
+      return propertyId;
+    }
+    const property = properties.find(p => p.id === propertyId || p._id === propertyId);
+    if (!property) return propertyId;
+    
+    return `${property.streetAddress || ''}, ${property.city || ''}, ${property.zip || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
+  };
+
+  const getEmailListDetails = (listId: string) => {
+    if (!Array.isArray(emailLists)) {
+      return {
+        name: listId,
+        recipientCount: 0
+      };
+    }
+    const list = emailLists.find(l => l.id === listId || l._id === listId);
+    return {
+      name: list?.name || listId,
+      recipientCount: list?.buyerCount || list?.contactCount || list?.recipients?.length || 0
+    };
+  };
+
+  const getTemplateName = (templateId: string) => {
+    if (!Array.isArray(templates)) {
+      return templateId;
+    }
+    const template = templates.find(t => t.id === templateId || t._id === templateId);
+    return template?.name || template?.title || templateId;
   };
 
   const handleViewDetails = (campaignId: string) => {
@@ -344,6 +434,9 @@ export default function ManageCampaignsPage() {
               onSend={handleSendCampaign}
               onPause={handlePauseCampaign}
               duplicating={duplicating === (campaign._id || campaign.id)}
+              getPropertyAddress={getPropertyAddress}
+              getEmailListDetails={getEmailListDetails}
+              getTemplateName={getTemplateName}
             />
           ))
         )}
@@ -384,6 +477,9 @@ interface CampaignCardProps {
   onSend: (id: string) => void;
   onPause: (id: string) => void;
   duplicating: boolean;
+  getPropertyAddress: (id: string) => string;
+  getEmailListDetails: (id: string) => { name: string; recipientCount: number };
+  getTemplateName: (id: string) => string;
 }
 
 function CampaignCard({
@@ -395,11 +491,15 @@ function CampaignCard({
   onViewAnalytics,
   onSend,
   onPause,
-  duplicating
+  duplicating,
+  getPropertyAddress,
+  getEmailListDetails,
+  getTemplateName
 }: CampaignCardProps) {
   const campaignId = campaign._id || campaign.id;
   const openRate = campaign.metrics?.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
   const clickRate = campaign.metrics?.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
+  const emailListDetails = getEmailListDetails(campaign.emailList);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -432,15 +532,22 @@ function CampaignCard({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Property</p>
-                <p className="font-medium truncate">{campaign.property}</p>
+                <p className="font-medium truncate">{getPropertyAddress(campaign.property)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Email List</p>
-                <p className="font-medium truncate">{campaign.emailList}</p>
+                <p className="font-medium truncate">
+                  {emailListDetails.name}
+                  {emailListDetails.recipientCount > 0 && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({formatNumber(emailListDetails.recipientCount)} Recipients)
+                    </span>
+                  )}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Template</p>
-                <p className="font-medium truncate">{campaign.emailTemplate}</p>
+                <p className="font-medium truncate">{getTemplateName(campaign.emailTemplate)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Schedule</p>

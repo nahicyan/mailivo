@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
 import {
   ArrowLeft,
   Edit,
@@ -16,7 +17,7 @@ import {
   Users,
   MousePointer,
   Eye,
-  Bounce,
+  TrendingDown,
   CheckCircle,
   AlertTriangle,
   Calendar,
@@ -41,9 +42,15 @@ export default function CampaignDetailsPage({ params }: Props) {
   const [campaign, setCampaign] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [emailLists, setEmailLists] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
 
   useEffect(() => {
     fetchCampaignDetails();
+    fetchProperties();
+    fetchEmailLists();
+    fetchTemplates();
   }, [id]);
 
   const fetchCampaignDetails = async () => {
@@ -68,6 +75,87 @@ export default function CampaignDetailsPage({ params }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+      const response = await fetch(`${serverURL}/residency/allresd/`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProperties(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    }
+  };
+
+  const fetchEmailLists = async () => {
+    try {
+      const response = await fetch(`${API_URL}/landivo-email-lists`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEmailLists(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching email lists:', error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch(`${API_URL}/templates`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(Array.isArray(data) ? data : (data.templates || []));
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const getPropertyAddress = (propertyId: string) => {
+    if (!Array.isArray(properties)) {
+      return propertyId;
+    }
+    const property = properties.find(p => p.id === propertyId || p._id === propertyId);
+    if (!property) return propertyId;
+    
+    return `${property.streetAddress || ''}, ${property.city || ''}, ${property.zip || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
+  };
+
+  const getEmailListDetails = (listId: string) => {
+    if (!Array.isArray(emailLists)) {
+      return {
+        name: listId,
+        recipientCount: 0
+      };
+    }
+    const list = emailLists.find(l => l.id === listId || l._id === listId);
+    return {
+      name: list?.name || listId,
+      recipientCount: list?.contactCount || list?.recipients?.length || 0
+    };
+  };
+
+  const getTemplateName = (templateId: string) => {
+    if (!Array.isArray(templates)) {
+      return templateId;
+    }
+    const template = templates.find(t => t.id === templateId || t._id === templateId);
+    return template?.name || template?.title || templateId;
   };
 
   const handleSendCampaign = async () => {
@@ -127,16 +215,16 @@ export default function CampaignDetailsPage({ params }: Props) {
       <div className="space-y-6">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i}>
+                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -148,7 +236,7 @@ export default function CampaignDetailsPage({ params }: Props) {
         <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-lg font-medium mb-2">Campaign Not Found</h3>
         <p className="text-muted-foreground mb-4">
-          The campaign you're looking for doesn't exist or you don't have permission to view it.
+          Please try again later.
         </p>
         <Link href="/dashboard/landivo/campaigns/manage">
           <Button>
@@ -160,6 +248,7 @@ export default function CampaignDetailsPage({ params }: Props) {
     );
   }
 
+  // Calculate rates
   const openRate = campaign.metrics?.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
   const clickRate = campaign.metrics?.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
   const deliveryRate = campaign.metrics?.sent > 0 ? (campaign.metrics.successfulDeliveries / campaign.metrics.sent * 100) : 0;
@@ -167,6 +256,8 @@ export default function CampaignDetailsPage({ params }: Props) {
 
   const canSend = campaign.status === 'draft' || campaign.status === 'paused';
   const canPause = campaign.status === 'active' || campaign.status === 'sending';
+
+  const emailListDetails = getEmailListDetails(campaign.emailList);
 
   return (
     <div className="space-y-6">
@@ -216,42 +307,43 @@ export default function CampaignDetailsPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Performance Overview */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Mail className="h-5 w-5 text-blue-600" />
-            </div>
-            <div className="text-2xl font-bold text-blue-600">{formatNumber(campaign.metrics?.sent || 0)}</div>
-            <p className="text-sm text-muted-foreground">Emails Sent</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
+          <CardContent className="p-6">
             <div className="flex items-center justify-center mb-2">
               <Eye className="h-5 w-5 text-green-600" />
             </div>
             <div className="text-2xl font-bold text-green-600">{openRate.toFixed(1)}%</div>
             <p className="text-sm text-muted-foreground">Open Rate</p>
-            <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.open || 0)} opens</p>
+            <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.open || 0)} opened</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4 text-center">
+          <CardContent className="p-6">
             <div className="flex items-center justify-center mb-2">
               <MousePointer className="h-5 w-5 text-purple-600" />
             </div>
             <div className="text-2xl font-bold text-purple-600">{clickRate.toFixed(1)}%</div>
             <p className="text-sm text-muted-foreground">Click Rate</p>
-            <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.clicks || 0)} clicks</p>
+            <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.clicks || 0)} clicked</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4 text-center">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center mb-2">
+              <TrendingDown className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="text-2xl font-bold text-red-600">{bounceRate.toFixed(1)}%</div>
+            <p className="text-sm text-muted-foreground">Bounce Rate</p>
+            <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.bounces || 0)} bounced</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center justify-center mb-2">
               <CheckCircle className="h-5 w-5 text-blue-600" />
             </div>
@@ -275,15 +367,22 @@ export default function CampaignDetailsPage({ params }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Property</Label>
-                <p className="font-medium">{campaign.property}</p>
+                <p className="font-medium">{getPropertyAddress(campaign.property)}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Email List</Label>
-                <p className="font-medium">{campaign.emailList}</p>
+                <p className="font-medium">
+                  {emailListDetails.name}
+                  {emailListDetails.recipientCount > 0 && (
+                    <span className="text-sm text-muted-foreground ml-1">
+                      ({formatNumber(emailListDetails.recipientCount)} recipients)
+                    </span>
+                  )}
+                </p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Template</Label>
-                <p className="font-medium">{campaign.emailTemplate}</p>
+                <p className="font-medium">{getTemplateName(campaign.emailTemplate)}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Schedule</Label>
@@ -300,7 +399,7 @@ export default function CampaignDetailsPage({ params }: Props) {
               </div>
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Source</Label>
-                <p className="font-medium capitalize">{campaign.source || 'Manual'}</p>
+                <p className="font-medium capitalize">{campaign.source || 'Landivo'}</p>
               </div>
             </div>
 
@@ -309,7 +408,7 @@ export default function CampaignDetailsPage({ params }: Props) {
                 <Separator />
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Description</Label>
-                  <p className="text-sm mt-1">{campaign.description}</p>
+                  <p className="font-medium">{campaign.description}</p>
                 </div>
               </>
             )}
@@ -319,96 +418,90 @@ export default function CampaignDetailsPage({ params }: Props) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Engagement Details
+              <Mail className="h-5 w-5" />
+              Performance Metrics
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-medium text-muted-foreground">Bounces</Label>
-                <p className="font-medium text-red-600">{formatNumber(campaign.metrics?.bounces || 0)}</p>
-                <p className="text-xs text-muted-foreground">{bounceRate.toFixed(1)}% bounce rate</p>
+                <Label className="text-sm font-medium text-muted-foreground">Total Sent</Label>
+                <p className="text-lg font-bold text-blue-600">{formatNumber(campaign.metrics?.sent || 0)}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Total Opens</Label>
+                <p className="text-lg font-bold text-green-600">{formatNumber(campaign.metrics?.open || 0)}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Total Clicks</Label>
+                <p className="text-lg font-bold text-purple-600">{formatNumber(campaign.metrics?.clicks || 0)}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Mobile Opens</Label>
-                <p className="font-medium">{formatNumber(campaign.metrics?.mobileOpen || 0)}</p>
-                <p className="text-xs text-muted-foreground">
-                  {campaign.metrics?.open > 0 ? 
-                    `${((campaign.metrics.mobileOpen || 0) / campaign.metrics.open * 100).toFixed(1)}% of opens` : 
-                    '0% of opens'
-                  }
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Unsubscribes</Label>
-                <p className="font-medium">{formatNumber(campaign.metrics?.unsubscribed || 0)}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Complaints</Label>
-                <p className="font-medium">{formatNumber(campaign.metrics?.complained || 0)}</p>
+                <p className="text-lg font-bold text-orange-600">{formatNumber(campaign.metrics?.mobileOpen || 0)}</p>
               </div>
             </div>
 
             <Separator />
 
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground">Timeline</Label>
-              <div className="space-y-2 mt-2">
-                <div className="flex justify-between text-sm">
-                  <span>Created:</span>
-                  <span>{formatDate(campaign.createdAt)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Last Updated:</span>
-                  <span>{formatDate(campaign.updatedAt)}</span>
-                </div>
-                {campaign.scheduledDate && (
-                  <div className="flex justify-between text-sm">
-                    <span>Scheduled:</span>
-                    <span>{formatDate(campaign.scheduledDate)}</span>
-                  </div>
-                )}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Successful Deliveries</span>
+                <span className="font-medium">{formatNumber(campaign.metrics?.successfulDeliveries || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Bounces</span>
+                <span className="font-medium text-red-600">{formatNumber(campaign.metrics?.bounces || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Did Not Open</span>
+                <span className="font-medium">{formatNumber(campaign.metrics?.didNotOpen || 0)}</span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
+      {/* Timeline */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Campaign Timeline
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href={`/dashboard/landivo/campaigns/${id}/edit`}>
-              <Button variant="outline" className="w-full">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Campaign
-              </Button>
-            </Link>
-            <Link href={`/dashboard/landivo/campaigns/${id}/analytics`}>
-              <Button variant="outline" className="w-full">
-                <BarChart3 className="mr-2 h-4 w-4" />
-                View Analytics
-              </Button>
-            </Link>
-            <Button variant="outline" className="w-full">
-              <Users className="mr-2 h-4 w-4" />
-              View Recipients
-            </Button>
-            <Button variant="outline" className="w-full">
-              <FileText className="mr-2 h-4 w-4" />
-              Export Report
-            </Button>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="flex-1">
+                <p className="font-medium">Campaign Created</p>
+                <p className="text-sm text-muted-foreground">{formatDate(campaign.createdAt)}</p>
+              </div>
+            </div>
+            
+            {campaign.sentAt && (
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="font-medium">Campaign Sent</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(campaign.sentAt)}</p>
+                </div>
+              </div>
+            )}
+
+            {campaign.status === 'completed' && (
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="font-medium">Campaign Completed</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(campaign.updatedAt)}</p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
     </div>
   );
-}
-
-function Label({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={className}>{children}</div>;
 }
