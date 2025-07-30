@@ -525,7 +525,7 @@ class CampaignController {
       // Pause any sending campaigns
       const sendingCampaigns = campaigns.filter((c: any) => c.status === 'sending');
       for (const campaign of sendingCampaigns) {
-        await emailQueueService.pauseCampaign(campaign._id.toString());
+        await emailQueueService.pauseCampaign((campaign as any)._id.toString());
       }
 
       // Delete tracking records
@@ -580,20 +580,21 @@ class CampaignController {
 
       const results = [];
       for (const campaign of campaigns) {
+        const campaignId = (campaign as any)._id.toString();
         try {
-          await emailQueueService.sendCampaign(campaign._id.toString(), userId);
+          await emailQueueService.sendCampaign(campaignId, userId);
           campaign.status = 'sending';
           campaign.sentAt = new Date();
           await campaign.save();
           
           results.push({
-            campaignId: campaign._id,
+            campaignId,
             name: campaign.name,
             status: 'queued'
           });
         } catch (error) {
           results.push({
-            campaignId: campaign._id,
+            campaignId,
             name: campaign.name,
             status: 'failed',
             error: error instanceof Error ? error.message : 'Unknown error'

@@ -74,10 +74,10 @@ const emailTrackingSchema = new Schema<IEmailTracking>({
   }],
 }, { 
   timestamps: true,
-  index: { campaignId: 1, contactId: 1 },
 });
 
 // Compound indexes for analytics queries
+emailTrackingSchema.index({ campaignId: 1, contactId: 1 });
 emailTrackingSchema.index({ campaignId: 1, status: 1 });
 emailTrackingSchema.index({ campaignId: 1, sentAt: 1 });
 emailTrackingSchema.index({ contactId: 1, sentAt: -1 });
