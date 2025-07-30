@@ -2,9 +2,16 @@
 import { smtpService } from './smtp.service';
 import { sendGridService } from './sendgrid.service';
 import { logger } from '../utils/logger';
-import { EmailOptions, EmailResult } from './smtp.service';
+import { EmailOptions } from './smtp.service';
 
 type EmailProvider = 'smtp' | 'sendgrid' | 'auto';
+
+interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  provider: EmailProvider;
+}
 
 interface EmailServiceConfig {
   primaryProvider: EmailProvider;

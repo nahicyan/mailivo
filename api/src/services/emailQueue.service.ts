@@ -2,6 +2,7 @@
 import Bull from 'bull';
 import Redis from 'ioredis';
 import { emailService } from './email.service';
+import { landivoService } from './landivo.service';
 import { Campaign } from '../models/Campaign';
 import { Contact } from '../models/Contact.model';
 import { EmailTracking } from '../models/EmailTracking.model';
@@ -157,6 +158,12 @@ class EmailQueueService {
 
         logger.info(`Processing campaign ${campaignId} for ${contacts.length} contacts`);
 
+        if (contacts.length === 0) {
+          campaign.status = 'failed';
+          await campaign.save();
+          throw new Error('No contacts found for this campaign');
+        }
+
         // Create email jobs for each contact
         const emailJobs = [];
         for (const contact of contacts) {
@@ -288,27 +295,101 @@ class EmailQueueService {
     let contacts = [];
 
     if (campaign.audienceType === 'segment' && campaign.segments?.length > 0) {
+      // Handle regular segments
       contacts = await Contact.find({
         userId,
         segments: { $in: campaign.segments },
         subscribed: true,
       });
-    } else if (campaign.audienceType === 'landivo' && campaign.landivoEmailLists?.length > 0) {
-      // Handle Landivo contacts - simplified for now
-      contacts = await Contact.find({
-        userId,
-        source: 'landivo',
-        subscribed: true,
-      });
+      
+    } else if (campaign.audienceType === 'landivo') {
+      // Handle Landivo campaigns - FIXED IMPLEMENTATION
+      contacts = await this.getLandivoContacts(campaign, userId);
+      
     } else {
-      // All contacts
+      // All contacts fallback
       contacts = await Contact.find({ 
         userId, 
         subscribed: true 
       });
     }
 
+    logger.info(`Found ${contacts.length} contacts for campaign ${campaign._id}`, {
+      audienceType: campaign.audienceType,
+      segments: campaign.segments,
+    });
+
     return contacts;
+  }
+
+  private async getLandivoContacts(campaign: any, userId: string) {
+    try {
+      // Get email list ID from campaign
+      const emailListId = this.extractEmailListId(campaign);
+      
+      if (!emailListId) {
+        logger.error('No Landivo email list ID found in campaign', { 
+          campaignId: campaign._id,
+          segments: campaign.segments,
+          emailList: campaign.emailList 
+        });
+        return [];
+      }
+
+      logger.info(`Fetching Landivo contacts for email list: ${emailListId}`);
+
+      // Fetch contacts from Landivo
+      const landivoContacts = await landivoService.getEmailListWithBuyers(emailListId);
+
+      if (landivoContacts.length === 0) {
+        logger.warn(`No contacts found in Landivo email list ${emailListId}`);
+        return [];
+      }
+
+      // Transform Landivo contacts to campaign contacts format
+      const transformedContacts = landivoContacts.map(contact => ({
+        _id: contact.landivo_buyer_id, // Use Landivo buyer ID as temp ID
+        email: contact.email,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        first_name: contact.firstName, // Support both naming conventions
+        last_name: contact.lastName,
+        phone: contact.phone,
+        source: 'landivo',
+        subscribed: contact.subscribed,
+        userId: userId,
+      }));
+
+      logger.info(`Successfully transformed ${transformedContacts.length} Landivo contacts`);
+      return transformedContacts;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Failed to fetch Landivo contacts:`, {
+        error: errorMessage,
+        campaignId: campaign._id,
+      });
+      
+      // Don't fail the entire campaign, just return empty array
+      return [];
+    }
+  }
+
+  private extractEmailListId(campaign: any): string | null {
+    // Try different possible locations for the email list ID
+    if (campaign.emailList) {
+      return campaign.emailList;
+    }
+    
+    if (campaign.segments && campaign.segments.length > 0) {
+      return campaign.segments[0]; // Take first segment as email list ID
+    }
+    
+    if (campaign.landivoEmailLists && campaign.landivoEmailLists.length > 0) {
+      return campaign.landivoEmailLists[0];
+    }
+
+    return null;
   }
 
   private async updateCampaignMetrics(campaignId: string, metric: string) {

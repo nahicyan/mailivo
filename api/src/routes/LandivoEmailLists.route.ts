@@ -1,6 +1,6 @@
 // api/src/routes/landivo-email-lists.route.ts
 import { Router } from 'express';
-import { landivoEmailListsController } from '../controllers/landivo-email-lists.controller';
+import { landivoEmailListsController } from '../controllers/LandivoEmailLists.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();

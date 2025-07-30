@@ -3,8 +3,8 @@ import { Router } from 'express';
 import { authRoutes } from './auth.route';
 import { campaignRoutes } from './campaign.route';
 import { templatesRoutes } from './template.route';
-import { landivoRoutes } from './landivo.route';
-import { landivoEmailListsRoutes } from './landivo-email-lists.route';
+import { landivoRoutes } from './LandivoProperty.route';
+import { landivoEmailListsRoutes } from './LandivoEmailLists.route';
 import workflowRoutes from './workflows';
 import trackingRoutes from './tracking.routes';
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { landivoController } from '../controllers/landivo.controller';
+import { landivoController } from '../controllers/LandivoProperty.controller';
 
 const router = Router();
 
