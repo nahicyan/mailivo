@@ -1,7 +1,14 @@
 // api/src/services/sendgrid.service.ts
 import sgMail from '@sendgrid/mail';
 import { logger } from '../utils/logger';
-import { EmailOptions, EmailResult } from './smtp.service';
+import { EmailOptions } from './smtp.service';
+
+interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  provider: 'sendgrid';
+}
 
 class SendGridService {
   private isConfigured: boolean = false;
@@ -28,7 +35,7 @@ class SendGridService {
       this.isConfigured = true;
       logger.info('SendGrid service initialized successfully');
     } catch (error) {
-      logger.error('SendGrid initialization failed:', error);
+      logger.error('SendGrid initialization failed:', error instanceof Error ? error.message : error);
       this.isConfigured = false;
     }
   }
@@ -62,16 +69,19 @@ class SendGridService {
       };
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : 'UNKNOWN';
+      
       logger.error('SendGrid send failed:', {
-        error: error.message,
+        error: errorMessage,
         to: options.to,
         subject: options.subject,
-        code: error.code,
+        code: errorCode,
       });
 
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
         provider: 'sendgrid'
       };
     }
@@ -122,7 +132,7 @@ class SendGridService {
       // SendGrid doesn't have a direct test method, so we'll just verify the API key is set
       return true;
     } catch (error) {
-      logger.error('SendGrid test failed:', error);
+      logger.error('SendGrid test failed:', error instanceof Error ? error.message : error);
       return false;
     }
   }

@@ -48,11 +48,12 @@ class EmailService {
 
       return result;
     } catch (error) {
-      logger.error('Email service error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Email service error:', errorMessage);
       return {
         success: false,
-        error: error.message,
-        provider: this.config.primaryProvider
+        error: errorMessage,
+        provider: 'smtp' as const
       };
     }
   }
@@ -67,7 +68,7 @@ class EmailService {
       
       case 'auto':
         // For now, auto means prefer SMTP
-        return await this.sendWithProvider(options, 'smtp');
+        return await smtpService.sendEmail(options);
       
       default:
         throw new Error(`Unknown email provider: ${provider}`);
@@ -210,6 +211,23 @@ class EmailService {
       html: htmlWithBanner,
       text: campaignData.textContent ? `[TEST EMAIL]\n\n${campaignData.textContent}` : undefined,
     });
+  }
+
+  // Domain reputation monitoring (simplified version)
+  async checkDomainReputation(): Promise<{
+    bounceRate: number;
+    complaintRate: number;
+    deliveryRate: number;
+    reputationScore: number;
+  }> {
+    // For now, return optimistic metrics
+    // In production, integrate with reputation monitoring APIs
+    return {
+      bounceRate: 0.02,
+      complaintRate: 0.001,
+      deliveryRate: 0.98,
+      reputationScore: 8.5,
+    };
   }
 }
 

@@ -17,11 +17,11 @@ export interface EmailResult {
   success: boolean;
   messageId?: string;
   error?: string;
-  provider: 'smtp';
+  provider: 'smtp' | 'sendgrid';
 }
 
 class SMTPService {
-  private transporter: nodemailer.Transporter;
+  private transporter!: nodemailer.Transporter;
   private isReady: boolean = false;
 
   constructor() {
@@ -29,7 +29,7 @@ class SMTPService {
   }
 
   private initializeTransporter() {
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
@@ -59,7 +59,7 @@ class SMTPService {
       });
     } catch (error) {
       this.isReady = false;
-      logger.error('SMTP connection verification failed:', error);
+      logger.error('SMTP connection verification failed:', error instanceof Error ? error.message : error);
     }
   }
 
@@ -99,14 +99,14 @@ class SMTPService {
 
     } catch (error) {
       logger.error('SMTP send failed:', {
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         to: options.to,
         subject: options.subject,
       });
 
       return {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         provider: 'smtp'
       };
     }
@@ -114,6 +114,7 @@ class SMTPService {
 
   private addDeliverabilityHeaders(options: EmailOptions): EmailOptions {
     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+    const returnPath = process.env.SMTP_USER || 'noreply@mailivo.com';
     
     const headers = {
       'List-Unsubscribe': `<${baseUrl}/api/track/unsubscribe>`,
@@ -122,7 +123,7 @@ class SMTPService {
       'X-Priority': '3',
       'X-MSMail-Priority': 'Normal',
       'Message-ID': `<${Date.now()}-${Math.random().toString(36).substr(2, 9)}@${process.env.EMAIL_DOMAIN || 'mailivo.com'}>`,
-      'Return-Path': process.env.SMTP_USER,
+      'Return-Path': returnPath,
       ...options.headers,
     };
 

@@ -32,7 +32,6 @@ class EmailQueueService {
   constructor() {
     // Initialize Redis connection
     this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
@@ -118,17 +117,18 @@ class EmailQueueService {
           throw new Error(result.error || 'Email sending failed');
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(`Email sending failed`, {
           campaignId,
           contactId,
           email,
-          error: error.message,
+          error: errorMessage,
         });
 
         // Update tracking record with error
         await EmailTracking.findByIdAndUpdate(trackingId, {
           status: 'failed',
-          error: error.message,
+          error: errorMessage,
         });
 
         // Update campaign metrics
@@ -160,13 +160,14 @@ class EmailQueueService {
         // Create email jobs for each contact
         const emailJobs = [];
         for (const contact of contacts) {
-          const trackingId = await this.createTrackingRecord(campaignId, contact._id);
+          const contactId = (contact as any)._id.toString();
+          const trackingId = await this.createTrackingRecord(campaignId, contactId);
           
           const personalizedContent = await this.personalizeContent(campaign, contact);
 
           emailJobs.push({
             campaignId,
-            contactId: contact._id.toString(),
+            contactId,
             email: contact.email,
             personalizedContent,
             trackingId,
@@ -190,15 +191,16 @@ class EmailQueueService {
 
         return { success: true, totalEmails: contacts.length };
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(`Campaign processing failed`, {
           campaignId,
-          error: error.message,
+          error: errorMessage,
         });
 
         // Update campaign status to failed
         await Campaign.findByIdAndUpdate(campaignId, {
           status: 'failed',
-          error: error.message,
+          error: errorMessage,
         });
 
         throw error;
@@ -239,7 +241,8 @@ class EmailQueueService {
         throw new Error('Rate limit exceeded');
       }
     } catch (error) {
-      logger.warn('Rate limit check failed, proceeding anyway:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.warn('Rate limit check failed, proceeding anyway:', errorMessage);
     }
   }
 
@@ -252,7 +255,7 @@ class EmailQueueService {
     });
     
     await tracking.save();
-    return tracking._id.toString();
+    return (tracking as any)._id.toString();
   }
 
   private async personalizeContent(campaign: any, contact: any) {
@@ -309,7 +312,7 @@ class EmailQueueService {
   }
 
   private async updateCampaignMetrics(campaignId: string, metric: string) {
-    const updateQuery = {};
+    const updateQuery: Record<string, number> = {};
     updateQuery[`metrics.${metric}`] = 1;
 
     // Also update legacy metrics for backward compatibility
