@@ -21,10 +21,11 @@ const validate = (req: any, res: any, next: any) => {
 router.get('/', campaignController.getAllCampaigns.bind(campaignController));
 router.post('/', [
   body('name').notEmpty().withMessage('Campaign name is required'),
-  body('property').notEmpty().withMessage('Property is required'),
-  body('emailList').notEmpty().withMessage('Email list is required'),
-  body('emailTemplate').notEmpty().withMessage('Email template is required'),
-  body('emailVolume').isInt({ min: 1 }).withMessage('Email volume must be positive'),
+  body('subject').notEmpty().withMessage('Subject is required'),
+  body('htmlContent').notEmpty().withMessage('HTML content is required'),
+  body('audienceType').optional().isIn(['all', 'segment', 'landivo']),
+  body('fromName').optional(),
+  body('fromEmail').optional().isEmail(),
 ], validate, campaignController.createCampaign.bind(campaignController));
 
 router.get('/:id', campaignController.getCampaign.bind(campaignController));

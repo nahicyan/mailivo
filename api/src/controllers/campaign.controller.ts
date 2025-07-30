@@ -39,6 +39,7 @@ class CampaignController {
 
   // Create new campaign
   async createCampaign(req: AuthRequest, res: Response): Promise<void> {
+    console.log('Received request body:', JSON.stringify(req.body, null, 2));
     try {
       const userId = req.user?._id;
       if (!userId) {
