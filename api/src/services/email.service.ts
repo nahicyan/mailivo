@@ -36,7 +36,7 @@ class EmailService {
     }
 
     // Initialize SMTP as fallback or primary
-    this.smtpTransporter = nodemailer.createTransporter({
+    this.smtpTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_PORT === '465',
@@ -100,7 +100,7 @@ class EmailService {
   private async sendViaSendGrid(options: EmailOptions): Promise<SentMessageInfo> {
     const msg = {
       to: options.to,
-      from: options.from || process.env.SENDGRID_FROM_EMAIL,
+      from: options.from || process.env.SENDGRID_FROM_EMAIL || 'noreply@mailivo.com',
       subject: options.subject,
       html: options.html,
       text: options.text,
@@ -118,11 +118,14 @@ class EmailService {
     };
 
     const [response] = await sgMail.send(msg);
-    logger.info('Email sent via SendGrid:', response.headers['x-message-id']);
     
     return {
       messageId: response.headers['x-message-id'],
       response: response.statusCode.toString(),
+      envelope: { from: msg.from, to: [msg.to] },
+      accepted: [msg.to],
+      rejected: [],
+      pending: [],
     };
   }
 

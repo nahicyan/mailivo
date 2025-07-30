@@ -2,7 +2,7 @@
 import Bull from 'bull';
 import Redis from 'ioredis';
 import { emailService } from './email.service';
-import { Campaign } from '../models/Campaign.model';
+import { Campaign } from '../models/Campaign';
 import { Contact } from '../models/Contact.model';
 import { EmailTracking } from '../models/EmailTracking.model';
 import { logger } from '../utils/logger';
@@ -32,7 +32,6 @@ class EmailQueueService {
   constructor() {
     // Initialize Redis connection
     this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
     });
 
@@ -117,13 +116,13 @@ class EmailQueueService {
           campaignId,
           contactId,
           email,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
 
         // Update tracking record with error
         await EmailTracking.findByIdAndUpdate(trackingId, {
           status: 'failed',
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
 
         // Update campaign metrics
@@ -159,7 +158,8 @@ class EmailQueueService {
           });
         } else if (campaign.audienceType === 'landivo') {
           // Get contacts from Landivo integration
-          contacts = await this.getLandivoContacts(campaign.landivoEmailLists);
+          const landivoLists = (campaign as any).landivoEmailLists || [];
+          contacts = await this.getLandivoContacts(landivoLists);
         } else {
           // All contacts
           contacts = await Contact.find({ userId, subscribed: true });
@@ -205,13 +205,13 @@ class EmailQueueService {
       } catch (error) {
         logger.error(`Campaign processing failed`, {
           campaignId,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
 
         // Update campaign status to failed
         await Campaign.findByIdAndUpdate(campaignId, {
           status: 'failed',
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
 
         throw error;
@@ -268,7 +268,7 @@ class EmailQueueService {
     });
     
     await tracking.save();
-    return tracking._id.toString();
+    return (tracking._id as any).toString();
   }
 
   private async personalizeContent(campaign: any, contact: any) {
@@ -295,10 +295,10 @@ class EmailQueueService {
     return { subject, htmlContent, textContent };
   }
 
-  private async getLandivoContacts(emailListIds: string[]) {
+  private async getLandivoContacts(emailListIds: string[]): Promise<any[]> {
     // Implement Landivo API integration to get contacts
     // This would call your Landivo service to get contacts from specific lists
-    const contacts = [];
+    const contacts: any[] = [];
     
     for (const listId of emailListIds) {
       try {
@@ -313,14 +313,14 @@ class EmailQueueService {
     return contacts;
   }
 
-  private async fetchLandivoList(listId: string) {
+  private async fetchLandivoList(_listId: string): Promise<any[]> {
     // Implement actual Landivo API integration
     // For now, return empty array
     return [];
   }
 
   private async updateCampaignMetrics(campaignId: string, metric: string) {
-    const updateQuery = {};
+    const updateQuery: any = {};
     updateQuery[`metrics.${metric}`] = 1;
 
     await Campaign.findByIdAndUpdate(
