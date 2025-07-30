@@ -1,152 +1,38 @@
 // api/src/controllers/campaign.controller.ts
-import { Response } from 'express';
-import { Campaign } from '../models/Campaign';
-import { EmailTemplate } from '../models/EmailTemplate.model';
+import { Request, Response } from 'express';
+import { Campaign } from '../models/Campaign.model';
+import { Contact } from '../models/Contact.model';
+import { EmailTracking } from '../models/EmailTracking.model';
+import { emailQueueService } from '../services/emailQueue.service';
 import { emailService } from '../services/email.service';
-import { landivoService } from '../services/landivoEmailList.service';
 import { logger } from '../utils/logger';
-import { AuthRequest } from '../middleware/auth.middleware';
-import axios from 'axios';
+
+interface AuthRequest extends Request {
+  user?: { _id: string };
+}
 
 class CampaignController {
-  async getAllCampaigns(req: AuthRequest, res: Response): Promise<void> {
+  // Get all campaigns for user
+  async getCampaigns(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { page = 1, limit = 10, status, search, source } = req.query;
       const userId = req.user?._id;
-
       if (!userId) {
         res.status(401).json({ error: 'User not authenticated' });
         return;
       }
 
-      const filter: any = { userId };
-
-      if (status) filter.status = status;
-      if (source) filter.source = source;
-      if (search) {
-        filter.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { property: { $regex: search, $options: 'i' } }
-        ];
-      }
-
-      const campaigns = await Campaign.find(filter)
+      const campaigns = await Campaign.find({ userId })
         .sort({ createdAt: -1 })
-        .limit(Number(limit) * Number(page))
-        .skip((Number(page) - 1) * Number(limit))
         .lean();
 
-      const total = await Campaign.countDocuments(filter);
-
-      // Resolve IDs to names
-      const enrichedCampaigns = await this.enrichCampaignsWithNames(campaigns, userId);
-
-      res.json({
-        campaigns: enrichedCampaigns,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total,
-          pages: Math.ceil(total / Number(limit))
-        }
-      });
+      res.json(campaigns);
     } catch (error) {
       logger.error('Error fetching campaigns:', error);
       res.status(500).json({ error: 'Failed to fetch campaigns' });
     }
   }
 
-  private async enrichCampaignsWithNames(campaigns: any[], userId: any): Promise<any[]> {
-    try {
-      // Fetch all required data in parallel
-      const [properties, emailLists, templates] = await Promise.all([
-        this.fetchProperties(),
-        this.fetchEmailLists(),
-        this.fetchTemplates(userId)
-      ]);
-
-      // Create lookup maps for faster resolution
-      const propertyMap = new Map(properties.map((p: any) => [p.id, p]));
-      const emailListMap = new Map(emailLists.map((l: any) => [l.id, l]));
-      const templateMap = new Map(templates.map((t: any) => [t.id || t._id, t]));
-
-      // Enrich campaigns with names
-      return campaigns.map(campaign => ({
-        ...campaign,
-        propertyName: this.getPropertyDisplayName(propertyMap.get(campaign.property)),
-        emailListName: emailListMap.get(campaign.emailList)?.name || campaign.emailList,
-        emailTemplateName: templateMap.get(campaign.emailTemplate)?.name || campaign.emailTemplate,
-        // Keep original IDs for reference
-        propertyId: campaign.property,
-        emailListId: campaign.emailList,
-        emailTemplateId: campaign.emailTemplate,
-        // Update display fields
-        property: this.getPropertyDisplayName(propertyMap.get(campaign.property)) || campaign.property,
-        emailList: emailListMap.get(campaign.emailList)?.name || campaign.emailList,
-        emailTemplate: templateMap.get(campaign.emailTemplate)?.name || campaign.emailTemplate,
-      }));
-    } catch (error) {
-      logger.error('Error enriching campaigns with names:', error);
-      // Return campaigns as-is if enrichment fails
-      return campaigns;
-    }
-  }
-
-  private getPropertyDisplayName(property: any): string {
-    if (!property) return '';
-    
-    // Create a readable address format
-    const parts = [
-      property.streetAddress,
-      property.city,
-      property.state,
-      property.zip
-    ].filter(Boolean);
-    
-    return parts.join(', ');
-  }
-
-  private async fetchProperties(): Promise<any[]> {
-    try {
-      const LANDIVO_API_URL = process.env.LANDIVO_API_URL || 'https://api.landivo.com';
-      const response = await axios.get(`${LANDIVO_API_URL}/residency/allresd`, {
-        timeout: 5000
-      });
-      return response.data || [];
-    } catch (error) {
-      logger.error('Error fetching properties for campaign enrichment:', error);
-      return [];
-    }
-  }
-
-  private async fetchEmailLists(): Promise<any[]> {
-    try {
-      const emailListsWithBuyers = await landivoService.getAllEmailLists();
-      return emailListsWithBuyers.map(listData => ({
-        id: listData.emailList.id,
-        name: listData.emailList.name,
-        description: listData.emailList.description
-      }));
-    } catch (error) {
-      logger.error('Error fetching email lists for campaign enrichment:', error);
-      return [];
-    }
-  }
-
-  private async fetchTemplates(userId: any): Promise<any[]> {
-    try {
-      const templates = await EmailTemplate.find({ user_id: userId }).lean();
-      return templates.map(template => ({
-        id: template._id.toString(),
-        _id: template._id.toString(),
-        name: template.name
-      }));
-    } catch (error) {
-      logger.error('Error fetching templates for campaign enrichment:', error);
-      return [];
-    }
-  }
-
+  // Create new campaign
   async createCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?._id;
@@ -155,116 +41,76 @@ class CampaignController {
         return;
       }
 
+      // Validate required fields
+      const { name, subject, htmlContent } = req.body;
+      if (!name || !subject || !htmlContent) {
+        res.status(400).json({ error: 'Missing required fields' });
+        return;
+      }
+
+      // Check spam score before creating
+      const spamScore = await emailService.checkSpamScore(htmlContent, subject);
+      if (spamScore > 7) {
+        res.status(400).json({ 
+          error: 'Content has high spam score', 
+          spamScore,
+          suggestions: [
+            'Reduce excessive capitalization',
+            'Remove spam trigger words',
+            'Balance text and HTML content',
+            'Reduce number of links'
+          ]
+        });
+        return;
+      }
+
       const campaignData = {
         ...req.body,
         userId,
-        source: req.body.source || 'manual',
         status: 'draft',
+        spamScore,
         metrics: {
-          open: 0,
           sent: 0,
-          bounces: 0,
-          successfulDeliveries: 0,
-          clicks: 0,
-          didNotOpen: 0,
-          mobileOpen: 0
+          delivered: 0,
+          opened: 0,
+          clicked: 0,
+          bounced: 0,
+          complained: 0,
+          totalRecipients: 0,
         }
       };
 
       const campaign = new Campaign(campaignData);
       await campaign.save();
 
-      logger.info(`Campaign created: ${campaign._id}`, {
-        userId: userId.toString(),
-        campaignId: campaign._id,
-        source: campaign.source
-      });
+      logger.info(`Campaign created: ${campaign._id}`, { userId, spamScore });
       res.status(201).json(campaign);
     } catch (error) {
       logger.error('Error creating campaign:', error);
       res.status(500).json({ error: 'Failed to create campaign' });
     }
   }
-  
+
+  // Get single campaign
   async getCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?._id;
 
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const campaign = await Campaign.findOne({ _id: id, userId }).lean();
+      const campaign = await Campaign.findOne({ _id: id, userId });
       if (!campaign) {
         res.status(404).json({ error: 'Campaign not found' });
         return;
       }
 
-      // Enrich single campaign with names
-      const enrichedCampaigns = await this.enrichCampaignsWithNames([campaign], userId);
-      res.json(enrichedCampaigns[0]);
+      res.json(campaign);
     } catch (error) {
       logger.error('Error fetching campaign:', error);
       res.status(500).json({ error: 'Failed to fetch campaign' });
     }
   }
 
-  async updateCampaign(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const userId = req.user?._id;
-      const updates = req.body;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const campaign = await Campaign.findOneAndUpdate(
-        { _id: id, userId },
-        { ...updates, updatedAt: new Date() },
-        { new: true, runValidators: true }
-      );
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found' });
-        return;
-      }
-
-      logger.info(`Campaign updated: ${id}`, { userId: userId.toString(), campaignId: id });
-      res.json(campaign);
-    } catch (error) {
-      logger.error('Error updating campaign:', error);
-      res.status(500).json({ error: 'Failed to update campaign' });
-    }
-  }
-
-  async deleteCampaign(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const campaign = await Campaign.findOneAndDelete({ _id: id, userId });
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found' });
-        return;
-      }
-
-      logger.info(`Campaign deleted: ${id}`, { userId: userId.toString(), campaignId: id });
-      res.json({ message: 'Campaign deleted successfully' });
-    } catch (error) {
-      logger.error('Error deleting campaign:', error);
-      res.status(500).json({ error: 'Failed to delete campaign' });
-    }
-  }
-
+  // Send campaign - REAL IMPLEMENTATION
   async sendCampaign(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -286,126 +132,84 @@ class CampaignController {
         return;
       }
 
-      // Update status to sending
+      if (campaign.status === 'sending') {
+        res.status(400).json({ error: 'Campaign is currently sending' });
+        return;
+      }
+
+      // Validate campaign content
+      if (!campaign.subject || !campaign.htmlContent) {
+        res.status(400).json({ error: 'Campaign missing content' });
+        return;
+      }
+
+      // Check deliverability metrics
+      const reputation = await emailService.checkDomainReputation();
+      if (reputation.reputationScore < 6) {
+        res.status(400).json({ 
+          error: 'Domain reputation too low for sending',
+          reputation 
+        });
+        return;
+      }
+
+      // Validate recipient count
+      let recipientCount = 0;
+      if (campaign.audienceType === 'all') {
+        recipientCount = await Contact.countDocuments({ 
+          userId, 
+          subscribed: true 
+        });
+      } else if (campaign.audienceType === 'segment') {
+        recipientCount = await Contact.countDocuments({
+          userId,
+          segments: { $in: campaign.segments },
+          subscribed: true,
+        });
+      } else if (campaign.audienceType === 'landivo') {
+        // Count would come from Landivo integration
+        recipientCount = campaign.estimatedRecipients || 0;
+      }
+
+      if (recipientCount === 0) {
+        res.status(400).json({ error: 'No recipients found for this campaign' });
+        return;
+      }
+
+      // Start sending process
+      await emailQueueService.sendCampaign(id, userId);
+      
+      // Update campaign status
       campaign.status = 'sending';
+      campaign.sentAt = new Date();
       await campaign.save();
 
-      // Queue email sending job
-      await emailService.sendCampaign(campaign);
+      logger.info(`Campaign sending initiated: ${id}`, { 
+        userId, 
+        recipientCount 
+      });
 
-      logger.info(`Campaign sending initiated: ${id}`, { userId: userId.toString(), campaignId: id });
-      res.json({ message: 'Campaign sending initiated', campaign });
+      res.json({ 
+        message: 'Campaign sending initiated',
+        recipientCount,
+        status: 'sending'
+      });
+
     } catch (error) {
       logger.error('Error sending campaign:', error);
       res.status(500).json({ error: 'Failed to send campaign' });
     }
   }
 
-  async pauseCampaign(req: AuthRequest, res: Response): Promise<void> {
+  // Send test email
+  async sendTestEmail(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const { testEmail } = req.body;
       const userId = req.user?._id;
 
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const campaign = await Campaign.findOneAndUpdate(
-        { _id: id, userId },
-        { status: 'paused', updatedAt: new Date() },
-        { new: true }
-      );
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found' });
-        return;
-      }
-
-      res.json({ message: 'Campaign paused', campaign });
-    } catch (error) {
-      logger.error('Error pausing campaign:', error);
-      res.status(500).json({ error: 'Failed to pause campaign' });
-    }
-  }
-
-  async resumeCampaign(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const campaign = await Campaign.findOneAndUpdate(
-        { _id: id, userId },
-        { status: 'active', updatedAt: new Date() },
-        { new: true }
-      );
-
-      if (!campaign) {
-        res.status(404).json({ error: 'Campaign not found' });
-        return;
-      }
-
-      res.json({ message: 'Campaign resumed', campaign });
-    } catch (error) {
-      logger.error('Error resuming campaign:', error);
-      res.status(500).json({ error: 'Failed to resume campaign' });
-    }
-  }
-
-  async duplicateCampaign(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const originalCampaign = await Campaign.findOne({ _id: id, userId });
-      if (!originalCampaign) {
-        res.status(404).json({ error: 'Campaign not found' });
-        return;
-      }
-
-      const duplicatedCampaign = new Campaign({
-        ...originalCampaign.toObject(),
-        _id: undefined,
-        name: `${originalCampaign.name} (Copy)`,
-        status: 'draft',
-        metrics: {
-          open: 0,
-          sent: 0,
-          bounces: 0,
-          successfulDeliveries: 0,
-          clicks: 0,
-          didNotOpen: 0,
-          mobileOpen: 0
-        },
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-
-      await duplicatedCampaign.save();
-      res.status(201).json(duplicatedCampaign);
-    } catch (error) {
-      logger.error('Error duplicating campaign:', error);
-      res.status(500).json({ error: 'Failed to duplicate campaign' });
-    }
-  }
-
-  async getCampaignAnalytics(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
+      if (!testEmail || !emailService.validateEmail(testEmail)) {
+        res.status(400).json({ error: 'Valid test email required' });
         return;
       }
 
@@ -415,19 +219,96 @@ class CampaignController {
         return;
       }
 
-      const analytics = {
-        campaign: campaign.name,
-        metrics: campaign.metrics,
-        performance: {
-          openRate: campaign.metrics.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100).toFixed(2) : 0,
-          clickRate: campaign.metrics.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100).toFixed(2) : 0,
-          bounceRate: campaign.metrics.sent > 0 ? (campaign.metrics.bounces / campaign.metrics.sent * 100).toFixed(2) : 0,
-          deliveryRate: campaign.metrics.sent > 0 ? (campaign.metrics.successfulDeliveries / campaign.metrics.sent * 100).toFixed(2) : 0
-        },
-        engagement: {
-          totalEngagements: campaign.metrics.open + campaign.metrics.clicks,
-          mobileEngagement: campaign.metrics.open > 0 ? (campaign.metrics.mobileOpen / campaign.metrics.open * 100).toFixed(2) : 0
+      await emailService.sendEmail({
+        to: testEmail,
+        subject: `[TEST] ${campaign.subject}`,
+        html: campaign.htmlContent,
+        text: campaign.textContent,
+      });
+
+      res.json({ message: 'Test email sent successfully' });
+    } catch (error) {
+      logger.error('Error sending test email:', error);
+      res.status(500).json({ error: 'Failed to send test email' });
+    }
+  }
+
+  // Pause campaign
+  async pauseCampaign(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const userId = req.user?._id;
+
+      const campaign = await Campaign.findOne({ _id: id, userId });
+      if (!campaign) {
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
+      }
+
+      if (campaign.status !== 'sending') {
+        res.status(400).json({ error: 'Campaign is not currently sending' });
+        return;
+      }
+
+      await emailQueueService.pauseCampaign(id);
+      
+      campaign.status = 'paused';
+      await campaign.save();
+
+      res.json({ message: 'Campaign paused successfully' });
+    } catch (error) {
+      logger.error('Error pausing campaign:', error);
+      res.status(500).json({ error: 'Failed to pause campaign' });
+    }
+  }
+
+  // Get campaign analytics
+  async getCampaignAnalytics(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const userId = req.user?._id;
+
+      const campaign = await Campaign.findOne({ _id: id, userId });
+      if (!campaign) {
+        res.status(404).json({ error: 'Campaign not found' });
+        return;
+      }
+
+      // Get detailed tracking data
+      const trackingData = await EmailTracking.aggregate([
+        { $match: { campaignId: id } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            emails: { $push: '$contactId' }
+          }
         }
+      ]);
+
+      // Get open/click timeline
+      const timeline = await EmailTracking.aggregate([
+        { $match: { campaignId: id, $or: [{ openedAt: { $exists: true } }, { clickedAt: { $exists: true } }] } },
+        {
+          $project: {
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d %H:00',
+                date: { $ifNull: ['$openedAt', '$clickedAt'] }
+              }
+            },
+            type: { $cond: { if: '$openedAt', then: 'open', else: 'click' } }
+          }
+        },
+        { $group: { _id: { date: '$date', type: '$type' }, count: { $sum: 1 } } },
+        { $sort: { '_id.date': 1 } }
+      ]);
+
+      const analytics = {
+        campaign: campaign.toObject(),
+        tracking: trackingData,
+        timeline,
+        deliverabilityScore: campaign.spamScore ? 10 - campaign.spamScore : 8,
       };
 
       res.json(analytics);
@@ -437,105 +318,14 @@ class CampaignController {
     }
   }
 
-  async getCampaignMetrics(req: AuthRequest, res: Response): Promise<void> {
+  // Get queue status
+  async getQueueStatus(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const metrics = await Campaign.aggregate([
-        { $match: { userId } },
-        {
-          $group: {
-            _id: null,
-            totalCampaigns: { $sum: 1 },
-            activeCampaigns: {
-              $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
-            },
-            totalSent: { $sum: '$metrics.sent' },
-            totalOpens: { $sum: '$metrics.open' },
-            totalClicks: { $sum: '$metrics.clicks' },
-            totalBounces: { $sum: '$metrics.bounces' }
-          }
-        }
-      ]);
-
-      const result = metrics[0] || {
-        totalCampaigns: 0,
-        activeCampaigns: 0,
-        totalSent: 0,
-        totalOpens: 0,
-        totalClicks: 0,
-        totalBounces: 0
-      };
-
-      result.averageOpenRate = result.totalSent > 0 ? (result.totalOpens / result.totalSent * 100).toFixed(2) : 0;
-      result.averageClickRate = result.totalSent > 0 ? (result.totalClicks / result.totalSent * 100).toFixed(2) : 0;
-
-      res.json(result);
+      const stats = await emailQueueService.getQueueStats();
+      res.json(stats);
     } catch (error) {
-      logger.error('Error fetching campaign metrics:', error);
-      res.status(500).json({ error: 'Failed to fetch metrics' });
-    }
-  }
-
-  async bulkDeleteCampaigns(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { campaignIds } = req.body;
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const result = await Campaign.deleteMany({
-        _id: { $in: campaignIds },
-        userId
-      });
-
-      res.json({
-        message: `${result.deletedCount} campaigns deleted successfully`,
-        deletedCount: result.deletedCount
-      });
-    } catch (error) {
-      logger.error('Error bulk deleting campaigns:', error);
-      res.status(500).json({ error: 'Failed to delete campaigns' });
-    }
-  }
-
-  async bulkSendCampaigns(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { campaignIds } = req.body;
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: 'User not authenticated' });
-        return;
-      }
-
-      const campaigns = await Campaign.find({
-        _id: { $in: campaignIds },
-        userId,
-        status: { $in: ['draft', 'paused'] }
-      });
-
-      for (const campaign of campaigns) {
-        campaign.status = 'sending';
-        await campaign.save();
-        await emailService.sendCampaign(campaign);
-      }
-
-      res.json({
-        message: `${campaigns.length} campaigns initiated for sending`,
-        processedCount: campaigns.length
-      });
-    } catch (error) {
-      logger.error('Error bulk sending campaigns:', error);
-      res.status(500).json({ error: 'Failed to send campaigns' });
+      logger.error('Error fetching queue status:', error);
+      res.status(500).json({ error: 'Failed to fetch queue status' });
     }
   }
 }
