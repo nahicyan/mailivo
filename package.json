@@ -6,7 +6,8 @@
   "workspaces": [
     "app",
     "api",
-    "packages/*"
+    "packages/*",
+    "packages/landivo/*"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:app\" \"npm run dev:api\" \"npm run dev:components\"",

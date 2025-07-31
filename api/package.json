@@ -15,6 +15,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@landivo/email-template": "workspace:*",
     "@sendgrid/mail": "^8.1.5",
     "@types/ioredis": "^4.28.10",
     "bcryptjs": "^3.0.2",
