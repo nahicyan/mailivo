@@ -2,6 +2,9 @@
 import axios from 'axios';
 import { EmailTemplate } from '../models/EmailTemplate.model';
 import { logger } from '../utils/logger';
+import { getComponent, componentRegistry } from '@landivo/email-template';
+import { render } from '@react-email/render';
+import React from 'react';
 
 interface LandivoProperty {
   id: string;
@@ -30,6 +33,14 @@ interface LandivoProperty {
   updatedAt: string;
 }
 
+interface ContactData {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  preferences?: Record<string, any>;
+  [key: string]: any;
+}
+
 interface EmailComponent {
   id: string;
   type: string;
@@ -39,6 +50,13 @@ interface EmailComponent {
   order: number;
 }
 
+interface ProcessedPropertyData extends LandivoProperty {
+  primaryImageUrl?: string;
+  formattedPrice: string;
+  formattedSqft: string;
+  formattedMonthlyPayment: string;
+}
+
 class TemplateRenderingService {
   private readonly landivoApiUrl: string;
 
@@ -46,7 +64,7 @@ class TemplateRenderingService {
     this.landivoApiUrl = process.env.LANDIVO_API_URL || 'https://api.landivo.com';
   }
 
-  async renderTemplate(templateId: string, propertyId: string, contactData: any): Promise<{
+  async renderTemplate(templateId: string, propertyId: string, contactData: ContactData): Promise<{
     subject: string;
     htmlContent: string;
     textContent: string;
@@ -64,14 +82,17 @@ class TemplateRenderingService {
         throw new Error(`Property ${propertyId} not found`);
       }
 
-      // 3. Generate HTML content using template components
-      const htmlContent = this.generateEmailHTML(template, propertyData, contactData);
+      // 3. Process property data
+      const processedPropertyData = this.processPropertyData(propertyData);
+
+      // 4. Generate HTML content using React Email
+      const htmlContent = await this.generateEmailHTML(template, processedPropertyData, contactData);
       
-      // 4. Generate text version
-      const textContent = this.generateTextContent(propertyData, contactData);
+      // 5. Generate text version
+      const textContent = this.generateTextContent(template, processedPropertyData, contactData);
       
-      // 5. Generate subject with property data
-      const subject = this.generateSubject(template.name, propertyData, contactData);
+      // 6. Generate subject with property data
+      const subject = this.generateSubject(template.name, processedPropertyData, contactData);
 
       return {
         subject,
@@ -79,7 +100,7 @@ class TemplateRenderingService {
         textContent
       };
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Template rendering failed:', error);
       throw error;
     }
@@ -96,193 +117,214 @@ class TemplateRenderingService {
       }
 
       const property = properties.find((p: any) => p.id === propertyId);
-      return property || null;
+      if (!property) {
+        logger.warn(`Property ${propertyId} not found in Landivo`);
+        return null;
+      }
 
-    } catch (error) {
+      return property;
+
+    } catch (error: any) {
       logger.error(`Failed to fetch property ${propertyId}:`, error);
-      return null;
+      throw new Error(`Failed to fetch property data: ${error.message}`);
     }
   }
 
-  private generateEmailHTML(template: any, propertyData: LandivoProperty, _contactData: any): string {
-    // Process property data
-    const processedPropertyData = this.processPropertyData(propertyData);
-    
-    // Sort components by order
-    const sortedComponents = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
-    
-    // Generate HTML for each component
-    let componentsHTML = '';
-    
-    for (const component of sortedComponents) {
-      componentsHTML += this.renderComponent(component, processedPropertyData, _contactData);
-    }
+  private processPropertyData(propertyData: LandivoProperty): ProcessedPropertyData {
+    let primaryImageUrl: string | undefined;
 
-    // Wrap in email structure
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${processedPropertyData.title}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: ${template.settings?.backgroundColor || '#f9fafb'}; }
-            .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-            .component { margin-bottom: 20px; }
-            .currency { color: #16a34a; font-weight: bold; }
-            .highlight { background-color: #f0f9ff; padding: 15px; border-radius: 8px; margin: 10px 0; }
-            .property-image { width: 100%; max-width: 500px; height: auto; border-radius: 8px; }
-            .payment-box { background-color: #16a34a; color: white; padding: 20px; border-radius: 8px; text-align: center; }
-            .footer { background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            ${componentsHTML}
-            <div class="footer">
-              <p>You're receiving this because you're interested in real estate opportunities.</p>
-              <p><a href="{{unsubscribeLink}}">Unsubscribe</a> | <a href="https://landivo.com">Visit Landivo</a></p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-  }
-
-  private renderComponent(component: EmailComponent, propertyData: any, _contactData: any): string {
-    const props = { ...component.props, ...propertyData };
-
-    switch (component.type) {
-      case 'header':
-        return `
-          <div class="component" style="background-color: ${props.backgroundColor || '#16a34a'}; color: white; padding: 30px; text-align: center;">
-            ${props.imageUrl || propertyData.primaryImageUrl ? `<img src="${props.imageUrl || propertyData.primaryImageUrl}" alt="Property" class="property-image" style="margin-bottom: 15px;" />` : ''}
-            <h1 style="margin: 0; font-size: 28px;">${props.title || propertyData.title}</h1>
-            <p style="margin: 10px 0 0; font-size: 16px; opacity: 0.9;">${propertyData.city}, ${propertyData.state}</p>
-          </div>
-        `;
-
-      case 'property-highlights':
-        return `
-          <div class="component" style="padding: 20px;">
-            <h2 style="color: #1f2937; margin-bottom: 20px;">Property Highlights</h2>
-            <div class="highlight">
-              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                <div><strong>Size:</strong> ${propertyData.sqft?.toLocaleString()} sqft</div>
-                <div><strong>Land:</strong> ${propertyData.acre} acres</div>
-                <div><strong>Zoning:</strong> ${propertyData.zoning}</div>
-                <div><strong>Price:</strong> <span class="currency">$${propertyData.askingPrice?.toLocaleString()}</span></div>
-              </div>
-              ${propertyData.financing === 'Available' ? '<p style="margin-top: 15px; color: #16a34a; font-weight: bold;">✓ Financing Available</p>' : ''}
-            </div>
-          </div>
-        `;
-
-      case 'property-details':
-        return `
-          <div class="component" style="padding: 20px;">
-            <h2 style="color: #1f2937; margin-bottom: 15px;">Property Details</h2>
-            <p><strong>Address:</strong> ${propertyData.streetAddress}, ${propertyData.city}, ${propertyData.state} ${propertyData.zip}</p>
-            <p><strong>County:</strong> ${propertyData.county}</p>
-            ${propertyData.description ? `<p><strong>Description:</strong> ${propertyData.description}</p>` : ''}
-          </div>
-        `;
-
-      case 'payment-calculator':
-        return `
-          <div class="component" style="padding: 20px;">
-            <h2 style="color: #1f2937; margin-bottom: 20px;">Payment Information</h2>
-            <div class="payment-box">
-              <h3 style="margin: 0 0 15px;">Monthly Payment</h3>
-              <div style="font-size: 32px; font-weight: bold; margin-bottom: 15px;">$${propertyData.monthlyPaymentOne?.toLocaleString()}</div>
-              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px;">
-                <div>Down Payment: $${propertyData.downPaymentOne?.toLocaleString()}</div>
-                <div>Loan Amount: $${propertyData.loanAmountOne?.toLocaleString()}</div>
-                <div>Interest Rate: ${propertyData.interestOne}%</div>
-                <div>Tax: $${propertyData.tax?.toLocaleString()}/year</div>
-              </div>
-            </div>
-          </div>
-        `;
-
-      case 'property-image':
-        if (propertyData.primaryImageUrl) {
-          return `
-            <div class="component" style="padding: 20px; text-align: center;">
-              <img src="${propertyData.primaryImageUrl}" alt="${propertyData.title}" class="property-image" />
-            </div>
-          `;
-        }
-        return '';
-
-      case 'buyer-guidelines':
-        return `
-          <div class="component" style="padding: 20px; background-color: #f8fafc;">
-            <h2 style="color: #1f2937; margin-bottom: 15px;">How to Purchase</h2>
-            <ol style="padding-left: 20px;">
-              <li>Contact us to schedule a viewing</li>
-              <li>Submit your financing application</li>
-              <li>Complete the property inspection</li>
-              <li>Close on your new property</li>
-            </ol>
-            <p style="margin-top: 15px;"><strong>Questions?</strong> Contact us at <a href="mailto:info@landivo.com">info@landivo.com</a></p>
-          </div>
-        `;
-
-      default:
-        return `<div class="component">${component.name} component</div>`;
-    }
-  }
-
-  private processPropertyData(propertyData: LandivoProperty): any {
-    let primaryImageUrl = null;
-    
     try {
       if (propertyData.imageUrls) {
         const images = Array.isArray(propertyData.imageUrls)
           ? propertyData.imageUrls
           : JSON.parse(propertyData.imageUrls);
-        primaryImageUrl = images.length > 0 ? `${this.landivoApiUrl}/${images[0]}` : null;
+        primaryImageUrl = images.length > 0 ? `${this.landivoApiUrl}/${images[0]}` : undefined;
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.warn('Failed to parse property images:', error);
     }
 
     return {
       ...propertyData,
       primaryImageUrl,
-      formattedPrice: propertyData.askingPrice?.toLocaleString(),
-      formattedSqft: propertyData.sqft?.toLocaleString(),
-      formattedMonthlyPayment: propertyData.monthlyPaymentOne?.toLocaleString(),
+      formattedPrice: propertyData.askingPrice?.toLocaleString() || '0',
+      formattedSqft: propertyData.sqft?.toLocaleString() || '0',
+      formattedMonthlyPayment: propertyData.monthlyPaymentOne?.toLocaleString() || '0',
     };
   }
 
-  private generateTextContent(propertyData: LandivoProperty, _contactData: any): string {
-    return `
-${propertyData.title}
-${propertyData.city}, ${propertyData.state}
+  private async generateEmailHTML(
+    template: any, 
+    propertyData: ProcessedPropertyData, 
+    contactData: ContactData
+  ): Promise<string> {
+    try {
+      // Sort components by order
+      const sortedComponents = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
+      
+      // Create React elements for each component
+      const renderedComponents = sortedComponents.map((component: EmailComponent) => 
+        this.renderComponentToReact(component, propertyData, contactData)
+      ).filter(Boolean);
 
-Property Details:
-- Address: ${propertyData.streetAddress}, ${propertyData.city}, ${propertyData.state} ${propertyData.zip}
-- Size: ${propertyData.sqft?.toLocaleString()} sqft
-- Land: ${propertyData.acre} acres
-- Price: $${propertyData.askingPrice?.toLocaleString()}
-- Monthly Payment: $${propertyData.monthlyPaymentOne?.toLocaleString()}
+      // Create the email structure with React Email
+      const emailElement = React.createElement(
+        'div',
+        { style: { fontFamily: 'Arial, sans-serif', backgroundColor: template.settings?.backgroundColor || '#ffffff' } },
+        ...renderedComponents
+      );
 
-${propertyData.description || ''}
+      // Render to HTML using React Email
+      const htmlContent = await render(emailElement, {
+        pretty: false,
+      });
 
-Contact us for more information or to schedule a viewing.
+      return htmlContent;
 
-Unsubscribe: {{unsubscribeLink}}
-    `.trim();
+    } catch (error: any) {
+      logger.error('Failed to generate HTML content:', error);
+      throw new Error(`Template rendering failed: ${error.message}`);
+    }
   }
 
-  private generateSubject(_templateName: string, propertyData: LandivoProperty, contactData: any): string {
+  private renderComponentToReact(
+    component: EmailComponent, 
+    propertyData: ProcessedPropertyData, 
+    contactData: ContactData
+  ): React.ReactElement | null {
+    try {
+      // Get component metadata from registry
+      const componentMeta = getComponent(component.type);
+      if (!componentMeta) {
+        logger.warn(`Unknown component type: ${component.type}`);
+        return null;
+      }
+
+      // Merge default props with component props and context data
+      const finalProps = {
+        ...componentMeta.defaultProps,
+        ...component.props,
+        // Inject property data as props for components that need it
+        propertyData,
+        contactData,
+        // Common data that all components might use
+        property: propertyData,
+        contact: contactData,
+      };
+
+      // Create React element using the component from registry
+      return React.createElement(componentMeta.component, {
+        key: component.id,
+        ...finalProps
+      });
+
+    } catch (error: any) {
+      logger.error(`Failed to render component ${component.type}:`, error);
+      return null;
+    }
+  }
+
+  private generateTextContent(
+    template: any,
+    propertyData: ProcessedPropertyData, 
+    contactData: ContactData
+  ): string {
+    try {
+      const components = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
+      
+      let textContent = '';
+
+      // Generate text content based on components
+      for (const component of components) {
+        const componentMeta = getComponent(component.type);
+        if (!componentMeta) continue;
+
+        const textRepresentation = this.renderComponentToText(component, componentMeta, propertyData, contactData);
+        if (textRepresentation) {
+          textContent += textRepresentation + '\n\n';
+        }
+      }
+
+      // Add standard footer
+      textContent += '\n---\n';
+      textContent += 'Contact us for more information or to schedule a viewing.\n';
+      textContent += 'Unsubscribe: {{unsubscribeLink}}\n';
+      textContent += 'Visit us: https://landivo.com\n';
+
+      return textContent.trim();
+
+    } catch (error: any) {
+      logger.error('Failed to generate text content:', error);
+      throw new Error(`Text content generation failed: ${error.message}`);
+    }
+  }
+
+  private renderComponentToText(
+    component: EmailComponent,
+    componentMeta: any,
+    propertyData: ProcessedPropertyData,
+    contactData: ContactData
+  ): string {
+    const finalProps = {
+      ...componentMeta.defaultProps,
+      ...component.props,
+      propertyData,
+      contactData,
+      property: propertyData,
+      contact: contactData,
+    };
+
+    // Try to extract text from component props in order of preference
+    const textFields = ['text', 'title', 'content', 'label', 'heading'];
+    
+    for (const field of textFields) {
+      if (finalProps[field] && typeof finalProps[field] === 'string') {
+        return finalProps[field];
+      }
+    }
+
+    // If no text fields found, return component display name
+    return `[${componentMeta.displayName || component.name}]`;
+  }
+
+  private generateSubject(_templateName: string, propertyData: ProcessedPropertyData, contactData: ContactData): string {
     const firstName = contactData.firstName || contactData.first_name || '';
     const greeting = firstName ? `${firstName}, ` : '';
     
+    // Simple subject generation using template name and property data
     return `${greeting}${propertyData.title} - ${propertyData.city}, ${propertyData.state}`;
+  }
+
+  // Public method to test component rendering
+  async testComponentRendering(componentType: string, props: Record<string, any>): Promise<{
+    htmlContent: string;
+    textContent: string;
+  }> {
+    try {
+      const componentMeta = getComponent(componentType);
+      if (!componentMeta) {
+        throw new Error(`Component type ${componentType} not found in registry`);
+      }
+
+      const finalProps = { ...componentMeta.defaultProps, ...props };
+      const reactElement = React.createElement(componentMeta.component, finalProps);
+      const htmlContent = await render(reactElement);
+      
+      // Generate text using same modular approach
+      const mockComponent = { id: 'test', type: componentType, name: 'Test', icon: '', props, order: 0 };
+      const textContent = this.renderComponentToText(mockComponent, componentMeta, {} as any, {} as any);
+
+      return { htmlContent, textContent };
+
+    } catch (error: any) {
+      logger.error(`Failed to test render component ${componentType}:`, error);
+      throw error;
+    }
+  }
+
+  // Get available component types from registry
+  getAvailableComponents(): string[] {
+    return Object.keys(componentRegistry);
   }
 }
 

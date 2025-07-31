@@ -1,6 +1,7 @@
 {
-  "name": "mailivo",
+  "name": "mailivo-monorepo",
   "version": "1.0.0",
+  "description": "Email Marketing Platform with Landivo Integration",
   "private": true,
   "workspaces": [
     "app",
@@ -8,20 +9,17 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:app\" \"npm run dev:api\"",
+    "dev": "concurrently \"npm run dev:app\" \"npm run dev:api\" \"npm run dev:components\"",
     "dev:app": "cd app && npm run dev",
     "dev:api": "cd api && npm run dev",
-    "build": "npm run build:app && npm run build:api",
+    "dev:components": "cd packages/landivo/email-template && npm run dev",
+    "build": "npm run build:components && npm run build:app && npm run build:api",
     "build:app": "cd app && npm run build",
     "build:api": "cd api && npm run build",
-    "start": "concurrently \"npm run start:app\" \"npm run start:api\"",
-    "start:app": "cd app && npm run start",
-    "start:api": "cd api && npm run start",
-    "lint": "npm run lint:app && npm run lint:api",
-    "lint:app": "cd app && npm run lint",
-    "lint:api": "cd api && npm run lint"
+    "build:components": "cd packages/landivo/email-template && npm run build",
+    "install:all": "npm install && cd app && npm install && cd ../api && npm install && cd ../packages/landivo/email-template && npm install"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.2"
   }
 }
