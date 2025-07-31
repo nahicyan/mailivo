@@ -1,36 +1,73 @@
 // app/src/emails/components/Header.tsx
 import React from 'react';
-import { Text } from '@react-email/components';
+import { Section } from '@react-email/components';
 import { Type } from 'lucide-react';
 import { EmailComponentMetadata } from '../types/component-metadata';
 
 interface HeaderProps {
   className?: string;
   showBottomBorder?: boolean;
-  textAlign?: 'left' | 'center' | 'right';
-  text?: string;
+  logoWidth?: number;
+  logoHeight?: number;
 }
 
 export function Header({ 
   className = '',
   showBottomBorder = true,
-  textAlign = 'center',
-  text = 'Landivo'
+  logoWidth = 200,
+  logoHeight = 70
 }: HeaderProps) {
   return (
-    <Text
-      className={`text-2xl font-bold text-gray-800 py-4 ${className}`}
+    <Section
+      className={`w-full py-6 ${className}`}
       style={{
-        textAlign,
-        fontSize: '24px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        padding: '16px 0',
+        width: '100%',
+        padding: '24px 0',
+        textAlign: 'center',
         borderBottom: showBottomBorder ? '2px solid #e5e7eb' : 'none',
       }}
     >
-      {text}
-    </Text>
+      <div style={{ textAlign: 'center', margin: '0 auto' }}>
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          viewBox="0 0 289.7 101.4"
+          width={logoWidth}
+          height={logoHeight}
+          style={{
+            width: `${logoWidth}px`,
+            height: `${logoHeight}px`,
+            maxWidth: '100%',
+            height: 'auto',
+            display: 'block',
+            margin: '0 auto'
+          }}
+        >
+          <defs>
+            <style>{`
+              .landivo-text { fill: #4b5b4d; }
+              .landivo-lines { 
+                fill: #4b5b4d; 
+                stroke: #4b5b4d; 
+                stroke-width: 10px; 
+              }
+            `}</style>
+          </defs>
+          <g>
+            <path className="landivo-text" d="M31.4,16v47.1h20.3v11.8H17.9V16h13.4Z"/>
+            <path className="landivo-text" d="M54.7,70.4c-3.4-3.7-5.1-8.3-5.1-13.7s1.7-10,5.1-13.8c3.4-3.8,7.8-5.7,13.1-5.7s8.9,1.5,12,4.6v-3.5h12.7v36.7h-12.5v-4.2h-.2c-3.1,3.5-7.1,5.2-12,5.2s-9.7-1.9-13.1-5.6ZM65.4,50.4c-1.6,1.6-2.5,3.7-2.5,6.2s.8,4.6,2.3,6.2c1.6,1.6,3.7,2.4,6.2,2.4s4.5-.8,6.1-2.4c1.6-1.6,2.4-3.7,2.4-6.2s-.8-4.6-2.5-6.2c-1.6-1.6-3.7-2.4-6-2.4s-4.5.8-6.1,2.4h0Z"/>
+            <path className="landivo-text" d="M94.9,74.9v-36.7h12.6v3.9h.2c3.3-3.3,6.8-4.9,10.5-4.9s3.6.2,5.4.7c1.8.5,3.5,1.2,5.1,2.2,1.6,1,3,2.4,4,4.2,1,1.8,1.5,4,1.5,6.4v24.2h-12.7v-20.7c0-1.9-.6-3.6-1.8-5-1.2-1.4-2.8-2.2-4.8-2.2s-3.6.7-5.2,2.2c-1.5,1.5-2.3,3.1-2.3,4.9v20.7h-12.6Z"/>
+            <path className="landivo-text" d="M138.5,70.4c-3.4-3.7-5.1-8.3-5.1-13.7s1.7-10,5.1-13.8c3.4-3.8,7.8-5.7,13.1-5.7s8.9,1.5,12,4.6V13.5h12.6v61.4h-12.5v-4.2h-.1c-3.1,3.5-7.1,5.2-12,5.2s-9.7-1.9-13.1-5.6h0ZM149.3,50.4c-1.6,1.6-2.5,3.7-2.5,6.2s.8,4.6,2.4,6.2c1.6,1.6,3.7,2.4,6.2,2.4s4.5-.8,6.1-2.4c1.6-1.6,2.4-3.7,2.4-6.2s-.8-4.6-2.5-6.2c-1.6-1.6-3.6-2.4-6-2.4s-4.5.8-6.1,2.4h0Z"/>
+            <path className="landivo-text" d="M179.9,17.9c1.5-1.5,3.2-2.2,5.3-2.2s3.8.7,5.3,2.2c1.5,1.5,2.2,3.2,2.2,5.3s-.7,3.8-2.2,5.3-3.2,2.2-5.3,2.2-3.8-.7-5.3-2.2-2.2-3.2-2.2-5.3.7-3.8,2.2-5.3ZM178.7,38.3v36.6h12.6v-36.7s-12.6,0-12.6,0Z"/>
+            <path className="landivo-text" d="M203.5,38.3l8.9,19.9,8.9-19.9h15l-19.6,36.7h-8.6l-19.6-36.7h15,0Z"/>
+            <path className="landivo-text" d="M236.6,70.6c-4.1-3.6-6.1-8.3-6.1-13.9s2.1-10.3,6.4-14c4.2-3.7,9.5-5.5,15.7-5.5s11.3,1.8,15.5,5.5c4.2,3.7,6.3,8.3,6.3,13.9s-2.1,10.2-6.2,13.9c-4.1,3.6-9.3,5.5-15.7,5.5s-11.9-1.8-16-5.4h0ZM246.4,50.4c-1.6,1.6-2.5,3.7-2.5,6.2s.8,4.6,2.4,6.2c1.6,1.6,3.7,2.4,6.2,2.4s4.5-.8,6.1-2.4c1.6-1.6,2.4-3.7,2.4-6.2s-.8-4.6-2.5-6.2c-1.6-1.6-3.6-2.4-6-2.4s-4.5.8-6.1,2.4h0Z"/>
+            <path className="landivo-lines" d="M0,96.4h84.4"/>
+            <path className="landivo-lines" d="M5,15.9v82.5"/>
+            <path className="landivo-lines" d="M289.7,5h-84.4"/>
+            <path className="landivo-lines" d="M284.7,85.5V3"/>
+          </g>
+        </svg>
+      </div>
+    </Section>
   );
 }
 
@@ -38,38 +75,35 @@ export function Header({
 export const headerMetadata: EmailComponentMetadata = {
   type: 'header',
   name: 'header',
-  displayName: 'HEADING',
+  displayName: 'LOGO HEADER',
   icon: <Type className="w-5 h-5" />,
-  description: 'Add header with Landivo branding',
+  description: 'Add Landivo logo header with branding',
   category: 'content',
   available: true,
   defaultProps: {
     className: '',
     showBottomBorder: true,
-    textAlign: 'center',
-    text: 'Landivo'
+    logoWidth: 200,
+    logoHeight: 70
   },
   configFields: [
     {
-      key: 'text',
-      label: 'Header Text',
-      type: 'text',
-      placeholder: 'Enter header text',
-      required: true,
-      defaultValue: 'Landivo',
-      description: 'The text to display in the header'
+      key: 'logoWidth',
+      label: 'Logo Width',
+      type: 'number',
+      placeholder: '200',
+      required: false,
+      defaultValue: 200,
+      description: 'Width of the logo in pixels'
     },
     {
-      key: 'textAlign',
-      label: 'Text Alignment',
-      type: 'select',
-      options: [
-        { label: 'Left', value: 'left' },
-        { label: 'Center', value: 'center' },
-        { label: 'Right', value: 'right' }
-      ],
-      defaultValue: 'center',
-      description: 'How to align the header text'
+      key: 'logoHeight',
+      label: 'Logo Height',
+      type: 'number',
+      placeholder: '70',
+      required: false,
+      defaultValue: 70,
+      description: 'Height of the logo in pixels'
     },
     {
       key: 'showBottomBorder',

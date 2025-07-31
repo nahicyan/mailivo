@@ -3,10 +3,12 @@ import { ComponentRegistry } from '../types/component-metadata';
 
 // Import all email components and their metadata
 import { headerMetadata } from '../components/Header';
+import { propertyImageMetadata } from '../components/PropertyImage'
 
 // Component registry - automatically includes all imported components
 export const componentRegistry: ComponentRegistry = {
   [headerMetadata.type]: headerMetadata,
+    [propertyImageMetadata.type]: propertyImageMetadata,
   // Future components will be added here automatically when imported
 };
 
