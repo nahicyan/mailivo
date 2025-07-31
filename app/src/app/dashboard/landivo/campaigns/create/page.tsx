@@ -13,8 +13,8 @@ import { useTemplates } from '@/hooks/useTemplates';
 import Link from 'next/link';
 
 import { StepsSidebar } from './components/StepsSidebar';
-import { Step1BasicInfo } from './components/Step1BasicInfo';
-import { Step2Property } from './components/Step2Property';
+import { Step1Property } from './components/Step1Property';
+import { Step2BasicInfo } from './components/Step2BasicInfo';
 import { Step3Audience } from './components/Step3Audience';
 import { Step4Schedule } from './components/Step4Schedule';
 
@@ -60,16 +60,33 @@ export default function CreateCampaignPage() {
         retry: 2
     });
 
+    // Auto-fill campaign name and description when property is selected
+    const handlePropertyChange = (propertyId: string) => {
+        setFormData(prev => ({ ...prev, property: propertyId }));
+        
+        if (propertyId && properties) {
+            const selectedProperty = properties.find(p => p.id === propertyId);
+            if (selectedProperty) {
+                setFormData(prev => ({
+                    ...prev,
+                    property: propertyId,
+                    name: `${selectedProperty.streetAddress}, ${selectedProperty.city}, ${selectedProperty.zip}`,
+                    description: selectedProperty.title
+                }));
+            }
+        }
+    };
+
     const validateStep = (step: number): boolean => {
         const newErrors: Record<string, string> = {};
 
         switch (step) {
             case 1:
-                if (!formData.name.trim()) newErrors.name = 'Campaign name is required';
-                if (!formData.description.trim()) newErrors.description = 'Campaign description is required';
+                if (!formData.property) newErrors.property = 'Please select a property';
                 break;
             case 2:
-                if (!formData.property) newErrors.property = 'Please select a property';
+                if (!formData.name.trim()) newErrors.name = 'Campaign name is required';
+                if (!formData.description.trim()) newErrors.description = 'Campaign description is required';
                 break;
             case 3:
                 if (!formData.emailList) newErrors.emailList = 'Please select an email list';
@@ -141,6 +158,7 @@ const handleSubmit = async () => {
     const stepProps = {
         formData,
         setFormData,
+        handlePropertyChange,
         errors,
         properties,
         propertiesLoading,
@@ -179,8 +197,17 @@ const handleSubmit = async () => {
                             <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
                             {currentStep === 4 ? (
                                 <Button onClick={handleSubmit} disabled={loading}>
-                                    {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
-                                    Create Campaign
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Creating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mail className="h-4 w-4 mr-2" />
+                                            Create Campaign
+                                        </>
+                                    )}
                                 </Button>
                             ) : (
                                 <Button onClick={handleNext}>Next Step</Button>
@@ -190,42 +217,30 @@ const handleSubmit = async () => {
                 </div>
             </div>
 
+            {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <div className="lg:grid lg:grid-cols-4 lg:gap-8">
                     <StepsSidebar currentStep={currentStep} />
 
                     <div className="lg:col-span-3">
                         {hasErrors && (
-                            <Alert variant="destructive" className="mb-6">
+                            <Alert className="mb-6">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertDescription>
-                                    <div className="space-y-1">
-                                        <p>Failed to load some required data:</p>
-                                        {propertiesError && <p>• Properties: {propertiesError.message}</p>}
-                                        {listsError && <p>• Email Lists: {listsError.message}</p>}
-                                        {templatesError && <p>• Templates: {templatesError.message}</p>}
-                                    </div>
-                                    <Button size="sm" variant="outline" onClick={() => {
-                                        refetchProperties();
-                                        refetchLists();
-                                        refetchTemplates();
-                                    }} className="mt-2">
-                                        <RefreshCcw className="h-3 w-3 mr-1" />
-                                        Retry
-                                    </Button>
+                                    There was an error loading campaign data. Please try refreshing the page.
                                 </AlertDescription>
                             </Alert>
                         )}
 
                         {errors.submit && (
-                            <Alert variant="destructive" className="mb-6">
+                            <Alert className="mb-6">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertDescription>{errors.submit}</AlertDescription>
                             </Alert>
                         )}
 
-                        {currentStep === 1 && <Step1BasicInfo {...stepProps} />}
-                        {currentStep === 2 && <Step2Property {...stepProps} />}
+                        {currentStep === 1 && <Step1Property {...stepProps} />}
+                        {currentStep === 2 && <Step2BasicInfo {...stepProps} />}
                         {currentStep === 3 && <Step3Audience {...stepProps} />}
                         {currentStep === 4 && <Step4Schedule {...stepProps} />}
 

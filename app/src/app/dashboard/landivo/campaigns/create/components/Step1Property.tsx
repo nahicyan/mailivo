@@ -1,4 +1,4 @@
-// app/src/app/dashboard/landivo/campaigns/create/components/Step2Property.tsx
+// app/src/app/dashboard/landivo/campaigns/create/components/Step1Property.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,13 +8,14 @@ import { Building } from 'lucide-react';
 interface Props {
     formData: any;
     setFormData: (fn: (prev: any) => any) => void;
+    handlePropertyChange: (propertyId: string) => void;
     errors: Record<string, string>;
     properties: any[];
     propertiesLoading: boolean;
     propertiesError: any;
 }
 
-export function Step2Property({ formData, setFormData, errors, properties, propertiesLoading, propertiesError }: Props) {
+export function Step1Property({ formData, setFormData, handlePropertyChange, errors, properties, propertiesLoading, propertiesError }: Props) {
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(amount);
 
@@ -33,7 +34,7 @@ export function Step2Property({ formData, setFormData, errors, properties, prope
                     <Label>Property *</Label>
                     <Select
                         value={formData.property}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, property: value }))}
+                        onValueChange={handlePropertyChange}
                         disabled={propertiesLoading || !!propertiesError}
                     >
                         <SelectTrigger className={errors.property ? 'border-red-500' : ''}>

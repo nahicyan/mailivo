@@ -1,5 +1,5 @@
 // app/src/app/dashboard/landivo/campaigns/create/components/StepsSidebar.tsx
-import { FileText, Building, Users, Clock } from 'lucide-react';
+import { Building, FileText, Users, Clock } from 'lucide-react';
 
 interface Props {
     currentStep: number;
@@ -7,8 +7,8 @@ interface Props {
 
 export function StepsSidebar({ currentStep }: Props) {
     const steps = [
-        { number: 1, title: 'Basic Info', icon: FileText, description: 'Campaign name and description' },
-        { number: 2, title: 'Property', icon: Building, description: 'Select target property' },
+        { number: 1, title: 'Property', icon: Building, description: 'Select target property' },
+        { number: 2, title: 'Basic Info', icon: FileText, description: 'Campaign name and description' },
         { number: 3, title: 'Audience', icon: Users, description: 'Choose email list and template' },
         { number: 4, title: 'Schedule', icon: Clock, description: 'Set timing and volume' }
     ];

@@ -1,4 +1,4 @@
-// app/src/app/dashboard/landivo/campaigns/create/components/Step1BasicInfo.tsx
+// app/src/app/dashboard/landivo/campaigns/create/components/Step2BasicInfo.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ interface Props {
     errors: Record<string, string>;
 }
 
-export function Step1BasicInfo({ formData, setFormData, errors }: Props) {
+export function Step2BasicInfo({ formData, setFormData, errors }: Props) {
     return (
         <Card>
             <CardHeader>
