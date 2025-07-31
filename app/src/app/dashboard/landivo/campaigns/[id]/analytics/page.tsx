@@ -39,9 +39,15 @@ export default function CampaignAnalyticsPage({ params }: Props) {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [emailLists, setEmailLists] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
 
   useEffect(() => {
     fetchCampaignAnalytics();
+    fetchProperties();
+    fetchEmailLists();
+    fetchTemplates();
   }, [id]);
 
   const fetchCampaignAnalytics = async () => {
@@ -77,6 +83,87 @@ export default function CampaignAnalyticsPage({ params }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+      const response = await fetch(`${serverURL}/residency/allresd/`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProperties(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    }
+  };
+
+  const fetchEmailLists = async () => {
+    try {
+      const response = await fetch(`${API_URL}/landivo-email-lists`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEmailLists(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching email lists:', error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch(`${API_URL}/templates`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(Array.isArray(data) ? data : (data.templates || []));
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const getPropertyAddress = (propertyId: string) => {
+    if (!Array.isArray(properties)) {
+      return propertyId;
+    }
+    const property = properties.find(p => p.id === propertyId || p._id === propertyId);
+    if (!property) return propertyId;
+    
+    return `${property.streetAddress || ''}, ${property.city || ''}, ${property.zip || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
+  };
+
+  const getEmailListDetails = (listId: string) => {
+    if (!Array.isArray(emailLists)) {
+      return {
+        name: listId,
+        recipientCount: 0
+      };
+    }
+    const list = emailLists.find(l => l.id === listId || l._id === listId);
+    return {
+      name: list?.name || listId,
+      recipientCount: list?.buyerCount || list?.contactCount || list?.recipients?.length || 0
+    };
+  };
+
+  const getTemplateName = (templateId: string) => {
+    if (!Array.isArray(templates)) {
+      return templateId;
+    }
+    const template = templates.find(t => t.id === templateId || t._id === templateId);
+    return template?.name || template?.title || templateId;
   };
 
   const handleExportReport = () => {
@@ -147,6 +234,8 @@ export default function CampaignAnalyticsPage({ params }: Props) {
     { time: '7d', opens: campaign.metrics?.open || 0 }
   ];
 
+  const emailListDetails = getEmailListDetails(campaign.emailList);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -214,13 +303,13 @@ export default function CampaignAnalyticsPage({ params }: Props) {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="flex items-center justify-center mb-2">
-              <CheckCircle className="h-5 w-5 text-blue-600" />
+              <Mail className="h-5 w-5 text-blue-600" />
             </div>
             <div className="text-2xl font-bold text-blue-600">{analytics.performance?.deliveryRate || 0}%</div>
             <p className="text-sm text-muted-foreground">Delivery Rate</p>
             <div className="flex items-center justify-center mt-1">
-              <CheckCircle className="h-3 w-3 text-blue-600 mr-1" />
-              <span className="text-xs text-blue-600">Excellent</span>
+              <TrendingUp className="h-3 w-3 text-blue-600 mr-1" />
+              <span className="text-xs text-blue-600">Industry avg: 95%</span>
             </div>
           </CardContent>
         </Card>
@@ -228,13 +317,13 @@ export default function CampaignAnalyticsPage({ params }: Props) {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="flex items-center justify-center mb-2">
-              <XCircle className="h-5 w-5 text-red-600" />
+              <Users className="h-5 w-5 text-orange-600" />
             </div>
-            <div className="text-2xl font-bold text-red-600">{analytics.performance?.bounceRate || 0}%</div>
-            <p className="text-sm text-muted-foreground">Bounce Rate</p>
+            <div className="text-2xl font-bold text-orange-600">{formatNumber(campaign.metrics?.sent || 0)}</div>
+            <p className="text-sm text-muted-foreground">Total Sent</p>
             <div className="flex items-center justify-center mt-1">
-              <TrendingDown className="h-3 w-3 text-green-600 mr-1" />
-              <span className="text-xs text-green-600">Below 2% target</span>
+              <CheckCircle className="h-3 w-3 text-orange-600 mr-1" />
+              <span className="text-xs text-orange-600">Campaign volume</span>
             </div>
           </CardContent>
         </Card>
@@ -242,7 +331,6 @@ export default function CampaignAnalyticsPage({ params }: Props) {
 
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Performance Overview */}
         <Card>
           <CardHeader>
             <CardTitle>Performance Overview</CardTitle>
@@ -260,30 +348,9 @@ export default function CampaignAnalyticsPage({ params }: Props) {
           </CardContent>
         </Card>
 
-        {/* Open Timeline */}
         <Card>
           <CardHeader>
-            <CardTitle>Opens Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={timelineData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="opens" stroke="#10b981" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Engagement Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Engagement Breakdown</CardTitle>
+            <CardTitle>Engagement Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -292,11 +359,10 @@ export default function CampaignAnalyticsPage({ params }: Props) {
                   data={engagementData}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
+                  label
                 >
                   {engagementData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -307,30 +373,28 @@ export default function CampaignAnalyticsPage({ params }: Props) {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Device Breakdown */}
+      {/* Device & Timeline */}
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Smartphone className="h-5 w-5" />
-              Device Breakdown
-            </CardTitle>
+            <CardTitle>Device Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={deviceData}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
+                  outerRadius={60}
                   fill="#8884d8"
                   dataKey="value"
+                  label
                 >
                   {deviceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index + 2]} />
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -338,10 +402,27 @@ export default function CampaignAnalyticsPage({ params }: Props) {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Opens Over Time</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={timelineData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="opens" stroke="#3b82f6" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Detailed Metrics */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Delivery Metrics</CardTitle>
@@ -352,20 +433,54 @@ export default function CampaignAnalyticsPage({ params }: Props) {
               <span className="font-bold">{formatNumber(campaign.metrics?.sent || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Successfully Delivered</span>
+              <span className="text-sm font-medium">Delivered</span>
               <span className="font-bold text-green-600">{formatNumber(campaign.metrics?.successfulDeliveries || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Hard Bounces</span>
+              <span className="text-sm font-medium">Bounced</span>
               <span className="font-bold text-red-600">{formatNumber(campaign.metrics?.bounces || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Complaints</span>
-              <span className="font-bold text-yellow-600">{formatNumber(campaign.metrics?.complained || 0)}</span>
+              <span className="text-sm font-medium">Delivery Rate</span>
+              <span className="font-bold text-blue-600">{analytics.performance?.deliveryRate || 0}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Bounce Rate</span>
+              <span className="font-bold text-red-600">
+                {campaign.metrics?.sent > 0 ? ((campaign.metrics.bounces / campaign.metrics.sent) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Engagement Metrics</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Opens</span>
+              <span className="font-bold text-green-600">{formatNumber(campaign.metrics?.open || 0)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Clicks</span>
+              <span className="font-bold text-purple-600">{formatNumber(campaign.metrics?.clicks || 0)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Mobile Opens</span>
+              <span className="font-bold text-orange-600">{formatNumber(campaign.metrics?.mobileOpen || 0)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Open Rate</span>
+              <span className="font-bold text-green-600">{analytics.performance?.openRate || 0}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Click Rate</span>
+              <span className="font-bold text-purple-600">{analytics.performance?.clickRate || 0}%</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Unsubscribes</span>
-              <span className="font-bold text-gray-600">{formatNumber(campaign.metrics?.unsubscribed || 0)}</span>
+              <span className="font-bold">{formatNumber(campaign.metrics?.unsubscribed || 0)}</span>
             </div>
           </CardContent>
         </Card>
@@ -411,7 +526,8 @@ export default function CampaignAnalyticsPage({ params }: Props) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
-                  <Badge className={campaign.status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                  <Badge className={campaign.status === 'sent' ? 
+                    'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                     {campaign.status}
                   </Badge>
                 </div>
@@ -421,7 +537,7 @@ export default function CampaignAnalyticsPage({ params }: Props) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Property:</span>
-                  <span className="truncate max-w-32">{campaign.property}</span>
+                  <span className="truncate max-w-32">{getPropertyAddress(campaign.property)}</span>
                 </div>
               </div>
             </div>
@@ -431,11 +547,18 @@ export default function CampaignAnalyticsPage({ params }: Props) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Email List:</span>
-                  <span className="truncate max-w-32">{campaign.emailList}</span>
+                  <span className="truncate max-w-32">
+                    {emailListDetails.name}
+                    {emailListDetails.recipientCount > 0 && (
+                      <span className="text-muted-foreground">
+                        ({emailListDetails.recipientCount})
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Template:</span>
-                  <span className="truncate max-w-32">{campaign.emailTemplate}</span>
+                  <span className="truncate max-w-32">{getTemplateName(campaign.emailTemplate)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Volume:</span>
