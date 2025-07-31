@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import morgan from 'morgan';
 import { connectDatabase } from './config/database';
+import { connectRedis } from './config/redis';
 import { routes } from './routes';
 
 const app = express();
@@ -64,12 +65,21 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
+    console.log('🚀 Starting Mailivo API Server...');
+    
+    // Connect to MongoDB first
     await connectDatabase();
+    
+    // Connect to Redis - CRITICAL: App crashes if Redis unavailable
+    await connectRedis();
+    
+    // Start the server only after both connections succeed
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log('🎯 All services connected and ready!');
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('💥 Failed to start server:', error);
     process.exit(1);
   }
 };
