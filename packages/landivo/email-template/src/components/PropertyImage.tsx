@@ -15,6 +15,7 @@ interface PropertyImageProps {
   showCaption?: boolean;
   caption?: string;
   imageUrls?: string[];
+  propertyData?: any;
 }
 
 export function PropertyImage({ 
@@ -27,19 +28,34 @@ export function PropertyImage({
   borderRadius = 8,
   showCaption = false,
   caption = '',
-  imageUrls = []
+  imageUrls = [],
+  propertyData
 }: PropertyImageProps) {
   // Determine the image source
   const getImageSrc = () => {
     if (imageUrl) return imageUrl;
-    if (imageUrls && imageUrls.length > 0 && imageIndex < imageUrls.length) {
-      const imagePath = imageUrls[imageIndex];
+    
+    // Use property data if available
+    const availableImages = propertyData?.imageUrls || imageUrls;
+    if (availableImages && availableImages.length > 0 && imageIndex < availableImages.length) {
+      const imagePath = availableImages[imageIndex];
       return `https://api.landivo.com/${imagePath}`;
     }
+    
     return 'https://via.placeholder.com/600x400/e5e7eb/6b7280?text=No+Image+Available';
   };
 
+  // Auto-generate caption from property data if not set
+  const getCaption = () => {
+    if (caption) return caption;
+    if (propertyData && showCaption) {
+      return `${propertyData.streetAddress}, ${propertyData.city}, ${propertyData.state}`;
+    }
+    return '';
+  };
+
   const imageSrc = getImageSrc();
+  const displayCaption = getCaption();
 
   return (
     <Section
@@ -68,7 +84,7 @@ export function PropertyImage({
             objectFit: 'cover',
           }}
         />
-        {showCaption && caption && (
+        {showCaption && displayCaption && (
           <Text
             style={{
               fontSize: '14px',
@@ -78,7 +94,7 @@ export function PropertyImage({
               fontStyle: 'italic',
             }}
           >
-            {caption}
+            {displayCaption}
           </Text>
         )}
       </div>
