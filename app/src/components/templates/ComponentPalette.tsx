@@ -4,113 +4,19 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Type, 
-  Image, 
-  Columns, 
-  Square,
-  Menu,
-  Users,
-  Clock,
-  Video,
-  Code,
-  Minus
-} from 'lucide-react';
+import { Square, Minus } from 'lucide-react';
+import { getAllComponents, getComponentsByCategory } from '@/lib/component-registry';
 
 interface ComponentPaletteProps {
   onDragStart: (componentType: string) => void;
 }
 
-interface ComponentDefinition {
-  type: string;
-  name: string;
-  icon: React.ReactNode;
-  available: boolean;
-  description: string;
-}
-
-const COMPONENT_DEFINITIONS: ComponentDefinition[] = [
-  {
-    type: 'header',
-    name: 'HEADING',
-    icon: <Type className="w-5 h-5" />,
-    available: true,
-    description: 'Add header with Landivo branding'
-  },
-  {
-    type: 'columns',
-    name: 'COLUMNS',
-    icon: <Columns className="w-5 h-5" />,
-    available: false,
-    description: 'Create multi-column layouts'
-  },
-  {
-    type: 'button',
-    name: 'BUTTON',
-    icon: <Square className="w-5 h-5" />,
-    available: false,
-    description: 'Add call-to-action buttons'
-  },
-  {
-    type: 'divider',
-    name: 'DIVIDER',
-    icon: <Minus className="w-5 h-5" />,
-    available: false,
-    description: 'Add visual separators'
-  },
-  {
-    type: 'image',
-    name: 'IMAGE',
-    icon: <Image className="w-5 h-5" />,
-    available: false,
-    description: 'Insert property images'
-  },
-  {
-    type: 'html',
-    name: 'HTML',
-    icon: <Code className="w-5 h-5" />,
-    available: false,
-    description: 'Add custom HTML content'
-  },
-  {
-    type: 'menu',
-    name: 'MENU',
-    icon: <Menu className="w-5 h-5" />,
-    available: false,
-    description: 'Add navigation menus'
-  },
-  {
-    type: 'social',
-    name: 'SOCIAL',
-    icon: <Users className="w-5 h-5" />,
-    available: false,
-    description: 'Add social media links'
-  },
-  {
-    type: 'text',
-    name: 'TEXT',
-    icon: <Type className="w-5 h-5" />,
-    available: false,
-    description: 'Add text blocks'
-  },
-  {
-    type: 'timer',
-    name: 'TIMER',
-    icon: <Clock className="w-5 h-5" />,
-    available: false,
-    description: 'Add countdown timers'
-  },
-  {
-    type: 'video',
-    name: 'VIDEO',
-    icon: <Video className="w-5 h-5" />,
-    available: false,
-    description: 'Embed video content'
-  }
-];
-
 export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
   const [activeTab, setActiveTab] = useState('content');
+
+  const allComponents = getAllComponents();
+  const contentComponents = getComponentsByCategory('content');
+  const layoutComponents = getComponentsByCategory('layout');
 
   const handleDragStart = (e: React.DragEvent, componentType: string) => {
     e.dataTransfer.setData('componentType', componentType);
@@ -120,6 +26,35 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
   const handleDragEnd = () => {
     onDragStart('');
   };
+
+  const renderComponentGrid = (components: any[]) => (
+    <div className="grid grid-cols-2 gap-2">
+      {components.map((component) => (
+        <Button
+          key={component.type}
+          variant="outline"
+          className={`h-16 flex flex-col items-center justify-center gap-1 text-xs relative ${
+            !component.available 
+              ? 'opacity-50 cursor-not-allowed bg-gray-50' 
+              : 'hover:bg-blue-50 hover:border-blue-300'
+          }`}
+          draggable={component.available}
+          onDragStart={(e) => component.available && handleDragStart(e, component.type)}
+          onDragEnd={handleDragEnd}
+          disabled={!component.available}
+          title={component.description}
+        >
+          {component.icon}
+          <span className="font-medium">{component.displayName}</span>
+          {!component.available && (
+            <div className="absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center">
+              <span className="text-xs text-gray-500 font-medium">Soon</span>
+            </div>
+          )}
+        </Button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col">
@@ -134,44 +69,19 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
 
         <div className="flex-1 overflow-auto">
           <TabsContent value="content" className="p-4 space-y-2 mt-0">
-            <div className="grid grid-cols-2 gap-2">
-              {COMPONENT_DEFINITIONS.map((component) => (
-                <Button
-                  key={component.type}
-                  variant="outline"
-                  className={`h-16 flex flex-col items-center justify-center gap-1 text-xs relative ${
-                    !component.available 
-                      ? 'opacity-50 cursor-not-allowed bg-gray-50' 
-                      : 'hover:bg-blue-50 hover:border-blue-300'
-                  }`}
-                  draggable={component.available}
-                  onDragStart={(e) => component.available && handleDragStart(e, component.type)}
-                  onDragEnd={handleDragEnd}
-                  disabled={!component.available}
-                  title={component.description}
-                >
-                  {component.icon}
-                  <span className="font-medium">{component.name}</span>
-                  {!component.available && (
-                    <div className="absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center">
-                      <span className="text-xs text-gray-500 font-medium">Soon</span>
-                    </div>
-                  )}
-                </Button>
-              ))}
-            </div>
+            {renderComponentGrid(allComponents)}
 
             {/* Available Components Info */}
             <div className="mt-6 p-3 bg-blue-50 rounded-lg">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Available Components</h4>
               <div className="space-y-2">
-                {COMPONENT_DEFINITIONS.filter(c => c.available).map((component) => (
+                {allComponents.filter(c => c.available).map((component) => (
                   <div key={component.type} className="flex items-center gap-2">
                     <div className="w-6 h-6 flex items-center justify-center">
                       {component.icon}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-blue-900">{component.name}</div>
+                      <div className="text-sm font-medium text-blue-900">{component.displayName}</div>
                       <div className="text-xs text-blue-700">{component.description}</div>
                     </div>
                   </div>
@@ -181,10 +91,14 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
           </TabsContent>
 
           <TabsContent value="blocks" className="p-4 mt-0">
-            <div className="text-center text-gray-500 py-8">
-              <Square className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Block components coming soon</p>
-            </div>
+            {layoutComponents.length > 0 ? (
+              renderComponentGrid(layoutComponents)
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                <Square className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Block components coming soon</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="body" className="p-4 mt-0">

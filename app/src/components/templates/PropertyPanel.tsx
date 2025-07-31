@@ -13,7 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { X, Settings } from 'lucide-react';
+import { getComponent } from '@/lib/component-registry';
 
 interface PropertyPanelProps {
   component: EmailComponent;
@@ -23,6 +25,7 @@ interface PropertyPanelProps {
 
 export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelProps) {
   const [localProps, setLocalProps] = useState(component.props || {});
+  const componentMeta = getComponent(component.type);
 
   const handlePropChange = (key: string, value: any) => {
     const newProps = { ...localProps, [key]: value };
@@ -30,72 +33,137 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
     onUpdate({ props: newProps });
   };
 
-  const renderHeaderProperties = () => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="className" className="text-sm font-medium">
-          CSS Classes
-        </Label>
-        <Input
-          id="className"
-          value={localProps.className || ''}
-          onChange={(e) => handlePropChange('className', e.target.value)}
-          placeholder="Additional CSS classes"
-          className="mt-1"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Add custom Tailwind classes for styling
-        </p>
-      </div>
+  const renderConfigField = (field: any) => {
+    const value = localProps[field.key] ?? field.defaultValue;
 
-      <div>
-        <Label htmlFor="showBottomBorder" className="text-sm font-medium">
-          Bottom Border
-        </Label>
-        <Select
-          value={localProps.showBottomBorder !== false ? 'true' : 'false'}
-          onValueChange={(value) => handlePropChange('showBottomBorder', value === 'true')}
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="true">Show</SelectItem>
-            <SelectItem value="false">Hide</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium">Alignment</Label>
-        <div className="grid grid-cols-3 gap-2 mt-1">
-          {['left', 'center', 'right'].map((align) => (
-            <Button
-              key={align}
-              variant={localProps.textAlign === align ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handlePropChange('textAlign', align)}
-              className="capitalize"
-            >
-              {align}
-            </Button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderComponentProperties = () => {
-    switch (component.type) {
-      case 'header':
-        return renderHeaderProperties();
-      default:
+    switch (field.type) {
+      case 'text':
+      case 'textarea':
         return (
-          <div className="text-center text-gray-500 py-8">
-            <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No properties available for this component</p>
+          <div key={field.key}>
+            <Label htmlFor={field.key} className="text-sm font-medium">
+              {field.label}
+            </Label>
+            {field.type === 'textarea' ? (
+              <textarea
+                id={field.key}
+                value={value || ''}
+                onChange={(e) => handlePropChange(field.key, e.target.value)}
+                placeholder={field.placeholder}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-none"
+                rows={3}
+              />
+            ) : (
+              <Input
+                id={field.key}
+                value={value || ''}
+                onChange={(e) => handlePropChange(field.key, e.target.value)}
+                placeholder={field.placeholder}
+                className="mt-1"
+              />
+            )}
+            {field.description && (
+              <p className="text-xs text-gray-500 mt-1">{field.description}</p>
+            )}
           </div>
         );
+
+      case 'select':
+        return (
+          <div key={field.key}>
+            <Label htmlFor={field.key} className="text-sm font-medium">
+              {field.label}
+            </Label>
+            <Select
+              value={value?.toString() || field.defaultValue?.toString()}
+              onValueChange={(val) => handlePropChange(field.key, val)}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {field.description && (
+              <p className="text-xs text-gray-500 mt-1">{field.description}</p>
+            )}
+          </div>
+        );
+
+      case 'toggle':
+      case 'boolean':
+        return (
+          <div key={field.key} className="flex items-center justify-between">
+            <div>
+              <Label htmlFor={field.key} className="text-sm font-medium">
+                {field.label}
+              </Label>
+              {field.description && (
+                <p className="text-xs text-gray-500 mt-1">{field.description}</p>
+              )}
+            </div>
+            <Switch
+              id={field.key}
+              checked={value ?? field.defaultValue}
+              onCheckedChange={(checked) => handlePropChange(field.key, checked)}
+            />
+          </div>
+        );
+
+      case 'color':
+        return (
+          <div key={field.key}>
+            <Label htmlFor={field.key} className="text-sm font-medium">
+              {field.label}
+            </Label>
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                id={field.key}
+                type="color"
+                value={value || field.defaultValue}
+                onChange={(e) => handlePropChange(field.key, e.target.value)}
+                className="w-12 h-8 p-1 border rounded"
+              />
+              <Input
+                value={value || field.defaultValue}
+                onChange={(e) => handlePropChange(field.key, e.target.value)}
+                placeholder="#ffffff"
+                className="flex-1"
+              />
+            </div>
+            {field.description && (
+              <p className="text-xs text-gray-500 mt-1">{field.description}</p>
+            )}
+          </div>
+        );
+
+      case 'number':
+        return (
+          <div key={field.key}>
+            <Label htmlFor={field.key} className="text-sm font-medium">
+              {field.label}
+            </Label>
+            <Input
+              id={field.key}
+              type="number"
+              value={value ?? field.defaultValue}
+              onChange={(e) => handlePropChange(field.key, parseInt(e.target.value))}
+              placeholder={field.placeholder}
+              className="mt-1"
+            />
+            {field.description && (
+              <p className="text-xs text-gray-500 mt-1">{field.description}</p>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
@@ -105,7 +173,7 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
         <div className="flex items-center gap-2">
           <Settings className="w-4 h-4 text-gray-600" />
           <h3 className="font-medium">
-            {component.name} Properties
+            {componentMeta?.displayName || component.name} Properties
           </h3>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -122,7 +190,16 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
         </div>
 
         {/* Component Properties */}
-        {renderComponentProperties()}
+        <div className="space-y-4">
+          {componentMeta?.configFields.length ? (
+            componentMeta.configFields.map(renderConfigField)
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No properties available for this component</p>
+            </div>
+          )}
+        </div>
 
         {/* Component Actions */}
         <div className="mt-6 pt-4 border-t border-gray-200">
@@ -141,7 +218,6 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
               className="w-full text-red-600 border-red-200 hover:bg-red-50"
               onClick={() => {
                 if (confirm('Delete this component?')) {
-                  // Component deletion is handled by parent
                   onClose();
                 }
               }}

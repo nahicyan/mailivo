@@ -3,7 +3,7 @@
 
 import { useState, useRef } from 'react';
 import { EmailTemplate, EmailComponent } from '@/types/template';
-import { Header } from '@/emails/components/Header';
+import { getComponent } from '@/lib/component-registry';
 import { Button } from '@/components/ui/button';
 import { Trash2, GripVertical } from 'lucide-react';
 
@@ -57,16 +57,19 @@ export function EmailCanvas({
   };
 
   const renderComponent = (component: EmailComponent) => {
-    switch (component.type) {
-      case 'header':
-        return <Header className={component.props.className} />;
-      default:
-        return (
-          <div className="p-4 bg-gray-100 text-center text-gray-500">
-            {component.name} Component
-          </div>
-        );
+    const componentMeta = getComponent(component.type);
+    if (!componentMeta) {
+      return (
+        <div className="p-4 bg-red-100 text-center text-red-600">
+          Unknown component: {component.type}
+        </div>
+      );
     }
+
+    const Component = componentMeta.component;
+    const props = { ...componentMeta.defaultProps, ...component.props };
+    
+    return <Component {...props} />;
   };
 
   const sortedComponents = [...template.components].sort((a, b) => a.order - b.order);
