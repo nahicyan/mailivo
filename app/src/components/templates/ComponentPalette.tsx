@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Square, Minus } from 'lucide-react';
-import { getAllComponents, getComponentsByCategory } from '@/lib/component-registry';
+import { getAllComponents, getComponentsByCategory } from '@landivo/email-template';
 
 interface ComponentPaletteProps {
   onDragStart: (componentType: string) => void;

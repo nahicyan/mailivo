@@ -3,7 +3,7 @@
 
 import { useState, useRef } from 'react';
 import { EmailTemplate, EmailComponent } from '@/types/template';
-import { getComponent } from '@/lib/component-registry';
+import { getComponent } from '@landivo/email-template';
 import { Button } from '@/components/ui/button';
 import { Trash2, GripVertical } from 'lucide-react';
 

@@ -10,7 +10,7 @@ import {
   Text,
   Tailwind,
 } from '@react-email/components';
-import { Header } from './components/Header';
+import { Header } from '@landivo/email-template';
 
 interface PropertyData {
   title?: string;

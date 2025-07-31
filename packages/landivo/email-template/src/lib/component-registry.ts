@@ -1,8 +1,8 @@
 // app/src/lib/component-registry.ts
-import { ComponentRegistry } from '@/types/component-metadata';
+import { ComponentRegistry } from '../types/component-metadata';
 
 // Import all email components and their metadata
-import { headerMetadata } from '@/emails/components/Header';
+import { headerMetadata } from '../components/Header';
 
 // Component registry - automatically includes all imported components
 export const componentRegistry: ComponentRegistry = {

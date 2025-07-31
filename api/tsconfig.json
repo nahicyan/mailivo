@@ -6,7 +6,8 @@
     "outDir": "./dist",
     // "rootDir": "./src",
     "paths": {
-      "@mailivo/shared-types": ["../packages/shared-types/src"]
+      "@mailivo/shared-types": ["../packages/shared-types/src"],
+       "@landivo/email-template": ["../packages/landivo/email-template/src"]
     },
     "strict": true,
     "esModuleInterop": true,

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Text } from '@react-email/components';
 import { Type } from 'lucide-react';
-import { EmailComponentMetadata } from '@/types/component-metadata';
+import { EmailComponentMetadata } from '../types/component-metadata';
 
 interface HeaderProps {
   className?: string;

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { X, Settings } from 'lucide-react';
-import { getComponent } from '@/lib/component-registry';
+import { getComponent } from '@landivo/email-template';
 
 interface PropertyPanelProps {
   component: EmailComponent;
