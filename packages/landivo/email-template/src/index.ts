@@ -7,6 +7,7 @@ export * from './components/PropertyHighlights';
 export * from './components/PropertyDetails';
 export * from './components/PaymentCalculator';
 export * from './components/BuyerGuidelines';
+export * from './components/JoinVipList';
 
 // Export registry and utilities
 export * from './lib/component-registry';
