@@ -33,7 +33,7 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
         <Button
           key={component.type}
           variant="outline"
-          className={`h-16 flex flex-col items-center justify-center gap-1 text-xs relative ${
+          className={`h-16 flex flex-col items-center justify-center gap-0 text-xs relative ${
             !component.available 
               ? 'opacity-50 cursor-not-allowed bg-gray-50' 
               : 'hover:bg-blue-50 hover:border-blue-300'
@@ -45,7 +45,7 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
           title={component.description}
         >
           {component.icon}
-          <span className="font-medium">{component.displayName}</span>
+          <span className="text-sm font-light tracking-tight">{component.displayName}</span><span>{component.version}</span>
           {!component.available && (
             <div className="absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center">
               <span className="text-xs text-gray-500 font-medium">Soon</span>
@@ -72,7 +72,7 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
             {renderComponentGrid(allComponents)}
 
             {/* Available Components Info */}
-            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
+            {/* <div className="mt-6 p-3 bg-blue-50 rounded-lg">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Available Components</h4>
               <div className="space-y-2">
                 {allComponents.filter(c => c.available).map((component) => (
@@ -87,7 +87,7 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
           </TabsContent>
 
           <TabsContent value="blocks" className="p-4 mt-0">

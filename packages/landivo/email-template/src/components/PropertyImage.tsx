@@ -106,7 +106,8 @@ export function PropertyImage({
 export const propertyImageMetadata: EmailComponentMetadata = {
   type: 'property-image',
   name: 'property-image',
-  displayName: 'PROPERTY IMAGE',
+  displayName: 'Property Image',
+  version: 'v1.0',
   icon: <Image className="w-5 h-5" />,
   description: 'Display property photos with captions',
   category: 'media',

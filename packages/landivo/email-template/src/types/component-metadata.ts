@@ -16,6 +16,7 @@ export interface EmailComponentMetadata {
   type: string;
   name: string;
   displayName: string;
+  version: string;
   icon: ReactNode;
   description: string;
   category: 'content' | 'layout' | 'media' | 'navigation';

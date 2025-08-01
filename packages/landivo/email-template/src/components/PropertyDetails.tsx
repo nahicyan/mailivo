@@ -158,7 +158,8 @@ export function PropertyDetails({
 export const propertyDetailsMetadata: EmailComponentMetadata = {
   type: 'property-details',
   name: 'property-details',
-  displayName: 'PROPERTY DETAILS',
+  displayName: 'Property Details',
+  version: 'v1.0',
   icon: <MapPin className="w-5 h-5" />,
   description: 'Display property location and details in a two-column layout',
   category: 'content',

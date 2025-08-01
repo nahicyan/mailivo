@@ -51,7 +51,8 @@ export function Header({
 export const headerMetadata: EmailComponentMetadata = {
   type: 'header',
   name: 'header',
-  displayName: 'LOGO HEADER',
+  displayName: 'Landivo Logo',
+  version: 'v1.0',
   icon: <Type className="w-5 h-5" />,
   description: 'Add Landivo logo header with branding',
   category: 'content',

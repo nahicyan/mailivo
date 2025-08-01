@@ -312,7 +312,8 @@ export function PaymentCalculator({
 export const paymentCalculatorMetadata: EmailComponentMetadata = {
   type: 'payment-calculator',
   name: 'payment-calculator',
-  displayName: 'PAYMENT CALCULATOR',
+  displayName: 'Payment Calclulator',
+  version: 'v1.0',
   icon: <Calculator className="w-5 h-5" />,
   description: 'Display payment calculator with circular monthly payment display',
   category: 'content',

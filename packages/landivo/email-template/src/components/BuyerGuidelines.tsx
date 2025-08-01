@@ -112,7 +112,8 @@ export function BuyerGuidelines({
 export const buyerGuidelinesMetadata: EmailComponentMetadata = {
   type: 'buyer-guidelines',
   name: 'buyer-guidelines',
-  displayName: 'BUYER GUIDELINES',
+  displayName: 'Buyer Guidelines',
+  version: 'v1.0',
   icon: <FileText className="w-5 h-5" />,
   description: 'Display buyer guidelines and terms in a compact format',
   category: 'content',

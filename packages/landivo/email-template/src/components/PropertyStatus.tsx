@@ -191,7 +191,8 @@ export function PropertyStatus({
 export const propertyStatusMetadata: EmailComponentMetadata = {
   type: 'property-status',
   name: 'property-status',
-  displayName: 'PROPERTY STATUS',
+  displayName: 'Property Status',
+  version: 'v1.0',
   icon: <CheckCircle className="w-5 h-5" />,
   description: 'Display property status with action button',
   category: 'content',

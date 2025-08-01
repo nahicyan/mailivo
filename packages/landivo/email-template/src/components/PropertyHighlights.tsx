@@ -187,7 +187,8 @@ export function PropertyHighlights({
 export const propertyHighlightsMetadata: EmailComponentMetadata = {
   type: 'property-highlights',
   name: 'property-highlights',
-  displayName: 'PROPERTY HIGHLIGHTS',
+  displayName: 'Property Highlights',
+  version: 'v1.0',
   icon: <Grid className="w-5 h-5" />,
   description: 'Display key property features in a 4-column grid layout',
   category: 'content',

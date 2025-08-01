@@ -33,7 +33,7 @@ export default function CreateTemplatePage() {
     try {
       const savedTemplate = await templateService.create(updatedTemplate);
       toast.success('Template created successfully');
-      router.push('/dashboard/campaigns/templates');
+      router.push('/dashboard/landivo/campaigns/templates');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to create template');
     } finally {
@@ -42,7 +42,7 @@ export default function CreateTemplatePage() {
   };
 
   const handleCancel = () => {
-    router.push('/dashboard/campaigns/templates');
+    router.push('/dashboard/landivo/campaigns/templates');
   };
 
   return (
