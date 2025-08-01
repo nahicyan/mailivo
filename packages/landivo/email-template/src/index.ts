@@ -4,6 +4,7 @@ export * from './components/Header';
 export * from './components/PropertyImage';
 export * from './components/PropertyStatus';
 export * from './components/PropertyHighlights';
+export * from './components/PropertyDetails';
 
 // Export registry and utilities
 export * from './lib/component-registry';
