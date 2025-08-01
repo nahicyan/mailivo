@@ -7,6 +7,7 @@ import { propertyImageMetadata } from '../components/PropertyImage';
 import { propertyStatusMetadata } from '../components/PropertyStatus';
 import { propertyHighlightsMetadata } from '../components/PropertyHighlights';
 import { propertyDetailsMetadata } from '../components/PropertyDetails'
+import { paymentCalculatorMetadata } from '../components/PaymentCalculator';
 import { buyerGuidelinesMetadata } from '../components/BuyerGuidelines';
 
 // Component registry - automatically includes all imported components
@@ -16,6 +17,7 @@ export const componentRegistry: ComponentRegistry = {
   [propertyStatusMetadata.type]: propertyStatusMetadata,
   [propertyHighlightsMetadata.type]: propertyHighlightsMetadata,
   [propertyDetailsMetadata.type]: propertyDetailsMetadata,
+  [paymentCalculatorMetadata.type]: paymentCalculatorMetadata,
   [buyerGuidelinesMetadata.type]: buyerGuidelinesMetadata,
   // Future components will be added here automatically when imported
 };
