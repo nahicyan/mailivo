@@ -133,12 +133,13 @@ export function PropertyStatus({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         flexWrap: 'wrap',
         gap: '16px',
         maxWidth: '600px',
         margin: '0 auto',
         padding: '0 20px',
+        position: 'relative',
       }}>
         {/* Status Badge */}
         <div style={{
@@ -149,7 +150,7 @@ export function PropertyStatus({
           color: statusClasses.text,
           border: `1px solid ${statusClasses.circle}`,
           borderRadius: '20px',
-          padding: '6px 12px',
+          padding: '8px 12px',
         }}>
           <div style={{
             width: '12px',
@@ -158,14 +159,19 @@ export function PropertyStatus({
             borderRadius: '50%',
             marginRight: '8px',
             border: `1px solid ${statusClasses.circle}`,
+            alignSelf: 'center',
+            flexShrink: 0,
           }}></div>
-          <span>{statusDisplayText}</span>
+          <span style={{ lineHeight: '1' }}>{statusDisplayText}</span>
         </div>
 
         {/* CTA Button */}
         <Link
           href={`https://landivo.com/properties/${linkPropertyId}`}
-          style={buttonStyles}
+          style={{
+            ...buttonStyles,
+            marginLeft: 'auto',
+          }}
         >
           <div style={{
             display: 'flex',
@@ -270,5 +276,3 @@ export const propertyStatusMetadata: EmailComponentMetadata = {
   ],
   component: PropertyStatus
 };
-
-export default PropertyStatus;
