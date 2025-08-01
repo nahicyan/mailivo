@@ -4,15 +4,31 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   Save, 
   Eye, 
   Smartphone, 
   Monitor,
-  Settings
+  Settings,
+  Home
 } from 'lucide-react';
 import { EmailTemplate } from '@/types/template';
+
+interface Property {
+  id: string;
+  title: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zip: string;
+  askingPrice: number;
+  sqft: number;
+  acre: number;
+  status: string;
+  imageUrls: string[];
+}
 
 interface TemplateToolbarProps {
   template: EmailTemplate;
@@ -20,6 +36,8 @@ interface TemplateToolbarProps {
   onCancel: () => void;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string) => void;
+  onOpenSettings: () => void;
+  selectedProperty?: Property | null;
   saving?: boolean;
 }
 
@@ -29,9 +47,15 @@ export function TemplateToolbar({
   onCancel,
   onNameChange,
   onDescriptionChange,
+  onOpenSettings,
+  selectedProperty,
   saving = false
 }: TemplateToolbarProps) {
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
+
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>/g, '').trim();
+  };
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -91,9 +115,17 @@ export function TemplateToolbar({
             Preview
           </Button>
           
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onOpenSettings}
+            className="relative"
+          >
             <Settings className="w-4 h-4 mr-2" />
             Settings
+            {selectedProperty && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"></div>
+            )}
           </Button>
 
           <Button 
@@ -107,6 +139,23 @@ export function TemplateToolbar({
           </Button>
         </div>
       </div>
+
+      {/* Selected Property Info */}
+      {selectedProperty && (
+        <div className="mt-3 flex items-center gap-2 text-sm">
+          <Home className="w-4 h-4 text-green-600" />
+          <span className="text-gray-600">Property:</span>
+          <Badge variant="outline" className="text-green-700 border-green-200">
+            {stripHtml(selectedProperty.title)}
+          </Badge>
+          <span className="text-gray-500">
+            {selectedProperty.streetAddress}, {selectedProperty.city}
+          </span>
+          <Badge variant="secondary" className="text-xs">
+            {selectedProperty.imageUrls?.length || 0} images
+          </Badge>
+        </div>
+      )}
     </div>
   );
 }

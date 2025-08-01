@@ -6,7 +6,7 @@ export interface ICampaign extends Document {
   subject: string;
   htmlContent: string;
   textContent?: string;
-  
+
   // Legacy fields (backward compatibility)
   property: string;
   emailList: string;
@@ -14,17 +14,17 @@ export interface ICampaign extends Document {
   emailAddressGroup?: string;
   emailSchedule: string;
   emailVolume: number;
-  
+
   // New fields for enhanced functionality
   audienceType?: 'all' | 'segment' | 'landivo';
   segments?: string[];
   estimatedRecipients?: number;
   spamScore?: number;
   sentAt?: Date;
-  
+
   source: 'landivo' | 'manual' | 'api';
   status: 'draft' | 'active' | 'paused' | 'sending' | 'sent' | 'completed' | 'failed';
-  
+
   metrics: {
     // New metric names
     sent: number;
@@ -34,7 +34,7 @@ export interface ICampaign extends Document {
     bounced: number;
     complained: number;
     totalRecipients: number;
-    
+
     // Legacy metric names (backward compatibility)
     open: number;
     bounces: number;
@@ -43,7 +43,7 @@ export interface ICampaign extends Document {
     didNotOpen: number;
     mobileOpen: number;
   };
-  
+
   description?: string;
   scheduledDate?: Date;
   userId: mongoose.Types.ObjectId;
@@ -56,7 +56,7 @@ const CampaignSchema: Schema = new Schema({
   subject: { type: String, required: true },
   htmlContent: { type: String, required: true },
   textContent: { type: String },
-  
+
   // Legacy fields
   property: { type: String, required: true },
   emailList: { type: String, required: true },
@@ -64,10 +64,16 @@ const CampaignSchema: Schema = new Schema({
   emailAddressGroup: { type: String },
   emailSchedule: { type: String, required: true },
   emailVolume: { type: Number, default: 0 },
-  
+
+  //Image Selection
+  imageSelections: {
+    type: Schema.Types.Mixed,
+    default: {}
+  },
+
   // New fields
-  audienceType: { 
-    type: String, 
+  audienceType: {
+    type: String,
     enum: ['all', 'segment', 'landivo'],
     default: 'all'
   },
@@ -75,18 +81,18 @@ const CampaignSchema: Schema = new Schema({
   estimatedRecipients: { type: Number, default: 0 },
   spamScore: { type: Number, min: 0, max: 10 },
   sentAt: { type: Date },
-  
-  source: { 
-    type: String, 
+
+  source: {
+    type: String,
     enum: ['landivo', 'manual', 'api'],
     default: 'manual'
   },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ['draft', 'active', 'paused', 'sending', 'sent', 'completed', 'failed'],
     default: 'draft'
   },
-  
+
   metrics: {
     // New metrics
     sent: { type: Number, default: 0 },
@@ -96,7 +102,7 @@ const CampaignSchema: Schema = new Schema({
     bounced: { type: Number, default: 0 },
     complained: { type: Number, default: 0 },
     totalRecipients: { type: Number, default: 0 },
-    
+
     // Legacy metrics
     open: { type: Number, default: 0 },
     bounces: { type: Number, default: 0 },
@@ -105,7 +111,7 @@ const CampaignSchema: Schema = new Schema({
     didNotOpen: { type: Number, default: 0 },
     mobileOpen: { type: Number, default: 0 }
   },
-  
+
   description: { type: String },
   scheduledDate: { type: Date },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true }

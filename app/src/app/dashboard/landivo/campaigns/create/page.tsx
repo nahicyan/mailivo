@@ -15,8 +15,9 @@ import Link from 'next/link';
 import { StepsSidebar } from './components/StepsSidebar';
 import { Step1Property } from './components/Step1Property';
 import { Step2BasicInfo } from './components/Step2BasicInfo';
+import { Step4Picture } from './components/Step4Picture';
 import { Step3Audience } from './components/Step3Audience';
-import { Step4Schedule } from './components/Step4Schedule';
+import { Step5Schedule } from './components/Step5Schedule';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
@@ -41,7 +42,7 @@ export default function CreateCampaignPage() {
     // Data fetching hooks
     const { data: properties, isLoading: propertiesLoading, error: propertiesError, refetch: refetchProperties } = useLandivoProperties();
     const { data: templates, isLoading: templatesLoading, error: templatesError, refetch: refetchTemplates } = useTemplates();
-    
+
     const { data: emailLists, isLoading: listsLoading, error: listsError, refetch: refetchLists } = useQuery({
         queryKey: ['landivo-email-lists'],
         queryFn: async () => {
@@ -63,7 +64,7 @@ export default function CreateCampaignPage() {
     // Auto-fill campaign name and description when property is selected
     const handlePropertyChange = (propertyId: string) => {
         setFormData(prev => ({ ...prev, property: propertyId }));
-        
+
         if (propertyId && properties) {
             const selectedProperty = properties.find(p => p.id === propertyId);
             if (selectedProperty) {
@@ -110,49 +111,49 @@ export default function CreateCampaignPage() {
 
     const handlePrevious = () => setCurrentStep(currentStep - 1);
 
-const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return;
+    const handleSubmit = async () => {
+        if (!validateStep(currentStep)) return;
 
-    setLoading(true);
-    try {
-        // Get the selected email template to extract subject and content
-        const selectedTemplate = templates?.find((t: any) => t.id === formData.emailTemplate || t._id === formData.emailTemplate);
-        
-        const response = await fetch(`${API_URL}/campaigns`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                ...formData,
-                source: 'landivo',
-                scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
-                // Add the required fields
-                subject: selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
-                htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
-                textContent: selectedTemplate?.textContent || '',
-                // Map Landivo fields to standard campaign fields
-                audienceType: 'landivo',
-                segments: [formData.emailList],
-                estimatedRecipients: formData.emailVolume
-            })
-        });
+        setLoading(true);
+        try {
+            // Get the selected email template to extract subject and content
+            const selectedTemplate = templates?.find((t: any) => t.id === formData.emailTemplate || t._id === formData.emailTemplate);
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to create campaign');
+            const response = await fetch(`${API_URL}/campaigns`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    ...formData,
+                    source: 'landivo',
+                    scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
+                    // Add the required fields
+                    subject: selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
+                    htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
+                    textContent: selectedTemplate?.textContent || '',
+                    // Map Landivo fields to standard campaign fields
+                    audienceType: 'landivo',
+                    segments: [formData.emailList],
+                    estimatedRecipients: formData.emailVolume
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to create campaign');
+            }
+
+            router.push('/dashboard/landivo/campaigns/manage');
+        } catch (error: any) {
+            console.error('Campaign creation error:', error);
+            setErrors({ submit: error.message || 'Failed to create campaign. Please try again.' });
+        } finally {
+            setLoading(false);
         }
-        
-        router.push('/dashboard/landivo/campaigns/manage');
-    } catch (error: any) {
-        console.error('Campaign creation error:', error);
-        setErrors({ submit: error.message || 'Failed to create campaign. Please try again.' });
-    } finally {
-        setLoading(false);
-    }
-};
+    };
     const hasErrors = propertiesError || listsError || templatesError;
 
     const stepProps = {
@@ -242,7 +243,11 @@ const handleSubmit = async () => {
                         {currentStep === 1 && <Step1Property {...stepProps} />}
                         {currentStep === 2 && <Step2BasicInfo {...stepProps} />}
                         {currentStep === 3 && <Step3Audience {...stepProps} />}
-                        {currentStep === 4 && <Step4Schedule {...stepProps} />}
+                        {currentStep === 4 && <Step4Picture   {...stepProps}
+                            selectedTemplate={templates?.find(t => t.id === formData.emailTemplate)}
+                            selectedProperty={properties?.find(p => p.id === formData.property)}
+                        />}
+                        {currentStep === 5 && <Step5Schedule {...stepProps} />}
 
                         {/* Navigation */}
                         <div className="flex justify-between pt-6">
@@ -254,7 +259,7 @@ const handleSubmit = async () => {
                                 )}
                             </div>
                             <div className="space-x-2">
-                                {currentStep < 4 ? (
+                                {currentStep < 5 ? (
                                     <Button onClick={handleNext}>Next Step</Button>
                                 ) : (
                                     <Button onClick={handleSubmit} disabled={loading} size="lg">

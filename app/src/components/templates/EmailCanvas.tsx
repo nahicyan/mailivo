@@ -18,6 +18,7 @@ interface EmailCanvasProps {
   onDragOver: (componentType: string) => void;
   onDragLeave: () => void;
   onDrop: (componentType: string) => void;
+  selectedProperty?: any;
 }
 
 export function EmailCanvas({
@@ -30,7 +31,8 @@ export function EmailCanvas({
   draggedComponent,
   onDragOver,
   onDragLeave,
-  onDrop
+  onDrop,
+  selectedProperty
 }: EmailCanvasProps) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -67,7 +69,16 @@ export function EmailCanvas({
     }
 
     const Component = componentMeta.component;
-    const props = { ...componentMeta.defaultProps, ...component.props };
+    let props = { ...componentMeta.defaultProps, ...component.props };
+    
+    // Pass property data to components that need it
+    if (component.type === 'property-image' && selectedProperty) {
+      props = {
+        ...props,
+        imageUrls: selectedProperty.imageUrls || [],
+        propertyData: selectedProperty
+      };
+    }
     
     return <Component {...props} />;
   };

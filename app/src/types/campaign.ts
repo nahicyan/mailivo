@@ -33,6 +33,11 @@ export interface CreateCampaignRequest {
   emailVolume: number;
   description?: string;
   scheduledDate?: string;
+  imageSelections?: Record<string, {
+    name: string;
+    imageIndex: number;
+    order: number;
+  }>;
 }
 
 export interface CampaignMetrics {

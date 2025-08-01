@@ -36,6 +36,18 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
   const renderConfigField = (field: any) => {
     const value = localProps[field.key] ?? field.defaultValue;
 
+    // Special handling for property image component
+    if (component.type === 'property-image') {
+      // Hide imageIndex when custom URL is selected
+      if (field.key === 'imageIndex' && localProps.imageSource === 'custom') {
+        return null;
+      }
+      // Hide imageUrl when property source is selected
+      if (field.key === 'imageUrl' && localProps.imageSource !== 'custom') {
+        return null;
+      }
+    }
+
     switch (field.type) {
       case 'text':
       case 'textarea':
@@ -76,7 +88,14 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
             </Label>
             <Select
               value={value?.toString() || field.defaultValue?.toString()}
-              onValueChange={(val) => handlePropChange(field.key, val)}
+              onValueChange={(val) => {
+                // Convert back to number for imageIndex
+                if (field.key === 'imageIndex') {
+                  handlePropChange(field.key, parseInt(val));
+                } else {
+                  handlePropChange(field.key, val);
+                }
+              }}
             >
               <SelectTrigger className="mt-1">
                 <SelectValue />
