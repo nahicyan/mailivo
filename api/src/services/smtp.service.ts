@@ -131,7 +131,7 @@ class SMTPService {
   }
 
   private buildMailOptions(options: EmailOptions) {
-    const fromName = process.env.EMAIL_FROM_NAME || 'Mailivo';
+    const fromName = process.env.EMAIL_FROM_NAME || 'Landivo';
     const fromEmail = process.env.SMTP_USER;
     
     return {
