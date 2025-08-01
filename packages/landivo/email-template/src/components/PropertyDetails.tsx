@@ -28,39 +28,30 @@ export function PropertyDetails({
   
   // Extract location data
   const getLocationData = () => {
-    if (!propertyData) return null;
-
     return {
-      county: propertyData.county || 'N/A',
-      state: propertyData.state || 'N/A',
-      zip: propertyData.zip || 'N/A'
+      county: propertyData?.county || 'N/A',
+      state: propertyData?.state || 'N/A',
+      zip: propertyData?.zip || 'N/A'
     };
   };
 
   // Extract property details data
   const getPropertyData = () => {
-    if (!propertyData) return null;
-
     return {
-      size: propertyData.sqft ? `${propertyData.sqft.toLocaleString()} sqft` : 'N/A',
-      acreage: propertyData.acre?.toString() || 'N/A',
-      zoning: propertyData.zoning || 'N/A'
+      size: propertyData?.sqft ? `${propertyData.sqft.toLocaleString()} sqft` : 'N/A',
+      acreage: propertyData?.acre?.toString() || 'N/A',
+      zoning: propertyData?.zoning || 'N/A'
     };
   };
 
   const locationData = getLocationData();
   const propertyDetails = getPropertyData();
 
-  // Don't render if no property data available
-  if (!locationData || !propertyDetails) {
-    return null;
-  }
-
   const containerStyle = {
     backgroundColor,
     borderRadius: `${borderRadius}px`,
     border: showBorder ? '1px solid #e5e7eb' : 'none',
-    padding: `${spacing}px`,
+    padding: `${spacing / 2}px`,
     margin: '0 auto',
     maxWidth: '600px',
     width: '100%',

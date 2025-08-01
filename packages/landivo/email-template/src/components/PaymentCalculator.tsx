@@ -30,7 +30,15 @@ export function PaymentCalculator({
 
   // Get payment plan data based on selected plan
   const getPlanData = () => {
-    if (!propertyData) return null;
+    // If no property data, return preview data with N/A values
+    if (!propertyData) {
+      return {
+        monthlyPayment: 'N/A',
+        downPayment: 'N/A',
+        loanAmount: 'N/A',
+        interest: 'N/A',
+      };
+    }
 
     switch (selectedPlan) {
       case '2':
@@ -59,17 +67,18 @@ export function PaymentCalculator({
 
   const planData = getPlanData();
 
-  // Don't render if no property data or payment plan data available
-  if (!propertyData || !planData || !planData.monthlyPayment) {
+  // Don't render if we have property data but no valid payment plan data
+  if (propertyData && (!planData || !planData.monthlyPayment)) {
     return null;
   }
 
-  // Calculate additional fees
-  const monthlyTax = Math.round((propertyData.tax || 0) / 12);
-  const serviceFee = propertyData.serviceFee || 35;
+  // Calculate additional fees (use fallback values for preview)
+  const monthlyTax = propertyData ? Math.round((propertyData.tax || 0) / 12) : 10;
+  const serviceFee = propertyData ? (propertyData.serviceFee || 35) : 35;
 
-  // Property link for buttons
-  const propertyLink = propertyId ? `https://landivo.com/properties/${propertyId}` : '#';
+  // Property link for buttons - same pattern as PropertyStatus
+  const linkPropertyId = propertyId || (propertyData?.id) || '';
+  const propertyLink = linkPropertyId ? `https://landivo.com/properties/${linkPropertyId}` : 'https://landivo.com/properties/';
 
   const containerStyle = {
     backgroundColor,
@@ -85,26 +94,40 @@ export function PaymentCalculator({
     width: '160px',
     height: '160px',
     borderRadius: '50%',
-    backgroundColor: '#16a34a',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    border: '3px solid #16a34a',
     margin: '0 auto 24px auto',
-    color: '#ffffff',
+    textAlign: 'center' as const,
+    display: 'table-cell',
+    verticalAlign: 'middle',
+  };
+
+  const circleContainerStyle = {
+    width: '160px',
+    height: '160px',
+    borderRadius: '50%',
+    backgroundColor: 'transparent',
+    border: '3px solid #16a34a',
+    margin: '0 auto 24px auto',
+    display: 'table',
   };
 
   const monthlyPaymentStyle = {
-    fontSize: '24px',
+    fontSize: '20px',
     fontWeight: 'bold',
+    color: '#16a34a',
     margin: '0',
-    lineHeight: '1.2',
+    lineHeight: '1.1',
+    display: 'block',
   };
 
   const perMonthStyle = {
     fontSize: '14px',
-    margin: '0',
+    color: '#16a34a',
+    margin: '4px 0 0 0',
     opacity: '0.9',
+    display: 'block',
+    lineHeight: '1',
   };
 
   const columnStyle = {
@@ -113,19 +136,28 @@ export function PaymentCalculator({
     padding: '0 8px',
   };
 
+  const itemStyle = {
+    marginBottom: '8px',
+    display: 'table',
+    width: '100%',
+  };
+
   const labelStyle = {
     fontSize: '14px',
     fontWeight: '600',
     color: '#030001',
-    margin: '0 0 4px 0',
-    lineHeight: '1.4',
+    margin: '0',
+    display: 'table-cell',
+    width: '50%',
   };
 
   const valueStyle = {
     fontSize: '14px',
     color: '#030001',
-    margin: '0 0 12px 0',
-    lineHeight: '1.4',
+    margin: '0',
+    display: 'table-cell',
+    width: '50%',
+    textAlign: 'right' as const,
   };
 
   const benefitBoxStyle = {
@@ -191,48 +223,60 @@ export function PaymentCalculator({
         </Text>
 
         {/* Circular Payment Display */}
-        <div style={circleStyle}>
-          <Text style={monthlyPaymentStyle}>
-            ${planData.monthlyPayment?.toLocaleString()}
-          </Text>
-          <Text style={perMonthStyle}>
-            /mo
-          </Text>
+        <div style={circleContainerStyle}>
+          <div style={circleStyle}>
+            <Text style={monthlyPaymentStyle}>
+              ${planData.monthlyPayment?.toLocaleString() || planData.monthlyPayment}
+            </Text>
+            <Text style={perMonthStyle}>
+              /mo
+            </Text>
+          </div>
         </div>
 
-        {/* Two Column Layout */}
+        {/* Payment Details - PropertyDetails Style */}
         <table style={{ width: '100%', margin: '0 0 16px 0' }}>
           <tbody>
             <tr>
-              {/* Left Column */}
-              <td style={columnStyle}>
-                <Text style={labelStyle}>Monthly Payment</Text>
-                <Text style={valueStyle}>${planData.monthlyPayment?.toLocaleString()}/mo</Text>
+              <td style={{ width: '50%', verticalAlign: 'top', padding: '0 8px 0 0' }}>
+                <div style={itemStyle}>
+                  <Text style={labelStyle}>Monthly Payment</Text>
+                  <Text style={valueStyle}>${planData.monthlyPayment?.toLocaleString() || planData.monthlyPayment}/mo</Text>
+                </div>
 
-                <Text style={labelStyle}>Down Payment</Text>
-                <Text style={valueStyle}>${planData.downPayment?.toLocaleString()}</Text>
+                <div style={itemStyle}>
+                  <Text style={labelStyle}>Down Payment</Text>
+                  <Text style={valueStyle}>${planData.downPayment?.toLocaleString() || planData.downPayment}</Text>
+                </div>
 
-                <Text style={labelStyle}>Interest Rate</Text>
-                <Text style={valueStyle}>{planData.interest}% APR</Text>
+                <div style={itemStyle}>
+                  <Text style={labelStyle}>Interest Rate</Text>
+                  <Text style={valueStyle}>{planData.interest}% APR</Text>
+                </div>
               </td>
 
-              {/* Right Column */}
-              <td style={columnStyle}>
-                <Text style={labelStyle}>Loan Amount</Text>
-                <Text style={valueStyle}>${planData.loanAmount?.toLocaleString()}</Text>
+              <td style={{ width: '50%', verticalAlign: 'top', padding: '0 0 0 8px' }}>
+                <div style={itemStyle}>
+                  <Text style={labelStyle}>Loan Amount</Text>
+                  <Text style={valueStyle}>${planData.loanAmount?.toLocaleString() || planData.loanAmount}</Text>
+                </div>
 
-                <Text style={labelStyle}>Property Tax</Text>
-                <Text style={valueStyle}>${monthlyTax}/mo</Text>
+                <div style={itemStyle}>
+                  <Text style={labelStyle}>Property Tax</Text>
+                  <Text style={valueStyle}>${monthlyTax}/mo</Text>
+                </div>
 
-                <Text style={labelStyle}>Service Fee</Text>
-                <Text style={valueStyle}>${serviceFee}/mo</Text>
+                <div style={itemStyle}>
+                  <Text style={labelStyle}>Service Fee</Text>
+                  <Text style={valueStyle}>${serviceFee}/mo</Text>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
 
         {/* Multiple Plans Button - Only show if enabled and multiple plans exist */}
-        {showMultiplePlansButton && (propertyData.financingTwo || propertyData.financingThree) && (
+        {showMultiplePlansButton && propertyData && (propertyData.financingTwo || propertyData.financingThree) && (
           <div style={{ textAlign: 'center', margin: '0 0 16px 0' }}>
             <Link href={propertyLink} style={outlineButtonStyle}>
               Click here for more payment plans
