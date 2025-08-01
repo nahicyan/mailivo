@@ -64,7 +64,7 @@ class TemplateRenderingService {
     this.landivoApiUrl = process.env.LANDIVO_API_URL || 'https://api.landivo.com';
   }
 
-  async renderTemplate(templateId: string, propertyId: string, contactData: ContactData): Promise<{
+  async renderTemplate(templateId: string, propertyId: string, contactData: ContactData, campaign?: any): Promise<{
     subject: string;
     htmlContent: string;
     textContent: string;
@@ -86,11 +86,11 @@ class TemplateRenderingService {
       const processedPropertyData = this.processPropertyData(propertyData);
 
       // 4. Generate HTML content using React Email
-      const htmlContent = await this.generateEmailHTML(template, processedPropertyData, contactData);
-      
+      const htmlContent = await this.generateEmailHTML(template, processedPropertyData, contactData, campaign);
+``
       // 5. Generate text version
       const textContent = this.generateTextContent(template, processedPropertyData, contactData);
-      
+
       // 6. Generate subject with property data
       const subject = this.generateSubject(template.name, processedPropertyData, contactData);
 
@@ -110,7 +110,7 @@ class TemplateRenderingService {
     try {
       const response = await axios.get(`${this.landivoApiUrl}/residency/allresd`);
       const properties = response.data;
-      
+
       if (!Array.isArray(properties)) {
         logger.error('Invalid properties response from Landivo');
         return null;
@@ -154,27 +154,62 @@ class TemplateRenderingService {
   }
 
   private async generateEmailHTML(
-    template: any, 
-    propertyData: ProcessedPropertyData, 
-    contactData: ContactData
+    template: any,
+    propertyData: ProcessedPropertyData,
+    contactData: ContactData,
+    campaign?: any // Add campaign parameter
   ): Promise<string> {
     try {
-      // Sort components by order
-      const sortedComponents = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
-      
-      // Create React elements for each component
-      const renderedComponents = sortedComponents.map((component: EmailComponent) => 
+      let componentsToRender: EmailComponent[];
+
+      // Filter components based on campaign imageSelections
+      if (campaign?.imageSelections && Object.keys(campaign.imageSelections).length > 0) {
+        // Only render components that exist in imageSelections
+        const selectedComponentIds = Object.keys(campaign.imageSelections);
+
+        componentsToRender = template.components
+          .filter((component: EmailComponent) =>
+            component.type !== 'property-image' || selectedComponentIds.includes(component.id)
+          )
+          .map((component: EmailComponent) => {
+            // For property-image components, override the imageIndex from campaign
+            if (component.type === 'property-image' && campaign.imageSelections[component.id]) {
+              return {
+                ...component,
+                props: {
+                  ...component.props,
+                  imageIndex: campaign.imageSelections[component.id].imageIndex
+                }
+              };
+            }
+            return component;
+          })
+          .sort((a: EmailComponent, b: EmailComponent) => {
+            // Sort by campaign order if available, otherwise use template order
+            if (a.type === 'property-image' && campaign.imageSelections[a.id]) {
+              const aOrder = campaign.imageSelections[a.id].order;
+              const bOrder = campaign.imageSelections[b.id]?.order ?? b.order;
+              return aOrder - bOrder;
+            }
+            return a.order - b.order;
+          });
+      } else {
+        // Fallback to original behavior if no imageSelections
+        componentsToRender = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
+      }
+
+      // Create React elements for filtered components
+      const renderedComponents = componentsToRender.map((component: EmailComponent) =>
         this.renderComponentToReact(component, propertyData, contactData)
       ).filter(Boolean);
 
-      // Create the email structure with React Email
+      // Rest of the method remains the same...
       const emailElement = React.createElement(
         'div',
         { style: { fontFamily: 'Arial, sans-serif', backgroundColor: template.settings?.backgroundColor || '#ffffff' } },
         ...renderedComponents
       );
 
-      // Render to HTML using React Email
       const htmlContent = await render(emailElement, {
         pretty: false,
       });
@@ -188,8 +223,8 @@ class TemplateRenderingService {
   }
 
   private renderComponentToReact(
-    component: EmailComponent, 
-    propertyData: ProcessedPropertyData, 
+    component: EmailComponent,
+    propertyData: ProcessedPropertyData,
     contactData: ContactData
   ): React.ReactElement | null {
     try {
@@ -226,12 +261,12 @@ class TemplateRenderingService {
 
   private generateTextContent(
     template: any,
-    propertyData: ProcessedPropertyData, 
+    propertyData: ProcessedPropertyData,
     contactData: ContactData
   ): string {
     try {
       const components = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
-      
+
       let textContent = '';
 
       // Generate text content based on components
@@ -276,7 +311,7 @@ class TemplateRenderingService {
 
     // Try to extract text from component props in order of preference
     const textFields = ['text', 'title', 'content', 'label', 'heading'];
-    
+
     for (const field of textFields) {
       if (finalProps[field] && typeof finalProps[field] === 'string') {
         return finalProps[field];
@@ -290,7 +325,7 @@ class TemplateRenderingService {
   private generateSubject(_templateName: string, propertyData: ProcessedPropertyData, contactData: ContactData): string {
     const firstName = contactData.firstName || contactData.first_name || '';
     const greeting = firstName ? `${firstName}, ` : '';
-    
+
     // Simple subject generation using template name and property data
     return `${greeting}${propertyData.title} - ${propertyData.city}, ${propertyData.state}`;
   }
@@ -309,7 +344,7 @@ class TemplateRenderingService {
       const finalProps = { ...componentMeta.defaultProps, ...props };
       const reactElement = React.createElement(componentMeta.component, finalProps);
       const htmlContent = await render(reactElement);
-      
+
       // Generate text using same modular approach
       const mockComponent = { id: 'test', type: componentType, name: 'Test', icon: '', props, order: 0 };
       const textContent = this.renderComponentToText(mockComponent, componentMeta, {} as any, {} as any);

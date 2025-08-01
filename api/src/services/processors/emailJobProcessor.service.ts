@@ -30,7 +30,7 @@ export class EmailJobProcessor {
 
   async processEmailJob(job: EmailJob): Promise<{ success: boolean; messageId?: string }> {
     const { campaignId, contactId, email, personalizedContent, trackingId } = job;
-    
+
     try {
       await this.checkRateLimit();
 
@@ -94,11 +94,12 @@ export class EmailJobProcessor {
     try {
       if (campaign.source === 'landivo' && campaign.emailTemplate && campaign.property) {
         logger.info(`Rendering template ${campaign.emailTemplate} for property ${campaign.property}`);
-        
+
         const renderedContent = await templateRenderingService.renderTemplate(
           campaign.emailTemplate,
           campaign.property,
-          contact
+          contact,
+          campaign
         );
 
         return this.applyPersonalization(renderedContent, contact);
@@ -118,7 +119,7 @@ export class EmailJobProcessor {
       status: 'queued',
       createdAt: new Date(),
     });
-    
+
     await tracking.save();
     return (tracking as any)._id.toString();
   }
