@@ -98,7 +98,8 @@ export class EmailJobProcessor {
         const renderedContent = await templateRenderingService.renderTemplate(
           campaign.emailTemplate,
           campaign.property,
-          contact
+          contact,
+          campaign.subject 
         );
 
         return this.applyPersonalization(renderedContent, contact);
