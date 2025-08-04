@@ -73,7 +73,7 @@ class CampaignController {
       const campaignData = {
         ...req.body,
         userId,
-        status: 'draft',
+        status: req.body.status || 'draft',
         spamScore,
         metrics: {
           sent: 0,
