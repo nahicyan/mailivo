@@ -47,7 +47,7 @@ export default function LandivoPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Create Manage & View Campaigns
+              Create Manage Run & View Campaigns
             </p>
             <Link href="/dashboard/landivo/campaigns/manage/">
               <Button className="w-full">
