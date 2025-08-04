@@ -116,7 +116,9 @@ export function Step6Schedule({ formData, setFormData, errors, selectedDate, set
                             </div>
                             <div>
                                 <Label className="text-xs text-gray-500">Property</Label>
-                                <p className="font-medium">{getSelectedProperty()?.title}</p>
+                                <p className="font-medium">
+                                    {getSelectedProperty()?.streetAddress}, {getSelectedProperty()?.city}, {getSelectedProperty()?.state} {getSelectedProperty()?.zip}
+                                </p>
                             </div>
                             <div>
                                 <Label className="text-xs text-gray-500">Email List</Label>

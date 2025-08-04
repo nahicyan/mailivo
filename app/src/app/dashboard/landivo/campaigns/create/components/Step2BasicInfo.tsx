@@ -10,6 +10,10 @@ interface Props {
     setFormData: (fn: (prev: any) => any) => void;
     errors: Record<string, string>;
 }
+const stripHtml = (html: string) => {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, '').trim();
+};
 
 export function Step2BasicInfo({ formData, setFormData, errors }: Props) {
     return (
@@ -25,7 +29,7 @@ export function Step2BasicInfo({ formData, setFormData, errors }: Props) {
                     <Label htmlFor="name">Campaign Name *</Label>
                     <Input
                         id="name"
-                        value={formData.name}
+                        value={stripHtml(formData.name)}
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                         placeholder="e.g., New Manhattan Listings - January 2025"
                         className={errors.name ? 'border-red-500' : ''}
@@ -37,7 +41,7 @@ export function Step2BasicInfo({ formData, setFormData, errors }: Props) {
                     <Label htmlFor="description">Campaign Description *</Label>
                     <Textarea
                         id="description"
-                        value={formData.description}
+                        value={stripHtml(formData.description)}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                         placeholder="Describe the purpose and goals of this campaign..."
                         rows={4}

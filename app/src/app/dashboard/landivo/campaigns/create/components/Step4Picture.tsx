@@ -107,7 +107,7 @@ export function Step4Picture({ formData, setFormData, errors, selectedTemplate, 
                             No Property Images in Template
                         </h3>
                         <p className="text-gray-500">
-                            The selected template doesn't contain any property image components. 
+                            The selected template doesn't contain any property image components.
                             You can skip this step and proceed to audience selection.
                         </p>
                     </div>
@@ -158,7 +158,10 @@ export function Step4Picture({ formData, setFormData, errors, selectedTemplate, 
                     <div className="p-4 bg-gray-50 rounded-lg">
                         <h4 className="font-medium text-gray-900 mb-2">Property Details</h4>
                         <div className="space-y-1">
-                            <p className="font-medium">{selectedProperty?.title}</p>
+                            <p
+                                className="font-medium"
+                                dangerouslySetInnerHTML={{ __html: selectedProperty?.title }}
+                            />
                             <p className="text-sm text-gray-600">
                                 {selectedProperty?.streetAddress}, {selectedProperty?.city}, {selectedProperty?.state}
                             </p>
@@ -186,7 +189,7 @@ export function Step4Picture({ formData, setFormData, errors, selectedTemplate, 
                                         Insufficient Images
                                     </h4>
                                     <p className="text-sm text-red-700 mt-1">
-                                        This property has {availableImages.length} images, but your template has {propertyImageComponents.length} image components. 
+                                        This property has {availableImages.length} images, but your template has {propertyImageComponents.length} image components.
                                         Only the first {availableImages.length} components will be displayed.
                                     </p>
                                 </div>
@@ -206,7 +209,7 @@ export function Step4Picture({ formData, setFormData, errors, selectedTemplate, 
                     {/* Image Selection for Each Renderable Component */}
                     {renderableComponents.map((component: any, index: number) => {
                         const selectedImageIndex = imageSelections[component.id]?.imageIndex ?? component.props?.imageIndex ?? 0;
-                        
+
                         return (
                             <Card key={component.id} className="border border-gray-200">
                                 <CardHeader className="pb-3">

@@ -38,17 +38,19 @@ export function Step1Property({ formData, setFormData, handlePropertyChange, err
                         disabled={propertiesLoading || !!propertiesError}
                     >
                         <SelectTrigger className={errors.property ? 'border-red-500' : ''}>
-                            <SelectValue placeholder={
-                                propertiesLoading ? "Loading properties..." :
-                                propertiesError ? "Error loading properties" :
-                                "Select a property for this campaign"
-                            } />
+                            <SelectValue
+                                placeholder={propertiesLoading ? "Loading properties..." : "Select a property"}
+                            >
+                                {getSelectedProperty() && (
+                                    <div dangerouslySetInnerHTML={{ __html: getSelectedProperty().title }} />
+                                )}
+                            </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             {properties?.map((property) => (
                                 <SelectItem key={property.id} value={property.id}>
                                     <div className="flex flex-col space-y-1">
-                                        <span className="font-medium">{property.title}</span>
+                                        <div dangerouslySetInnerHTML={{ __html: property.title }} />
                                         <span className="text-sm text-gray-500">
                                             {property.streetAddress}, {property.city}, {property.state}
                                         </span>
@@ -68,7 +70,7 @@ export function Step1Property({ formData, setFormData, handlePropertyChange, err
                     <div className="p-4 bg-gray-50 rounded-lg">
                         <h4 className="font-medium text-gray-900 mb-2">Selected Property</h4>
                         <div className="space-y-2">
-                            <p className="font-medium">{getSelectedProperty()?.title}</p>
+                            <div className="font-semibold mb-2" dangerouslySetInnerHTML={{ __html: getSelectedProperty().title }} />
                             <p className="text-sm text-gray-600">
                                 {getSelectedProperty()?.streetAddress}, {getSelectedProperty()?.city}, {getSelectedProperty()?.state}
                             </p>

@@ -5,11 +5,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, 
-  Save, 
-  Eye, 
-  Smartphone, 
+import {
+  ArrowLeft,
+  Save,
+  Eye,
+  Smartphone,
   Monitor,
   Settings,
   Home
@@ -62,16 +62,16 @@ export function TemplateToolbar({
       <div className="flex items-center justify-between">
         {/* Left side - Back button and template name */}
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onCancel}
             className="text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-          
+
           <div className="flex flex-col">
             <Input
               value={template.name}
@@ -114,10 +114,10 @@ export function TemplateToolbar({
             <Eye className="w-4 h-4 mr-2" />
             Preview
           </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onOpenSettings}
             className="relative"
           >
@@ -128,7 +128,7 @@ export function TemplateToolbar({
             )}
           </Button>
 
-          <Button 
+          <Button
             onClick={onSave}
             disabled={saving || !template.name.trim()}
             size="sm"
@@ -145,9 +145,10 @@ export function TemplateToolbar({
         <div className="mt-3 flex items-center gap-2 text-sm">
           <Home className="w-4 h-4 text-green-600" />
           <span className="text-gray-600">Property:</span>
-          <Badge variant="outline" className="text-green-700 border-green-200">
-            {stripHtml(selectedProperty.title)}
-          </Badge>
+          <div
+            className="inline-flex items-center rounded-md border border-green-200 px-2.5 py-0.5 text-xs font-semibold text-green-700"
+            dangerouslySetInnerHTML={{ __html: selectedProperty.title }}
+          />
           <span className="text-gray-500">
             {selectedProperty.streetAddress}, {selectedProperty.city}
           </span>

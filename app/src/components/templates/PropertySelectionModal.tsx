@@ -102,9 +102,10 @@ export function PropertySelectionModal({
         {selectedProperty && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="text-sm text-blue-600 mb-1">Currently Selected:</div>
-            <div className="font-medium text-blue-900">
-              {stripHtml(selectedProperty.title)}
-            </div>
+            <div
+              className="font-medium text-blue-900"
+              dangerouslySetInnerHTML={{ __html: selectedProperty.title }}
+            />
             <div className="text-sm text-blue-700">
               {selectedProperty.streetAddress}, {selectedProperty.city}, {selectedProperty.state}
             </div>
@@ -126,17 +127,17 @@ export function PropertySelectionModal({
             filteredProperties.map((property: Property) => (
               <div
                 key={property.id}
-                className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                  selectedProperty?.id === property.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'hover:border-gray-300 hover:bg-gray-50'
-                }`}
+                className={`border rounded-lg p-4 cursor-pointer transition-colors ${selectedProperty?.id === property.id
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'hover:border-gray-300 hover:bg-gray-50'
+                  }`}
                 onClick={() => handleSelectProperty(property)}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-medium text-gray-900 flex-1 mr-4">
-                    {stripHtml(property.title)}
-                  </h3>
+                  <h3
+                    className="font-medium text-gray-900 flex-1 mr-4"
+                    dangerouslySetInnerHTML={{ __html: property.title }}
+                  />
                   <div className="flex items-center gap-2">
                     <Badge
                       variant={property.status === 'Available' ? 'default' : 'secondary'}
