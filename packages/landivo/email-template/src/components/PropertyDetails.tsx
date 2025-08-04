@@ -98,7 +98,13 @@ export function PropertyDetails({
   };
 
   return (
-    <Section style={{ padding: '0' }}>
+    <Section 
+      className={`w-full py-4 ${className}`} 
+      style={{
+        width: '100%',
+        padding: '16px 0', //
+      }}
+    >
       <div style={containerStyle}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
