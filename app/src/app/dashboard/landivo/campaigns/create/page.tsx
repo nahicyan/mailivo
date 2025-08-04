@@ -148,7 +148,7 @@ export default function CreateCampaignPage() {
                     source: 'landivo',
                     scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
                     // Add the required fields
-                    subject: selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
+                    subject: formData.subject || selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
                     htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
                     textContent: selectedTemplate?.textContent || '',
                     // Map Landivo fields to standard campaign fields
