@@ -38,7 +38,7 @@ export default function CreateCampaignPage() {
         emailSchedule: 'immediate',
         emailVolume: 1000,
         description: '',
-        subject: '' 
+        subject: ''
     });
 
     // Data fetching hooks
@@ -136,6 +136,24 @@ export default function CreateCampaignPage() {
             // Get the selected email template to extract subject and content
             const selectedTemplate = templates?.find((t: any) => t.id === formData.emailTemplate || t._id === formData.emailTemplate);
 
+            // 🔥 NEW: Auto-set status to 'active' when Send Immediately is selected
+            const campaignStatus = formData.emailSchedule === 'immediate' ? 'active' : 'draft';
+
+            const campaignData = {
+                ...formData,
+                status: campaignStatus, // 🔥 Use the auto-determined status
+                source: 'landivo',
+                scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
+                // Add the required fields
+                subject: formData.subject || selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
+                htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
+                textContent: selectedTemplate?.textContent || '',
+                // Map Landivo fields to standard campaign fields
+                audienceType: 'landivo',
+                segments: [formData.emailList],
+                estimatedRecipients: formData.emailVolume
+            };
+
             const response = await fetch(`${API_URL}/campaigns`, {
                 method: 'POST',
                 headers: {
@@ -143,24 +161,32 @@ export default function CreateCampaignPage() {
                     'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
                 },
                 credentials: 'include',
-                body: JSON.stringify({
-                    ...formData,
-                    source: 'landivo',
-                    scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
-                    // Add the required fields
-                    subject: formData.subject || selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
-                    htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
-                    textContent: selectedTemplate?.textContent || '',
-                    // Map Landivo fields to standard campaign fields
-                    audienceType: 'landivo',
-                    segments: [formData.emailList],
-                    estimatedRecipients: formData.emailVolume
-                })
+                body: JSON.stringify(campaignData)
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to create campaign');
+            }
+
+            const newCampaign = await response.json();
+
+            // 🔥 NEW: Auto-trigger sending for immediate campaigns
+            if (formData.emailSchedule === 'immediate' && newCampaign.status === 'active') {
+                try {
+                    await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+                        },
+                        credentials: 'include'
+                    });
+                    // Don't throw error if send fails - campaign is still created
+                    console.log('Campaign auto-send initiated');
+                } catch (sendError) {
+                    console.warn('Auto-send failed:', sendError);
+                    // Campaign is created successfully, just inform user to manually send
+                }
             }
 
             router.push('/dashboard/landivo/campaigns/manage');
