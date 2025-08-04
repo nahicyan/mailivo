@@ -17,7 +17,8 @@ import { Step1Property } from './components/Step1Property';
 import { Step2BasicInfo } from './components/Step2BasicInfo';
 import { Step4Picture } from './components/Step4Picture';
 import { Step3Audience } from './components/Step3Audience';
-import { Step5Schedule } from './components/Step5Schedule';
+import { Step5Subject } from './components/Step5Subject';
+import { Step6Schedule } from './components/Step6Schedule';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
@@ -36,7 +37,8 @@ export default function CreateCampaignPage() {
         emailAddressGroup: '',
         emailSchedule: 'immediate',
         emailVolume: 1000,
-        description: ''
+        description: '',
+        subject: '' 
     });
 
     // Data fetching hooks
@@ -104,8 +106,23 @@ export default function CreateCampaignPage() {
     };
 
     const handleNext = () => {
-        if (validateStep(currentStep)) {
-            setCurrentStep(currentStep + 1);
+        // Add validation for step 5
+        if (currentStep === 5) {
+            const newErrors: Record<string, string> = {};
+
+            if (!formData.subject?.trim()) {
+                newErrors.subject = 'Please generate a subject line';
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors);
+                return;
+            }
+        }
+
+        if (currentStep < 6) { // Changed from 5 to 6
+            setCurrentStep(prev => prev + 1);
+            setErrors({});
         }
     };
 
@@ -247,7 +264,8 @@ export default function CreateCampaignPage() {
                             selectedTemplate={templates?.find(t => t.id === formData.emailTemplate)}
                             selectedProperty={properties?.find(p => p.id === formData.property)}
                         />}
-                        {currentStep === 5 && <Step5Schedule {...stepProps} />}
+                        {currentStep === 5 && <Step5Subject {...stepProps} />}
+                        {currentStep === 6 && <Step6Schedule {...stepProps} />}
 
                         {/* Navigation */}
                         <div className="flex justify-between pt-6">
@@ -259,7 +277,7 @@ export default function CreateCampaignPage() {
                                 )}
                             </div>
                             <div className="space-x-2">
-                                {currentStep < 5 ? (
+                                {currentStep < 6 ? (
                                     <Button onClick={handleNext}>Next Step</Button>
                                 ) : (
                                     <Button onClick={handleSubmit} disabled={loading} size="lg">
