@@ -240,6 +240,10 @@ export function PaymentCalculator({
             <tr>
               <td style={{ width: '50%', verticalAlign: 'top', padding: '0 8px 0 0' }}>
                 <div style={itemStyle}>
+                  <Text style={labelStyle}>Loan Amount</Text>
+                  <Text style={valueStyle}>${planData.loanAmount?.toLocaleString() || planData.loanAmount}</Text>
+                </div>
+                <div style={itemStyle}>
                   <Text style={labelStyle}>Monthly Payment</Text>
                   <Text style={valueStyle}>${planData.monthlyPayment?.toLocaleString() || planData.monthlyPayment}/mo</Text>
                 </div>
@@ -249,18 +253,15 @@ export function PaymentCalculator({
                   <Text style={valueStyle}>${planData.downPayment?.toLocaleString() || planData.downPayment}</Text>
                 </div>
 
+
+              </td>
+
+              <td style={{ width: '50%', verticalAlign: 'top', padding: '0 0 0 8px' }}>
+
                 <div style={itemStyle}>
                   <Text style={labelStyle}>Interest Rate</Text>
                   <Text style={valueStyle}>{planData.interest}% APR</Text>
                 </div>
-              </td>
-
-              <td style={{ width: '50%', verticalAlign: 'top', padding: '0 0 0 8px' }}>
-                <div style={itemStyle}>
-                  <Text style={labelStyle}>Loan Amount</Text>
-                  <Text style={valueStyle}>${planData.loanAmount?.toLocaleString() || planData.loanAmount}</Text>
-                </div>
-
                 <div style={itemStyle}>
                   <Text style={labelStyle}>Property Tax</Text>
                   <Text style={valueStyle}>${monthlyTax}/mo</Text>
@@ -287,9 +288,9 @@ export function PaymentCalculator({
         {/* Benefits Box */}
         <div style={benefitBoxStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
-            <img 
-              src="https://cdn.landivo.com/wp-content/uploads/2025/08/currency-dollar.png" 
-              alt="Payment" 
+            <img
+              src="https://cdn.landivo.com/wp-content/uploads/2025/08/currency-dollar.png"
+              alt="Payment"
               style={{ width: '20px', height: '20px', marginRight: '8px' }}
             />
           </div>
