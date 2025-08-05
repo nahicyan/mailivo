@@ -132,10 +132,7 @@ export default function CreateCampaignPage() {
 
         setLoading(true);
         try {
-            // Get the selected email template to extract subject and content
             const selectedTemplate = templates?.find((t: any) => t.id === formData.emailTemplate || t._id === formData.emailTemplate);
-
-            // Auto-set status to 'active' when Send Immediately is selected
             const campaignStatus = formData.emailSchedule === 'immediate' ? 'active' : 'draft';
 
             const campaignData = {
@@ -143,11 +140,9 @@ export default function CreateCampaignPage() {
                 status: campaignStatus,
                 source: 'landivo',
                 scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
-                // Add the required fields
                 subject: formData.subject || selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
                 htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
                 textContent: selectedTemplate?.textContent || '',
-                // Map Landivo fields to standard campaign fields
                 audienceType: 'landivo',
                 segments: [formData.emailList],
                 estimatedRecipients: formData.emailVolume
@@ -170,7 +165,6 @@ export default function CreateCampaignPage() {
 
             const newCampaign = await response.json();
 
-            // Auto-trigger sending for immediate campaigns
             if (formData.emailSchedule === 'immediate' && newCampaign.status === 'active') {
                 try {
                     await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
@@ -180,7 +174,6 @@ export default function CreateCampaignPage() {
                         },
                         credentials: 'include'
                     });
-                    console.log('Campaign auto-send initiated');
                 } catch (sendError) {
                     console.warn('Auto-send failed:', sendError);
                 }
@@ -188,7 +181,6 @@ export default function CreateCampaignPage() {
 
             router.push('/dashboard/landivo/campaigns/manage');
         } catch (error: any) {
-            console.error('Campaign creation error:', error);
             setErrors({ submit: error.message || 'Failed to create campaign. Please try again.' });
         } finally {
             setLoading(false);
@@ -215,6 +207,10 @@ export default function CreateCampaignPage() {
         selectedDate,
         setSelectedDate
     };
+
+    // Get selected template and property for components that need them
+    const selectedTemplate = templates?.find(t => t.id === formData.emailTemplate || t._id === formData.emailTemplate);
+    const selectedProperty = properties?.find(p => p.id === formData.property);
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -284,10 +280,18 @@ export default function CreateCampaignPage() {
                         {currentStep === 1 && <Step1Property {...stepProps} />}
                         {currentStep === 2 && <Step2BasicInfo {...stepProps} />}
                         {currentStep === 3 && <Step3Audience {...stepProps} />}
-                        {currentStep === 4 && <Step4PaymentOptions {...stepProps} />}
-                        {currentStep === 5 && <Step5Picture {...stepProps}
-                            selectedTemplate={templates?.find(t => t.id === formData.emailTemplate)}
-                            selectedProperty={properties?.find(p => p.id === formData.property)}
+                        {currentStep === 4 && <Step4PaymentOptions 
+                            formData={formData}
+                            setFormData={setFormData}
+                            errors={errors}
+                            selectedTemplate={selectedTemplate}
+                        />}
+                        {currentStep === 5 && <Step5Picture 
+                            formData={formData}
+                            setFormData={setFormData}
+                            errors={errors}
+                            selectedTemplate={selectedTemplate}
+                            selectedProperty={selectedProperty}
                         />}
                         {currentStep === 6 && <Step6Subject {...stepProps} />}
                         {currentStep === 7 && <Step7Schedule {...stepProps} />}

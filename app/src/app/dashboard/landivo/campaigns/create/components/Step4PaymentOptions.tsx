@@ -1,11 +1,11 @@
 // app/src/app/dashboard/landivo/campaigns/create/components/Step4PaymentOptions.tsx
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CreditCard, AlertCircle, DollarSign, Loader2 } from 'lucide-react';
+import { CreditCard, AlertCircle, DollarSign, Loader2, Calculator } from 'lucide-react';
 import { usePropertyPayment } from '@/hooks/usePropertyPayment';
 import { PaymentPlan } from '@/types/campaign';
 
@@ -13,9 +13,18 @@ interface Props {
   formData: any;
   setFormData: (fn: (prev: any) => any) => void;
   errors: Record<string, string>;
+  selectedTemplate?: any;
 }
 
-export function Step4PaymentOptions({ formData, setFormData, errors }: Props) {
+export function Step4PaymentOptions({ formData, setFormData, errors, selectedTemplate }: Props) {
+  // Check if template has payment-calculator components
+  const paymentCalculatorComponents = useMemo(() => {
+    if (!selectedTemplate?.components) return [];
+    return selectedTemplate.components
+      .filter((component: any) => component.type === 'payment-calculator')
+      .sort((a: any, b: any) => a.order - b.order);
+  }, [selectedTemplate]);
+
   const { 
     paymentData, 
     paymentPlans, 
@@ -119,6 +128,37 @@ export function Step4PaymentOptions({ formData, setFormData, errors }: Props) {
     </div>
   );
 
+  // If no payment-calculator components in template, show skip message
+  if (paymentCalculatorComponents.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <CreditCard className="h-5 w-5" />
+            <span>Payment Options</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No Payment Calculator in Template
+            </h3>
+            <p className="text-gray-500">
+              The selected template doesn't contain any payment calculator components.
+              You can skip this step and proceed to the next step.
+            </p>
+            <div className="mt-4">
+              <Badge variant="secondary">
+                Template has {selectedTemplate?.components?.length || 0} total components
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!formData.property) {
     return (
       <Card>
@@ -199,6 +239,11 @@ export function Step4PaymentOptions({ formData, setFormData, errors }: Props) {
             <p className="text-gray-500">
               Financing is not available on this property. Please contact us for cash purchase options.
             </p>
+            <div className="mt-4">
+              <Badge variant="outline">
+                Template has {paymentCalculatorComponents.length} payment calculator component(s)
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -225,6 +270,12 @@ export function Step4PaymentOptions({ formData, setFormData, errors }: Props) {
           </Alert>
           
           {renderPaymentPlanCard(singlePlan, true, false)}
+
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+            <p><strong>Template Info:</strong></p>
+            <p>Found {paymentCalculatorComponents.length} payment calculator component(s)</p>
+            <p>Component names: {paymentCalculatorComponents.map(c => c.name).join(', ')}</p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -270,17 +321,24 @@ export function Step4PaymentOptions({ formData, setFormData, errors }: Props) {
           </Alert>
         )}
 
-        {paymentData && (
-          <div className="p-3 bg-gray-50 border border-gray-200 rounded text-xs">
-            <p><strong>Property Details:</strong></p>
-            <p>Asking Price: {formatCurrency(paymentData.askingPrice)}</p>
-            <p>Service Fee: ${paymentData.serviceFee}</p>
-            <p>Term: {paymentData.term} months</p>
-            {paymentData.hoaMonthly && (
-              <p>HOA Monthly: {formatCurrency(paymentData.hoaMonthly)}</p>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          {paymentData && (
+            <div className="p-3 bg-gray-50 border border-gray-200 rounded">
+              <p><strong>Property Details:</strong></p>
+              <p>Asking Price: {formatCurrency(paymentData.askingPrice)}</p>
+              <p>Service Fee: ${paymentData.serviceFee}</p>
+              <p>Term: {paymentData.term} months</p>
+              {paymentData.hoaMonthly && (
+                <p>HOA Monthly: {formatCurrency(paymentData.hoaMonthly)}</p>
+              )}
+            </div>
+          )}
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+            <p><strong>Template Info:</strong></p>
+            <p>Payment calculator components: {paymentCalculatorComponents.length}</p>
+            <p>Component names: {paymentCalculatorComponents.map(c => c.name).join(', ')}</p>
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
