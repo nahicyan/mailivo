@@ -1,4 +1,4 @@
-// app/src/app/dashboard/landivo/campaigns/create/components/Step6Schedule.tsx
+// app/src/app/dashboard/landivo/campaigns/create/components/Step7Schedule.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,7 @@ interface Props {
     templates: any[];
 }
 
-export function Step6Schedule({ formData, setFormData, errors, selectedDate, setSelectedDate, properties, emailLists, templates }: Props) {
+export function Step7Schedule({ formData, setFormData, errors, selectedDate, setSelectedDate, properties, emailLists, templates }: Props) {
     const getSelectedProperty = () => properties?.find(p => p.id === formData.property);
     const getSelectedEmailList = () => emailLists?.find(l => l.id === formData.emailList);
     const getSelectedTemplate = () => templates?.find(t => t.id === formData.emailTemplate);

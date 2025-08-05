@@ -15,10 +15,11 @@ import Link from 'next/link';
 import { StepsSidebar } from './components/StepsSidebar';
 import { Step1Property } from './components/Step1Property';
 import { Step2BasicInfo } from './components/Step2BasicInfo';
+import { Step3PaymentOptions } from './components/Step3PaymentOption';
 import { Step4Picture } from './components/Step4Picture';
-import { Step3Audience } from './components/Step3Audience';
+import { Step6Audience } from './components/Step6Audience';
 import { Step5Subject } from './components/Step5Subject';
-import { Step6Schedule } from './components/Step6Schedule';
+import { Step7Schedule } from './components/Step7Schedule';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
@@ -285,13 +286,13 @@ export default function CreateCampaignPage() {
 
                         {currentStep === 1 && <Step1Property {...stepProps} />}
                         {currentStep === 2 && <Step2BasicInfo {...stepProps} />}
-                        {currentStep === 3 && <Step3Audience {...stepProps} />}
+                        {currentStep === 3 && <Step6Audience {...stepProps} />}
                         {currentStep === 4 && <Step4Picture   {...stepProps}
                             selectedTemplate={templates?.find(t => t.id === formData.emailTemplate)}
                             selectedProperty={properties?.find(p => p.id === formData.property)}
                         />}
                         {currentStep === 5 && <Step5Subject {...stepProps} />}
-                        {currentStep === 6 && <Step6Schedule {...stepProps} />}
+                        {currentStep === 6 && <Step7Schedule {...stepProps} />}
 
                         {/* Navigation */}
                         <div className="flex justify-between pt-6">
