@@ -1,4 +1,4 @@
-// app/src/app/dashboard/landivo/campaigns/create/components/Step6Audience.tsx
+// app/src/app/dashboard/landivo/campaigns/create/components/Step3Audience.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ interface Props {
     templatesError: any;
 }
 
-export function Step6Audience({ formData, setFormData, errors, emailLists, listsLoading, listsError, refetchLists, templates, templatesLoading, templatesError }: Props) {
+export function Step3Audience({ formData, setFormData, errors, emailLists, listsLoading, listsError, refetchLists, templates, templatesLoading, templatesError }: Props) {
     return (
         <div className="space-y-6">
             <Card>

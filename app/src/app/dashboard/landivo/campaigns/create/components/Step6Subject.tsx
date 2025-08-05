@@ -1,4 +1,4 @@
-// app/src/app/dashboard/landivo/campaigns/create/components/Step5Subject.tsx
+// app/src/app/dashboard/landivo/campaigns/create/components/Step6Subject.tsx
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ const ADDRESS_FORMAT_TEMPLATES = [
     '{county}, {city}, {state} {zip}'
 ];
 
-export function Step5Subject({ formData, setFormData, errors, properties }: Props) {
+export function Step6Subject({ formData, setFormData, errors, properties }: Props) {
     const [selectedSubjectTemplate, setSelectedSubjectTemplate] = useState('');
     const [selectedAddressTemplate, setSelectedAddressTemplate] = useState('');
     const [generatedSubject, setGeneratedSubject] = useState('');

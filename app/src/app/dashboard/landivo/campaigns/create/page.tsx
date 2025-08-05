@@ -15,10 +15,10 @@ import Link from 'next/link';
 import { StepsSidebar } from './components/StepsSidebar';
 import { Step1Property } from './components/Step1Property';
 import { Step2BasicInfo } from './components/Step2BasicInfo';
-import { Step3PaymentOptions } from './components/Step3PaymentOption';
-import { Step4Picture } from './components/Step4Picture';
-import { Step6Audience } from './components/Step6Audience';
-import { Step5Subject } from './components/Step5Subject';
+import { Step4PaymentOptions } from './components/Step4PaymentOptions';
+import { Step5Picture } from './components/Step5Picture';
+import { Step3Audience } from './components/Step3Audience';
+import { Step6Subject } from './components/Step6Subject';
 import { Step7Schedule } from './components/Step7Schedule';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
@@ -39,7 +39,8 @@ export default function CreateCampaignPage() {
         emailSchedule: 'immediate',
         emailVolume: 1000,
         description: '',
-        subject: ''
+        subject: '',
+        selectedPlan: null
     });
 
     // Data fetching hooks
@@ -93,10 +94,20 @@ export default function CreateCampaignPage() {
                 if (!formData.description.trim()) newErrors.description = 'Campaign description is required';
                 break;
             case 3:
+                // Payment options validation - only validate if property has financing plans available
+                // The Step4PaymentOptions component handles auto-selection, so we don't require manual selection
+                break;
+            case 4:
+                // Picture step - validation handled by component
+                break;
+            case 5:
+                if (!formData.subject?.trim()) newErrors.subject = 'Please generate a subject line';
+                break;
+            case 6:
                 if (!formData.emailList) newErrors.emailList = 'Please select an email list';
                 if (!formData.emailTemplate) newErrors.emailTemplate = 'Please select an email template';
                 break;
-            case 4:
+            case 7:
                 if (formData.emailSchedule === 'scheduled' && !selectedDate) newErrors.schedule = 'Please select a date for scheduled campaign';
                 if (!formData.emailVolume || formData.emailVolume < 1) newErrors.emailVolume = 'Email volume must be at least 1';
                 break;
@@ -107,23 +118,11 @@ export default function CreateCampaignPage() {
     };
 
     const handleNext = () => {
-        // Add validation for step 5
-        if (currentStep === 5) {
-            const newErrors: Record<string, string> = {};
-
-            if (!formData.subject?.trim()) {
-                newErrors.subject = 'Please generate a subject line';
+        if (validateStep(currentStep)) {
+            if (currentStep < 7) {
+                setCurrentStep(prev => prev + 1);
+                setErrors({});
             }
-
-            if (Object.keys(newErrors).length > 0) {
-                setErrors(newErrors);
-                return;
-            }
-        }
-
-        if (currentStep < 6) { // Changed from 5 to 6
-            setCurrentStep(prev => prev + 1);
-            setErrors({});
         }
     };
 
@@ -137,12 +136,12 @@ export default function CreateCampaignPage() {
             // Get the selected email template to extract subject and content
             const selectedTemplate = templates?.find((t: any) => t.id === formData.emailTemplate || t._id === formData.emailTemplate);
 
-            // 🔥 NEW: Auto-set status to 'active' when Send Immediately is selected
+            // Auto-set status to 'active' when Send Immediately is selected
             const campaignStatus = formData.emailSchedule === 'immediate' ? 'active' : 'draft';
 
             const campaignData = {
                 ...formData,
-                status: campaignStatus, // 🔥 Use the auto-determined status
+                status: campaignStatus,
                 source: 'landivo',
                 scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
                 // Add the required fields
@@ -172,7 +171,7 @@ export default function CreateCampaignPage() {
 
             const newCampaign = await response.json();
 
-            // 🔥 NEW: Auto-trigger sending for immediate campaigns
+            // Auto-trigger sending for immediate campaigns
             if (formData.emailSchedule === 'immediate' && newCampaign.status === 'active') {
                 try {
                     await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
@@ -182,11 +181,9 @@ export default function CreateCampaignPage() {
                         },
                         credentials: 'include'
                     });
-                    // Don't throw error if send fails - campaign is still created
                     console.log('Campaign auto-send initiated');
                 } catch (sendError) {
                     console.warn('Auto-send failed:', sendError);
-                    // Campaign is created successfully, just inform user to manually send
                 }
             }
 
@@ -198,6 +195,7 @@ export default function CreateCampaignPage() {
             setLoading(false);
         }
     };
+
     const hasErrors = propertiesError || listsError || templatesError;
 
     const stepProps = {
@@ -240,7 +238,7 @@ export default function CreateCampaignPage() {
                         </div>
                         <div className="flex items-center space-x-2">
                             <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-                            {currentStep === 4 ? (
+                            {currentStep === 7 ? (
                                 <Button onClick={handleSubmit} disabled={loading}>
                                     {loading ? (
                                         <>
@@ -286,13 +284,15 @@ export default function CreateCampaignPage() {
 
                         {currentStep === 1 && <Step1Property {...stepProps} />}
                         {currentStep === 2 && <Step2BasicInfo {...stepProps} />}
-                        {currentStep === 3 && <Step6Audience {...stepProps} />}
-                        {currentStep === 4 && <Step4Picture   {...stepProps}
+                        {currentStep === 3 && <Step3Audience {...stepProps} />}
+                        {currentStep === 4 && <Step4PaymentOptions {...stepProps} />}
+                        {currentStep === 5 && <Step5Picture {...stepProps}
                             selectedTemplate={templates?.find(t => t.id === formData.emailTemplate)}
                             selectedProperty={properties?.find(p => p.id === formData.property)}
                         />}
-                        {currentStep === 5 && <Step5Subject {...stepProps} />}
-                        {currentStep === 6 && <Step7Schedule {...stepProps} />}
+                        {currentStep === 6 && <Step6Subject {...stepProps} />}
+
+                        {currentStep === 7 && <Step7Schedule {...stepProps} />}
 
                         {/* Navigation */}
                         <div className="flex justify-between pt-6">
@@ -304,7 +304,7 @@ export default function CreateCampaignPage() {
                                 )}
                             </div>
                             <div className="space-x-2">
-                                {currentStep < 6 ? (
+                                {currentStep < 7 ? (
                                     <Button onClick={handleNext}>Next Step</Button>
                                 ) : (
                                     <Button onClick={handleSubmit} disabled={loading} size="lg">

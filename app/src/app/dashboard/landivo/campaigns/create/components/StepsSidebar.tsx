@@ -9,10 +9,10 @@ export function StepsSidebar({ currentStep }: Props) {
     const steps = [
         { number: 1, title: 'Property', icon: Building, description: 'Select target property' },
         { number: 2, title: 'Basic Info', icon: FileText, description: 'Campaign name and description' },
-        { number: 3, title: 'Payment Options', icon: Camera, description: 'Select A Payment Plan' },
-        { number: 4, title: 'Pictures', icon: Camera, description: 'Select property images' },
-        { number: 5, title: 'Subject', icon: Mail, description: 'Create email subject line' },
-        { number: 6, title: 'Audience', icon: Users, description: 'Choose email list and template' },
+        { number: 3, title: 'Audience', icon: Users, description: 'Choose email list and template' },
+        { number: 4, title: 'Payment Options', icon: Camera, description: 'Select A Payment Plan' },
+        { number: 5, title: 'Pictures', icon: Camera, description: 'Select property images' },
+        { number: 6, title: 'Subject', icon: Mail, description: 'Create email subject line' },
         { number: 7, title: 'Schedule', icon: Clock, description: 'Set timing and volume' }
     ];
 

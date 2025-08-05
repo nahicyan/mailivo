@@ -1,4 +1,4 @@
-// app/src/app/dashboard/landivo/campaigns/create/components/Step4Picture.tsx
+// app/src/app/dashboard/landivo/campaigns/create/components/Step5Picture.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ interface Props {
     selectedProperty: any;
 }
 
-export function Step4Picture({ formData, setFormData, errors, selectedTemplate, selectedProperty }: Props) {
+export function Step5Picture({ formData, setFormData, errors, selectedTemplate, selectedProperty }: Props) {
     // Get property-image components from the selected template, sorted by order
     const propertyImageComponents = useMemo(() => {
         if (!selectedTemplate?.components) return [];

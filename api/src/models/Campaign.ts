@@ -15,6 +15,23 @@ export interface ICampaign extends Document {
   emailSchedule: string;
   emailVolume: number;
 
+  // Image selections
+  imageSelections?: Record<string, {
+    name: string;
+    imageIndex: number;
+    order: number;
+  }>;
+
+  // Payment plan selection
+  selectedPlan?: {
+    planNumber: number; // 1, 2, or 3
+    planName: string; // "Payment Plan 1", etc.
+    downPayment: number;
+    loanAmount: number;
+    interestRate: number;
+    monthlyPayment: number;
+  } | null;
+
   // New fields for enhanced functionality
   audienceType?: 'all' | 'segment' | 'landivo';
   segments?: string[];
@@ -69,6 +86,16 @@ const CampaignSchema: Schema = new Schema({
   imageSelections: {
     type: Schema.Types.Mixed,
     default: {}
+  },
+
+  // Payment plan selection
+  selectedPlan: {
+    planNumber: { type: Number },
+    planName: { type: String },
+    downPayment: { type: Number },
+    loanAmount: { type: Number },
+    interestRate: { type: Number },
+    monthlyPayment: { type: Number }
   },
 
   // New fields
