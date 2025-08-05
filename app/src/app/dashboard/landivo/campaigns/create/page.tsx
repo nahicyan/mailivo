@@ -15,9 +15,9 @@ import Link from 'next/link';
 import { StepsSidebar } from './components/StepsSidebar';
 import { Step1Property } from './components/Step1Property';
 import { Step2BasicInfo } from './components/Step2BasicInfo';
+import { Step3Audience } from './components/Step3Audience';
 import { Step4PaymentOptions } from './components/Step4PaymentOptions';
 import { Step5Picture } from './components/Step5Picture';
-import { Step3Audience } from './components/Step3Audience';
 import { Step6Subject } from './components/Step6Subject';
 import { Step7Schedule } from './components/Step7Schedule';
 
@@ -94,18 +94,17 @@ export default function CreateCampaignPage() {
                 if (!formData.description.trim()) newErrors.description = 'Campaign description is required';
                 break;
             case 3:
-                // Payment options validation - only validate if property has financing plans available
-                // The Step4PaymentOptions component handles auto-selection, so we don't require manual selection
-                break;
-            case 4:
-                // Picture step - validation handled by component
-                break;
-            case 5:
-                if (!formData.subject?.trim()) newErrors.subject = 'Please generate a subject line';
-                break;
-            case 6:
                 if (!formData.emailList) newErrors.emailList = 'Please select an email list';
                 if (!formData.emailTemplate) newErrors.emailTemplate = 'Please select an email template';
+                break;
+            case 4:
+                // Payment options validation - handled by component
+                break;
+            case 5:
+                // Picture step - validation handled by component
+                break;
+            case 6:
+                if (!formData.subject?.trim()) newErrors.subject = 'Please generate a subject line';
                 break;
             case 7:
                 if (formData.emailSchedule === 'scheduled' && !selectedDate) newErrors.schedule = 'Please select a date for scheduled campaign';
@@ -291,7 +290,6 @@ export default function CreateCampaignPage() {
                             selectedProperty={properties?.find(p => p.id === formData.property)}
                         />}
                         {currentStep === 6 && <Step6Subject {...stepProps} />}
-
                         {currentStep === 7 && <Step7Schedule {...stepProps} />}
 
                         {/* Navigation */}
