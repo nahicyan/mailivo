@@ -93,13 +93,24 @@ export class EmailJobProcessor {
   }> {
     try {
       if (campaign.source === 'landivo' && campaign.emailTemplate && campaign.property) {
-        logger.info(`Rendering template ${campaign.emailTemplate} for property ${campaign.property}`);
+        logger.info(`Rendering template ${campaign.emailTemplate} for property ${campaign.property}`, {
+          campaignId: campaign._id,
+          selectedPlan: campaign.selectedPlan?.planNumber,
+          imageSelections: Object.keys(campaign.imageSelections || {}).length
+        });
         
+        // Prepare campaign data for template rendering
+        const campaignData = {
+          selectedPlan: campaign.selectedPlan,
+          imageSelections: campaign.imageSelections || {}
+        };
+
         const renderedContent = await templateRenderingService.renderTemplate(
           campaign.emailTemplate,
           campaign.property,
           contact,
-          campaign.subject 
+          campaign.subject,
+          campaignData // Pass campaign data with selected plan and image selections
         );
 
         return this.applyPersonalization(renderedContent, contact);
@@ -140,71 +151,58 @@ export class EmailJobProcessor {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.warn('Rate limit check failed, proceeding anyway:', errorMessage);
+      logger.error('Rate limit check failed:', errorMessage);
+      // Don't throw - let email proceed if rate limit check fails
     }
   }
 
-  private applyPersonalization(content: { subject: string; htmlContent: string; textContent: string }, contact: any) {
-    const replacements = {
-      '{{firstName}}': contact.firstName || contact.first_name || 'Friend',
-      '{{lastName}}': contact.lastName || contact.last_name || '',
-      '{{email}}': contact.email,
-      '{{name}}': `${contact.firstName || contact.first_name || ''} ${contact.lastName || contact.last_name || ''}`.trim() || 'Friend',
-      '{{unsubscribeLink}}': `${process.env.NEXT_PUBLIC_SERVER_URL}/api/track/unsubscribe?token=${Buffer.from(`${contact.landivo_buyer_id || contact._id}:${content.subject}`).toString('base64')}`,
-    };
+  private async updateCampaignMetrics(campaignId: string, type: 'sent' | 'bounced'): Promise<void> {
+    try {
+      const update = type === 'sent' 
+        ? { $inc: { 'metrics.sent': 1 } }
+        : { $inc: { 'metrics.bounced': 1 } };
 
-    let { subject, htmlContent, textContent } = content;
-
-    for (const [placeholder, value] of Object.entries(replacements)) {
-      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      subject = subject.replace(regex, value);
-      htmlContent = htmlContent.replace(regex, value);
-      if (textContent) {
-        textContent = textContent.replace(regex, value);
-      }
+      await Campaign.findByIdAndUpdate(campaignId, update);
+    } catch (error) {
+      logger.error(`Failed to update campaign metrics for ${campaignId}:`, error);
+      // Don't throw - this is not critical
     }
+  }
 
-    return { subject, htmlContent, textContent };
+  private applyPersonalization(content: any, contact: any) {
+    const { subject, htmlContent, textContent } = content;
+
+    // Apply personalization tokens
+    const personalizedSubject = this.replacePersonalizationTokens(subject, contact);
+    const personalizedHtml = this.replacePersonalizationTokens(htmlContent, contact);
+    const personalizedText = this.replacePersonalizationTokens(textContent, contact);
+
+    return {
+      subject: personalizedSubject,
+      htmlContent: personalizedHtml,
+      textContent: personalizedText
+    };
   }
 
   private applyBasicPersonalization(campaign: any, contact: any) {
-    let subject = campaign.subject;
-    let htmlContent = campaign.htmlContent;
-    let textContent = campaign.textContent;
+    const subject = this.replacePersonalizationTokens(campaign.subject || campaign.name, contact);
+    const htmlContent = this.replacePersonalizationTokens(campaign.htmlContent || '<p>No content</p>', contact);
+    const textContent = this.replacePersonalizationTokens(campaign.textContent || campaign.description || '', contact);
 
-    const replacements = {
-      '{{firstName}}': contact.firstName || contact.first_name || 'Friend',
-      '{{lastName}}': contact.lastName || contact.last_name || '',
-      '{{email}}': contact.email,
-      '{{name}}': `${contact.firstName || contact.first_name || ''} ${contact.lastName || contact.last_name || ''}`.trim() || 'Friend',
+    return {
+      subject,
+      htmlContent,
+      textContent
     };
-
-    for (const [placeholder, value] of Object.entries(replacements)) {
-      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      subject = subject.replace(regex, value);
-      htmlContent = htmlContent.replace(regex, value);
-      if (textContent) {
-        textContent = textContent.replace(regex, value);
-      }
-    }
-
-    return { subject, htmlContent, textContent };
   }
 
-  private async updateCampaignMetrics(campaignId: string, metric: string) {
-    const updateQuery: Record<string, number> = {};
-    updateQuery[`metrics.${metric}`] = 1;
+  private replacePersonalizationTokens(content: string, contact: any): string {
+    if (!content) return '';
 
-    if (metric === 'sent') {
-      updateQuery['metrics.sent'] = 1;
-    } else if (metric === 'bounced') {
-      updateQuery['metrics.bounces'] = 1;
-    }
-
-    await Campaign.findByIdAndUpdate(
-      campaignId,
-      { $inc: updateQuery },
-      { new: true }
-    );
+    return content
+      .replace(/\{\{firstName\}\}/g, contact.firstName || contact.first_name || '')
+      .replace(/\{\{lastName\}\}/g, contact.lastName || contact.last_name || '')
+      .replace(/\{\{email\}\}/g, contact.email || '')
+      .replace(/\{\{name\}\}/g, `${contact.firstName || contact.first_name || ''} ${contact.lastName || contact.last_name || ''}`.trim());
   }
 }

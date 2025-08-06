@@ -23,9 +23,19 @@ interface LandivoProperty {
   downPaymentOne: number;
   loanAmountOne: number;
   interestOne: number;
+  monthlyPaymentTwo: number;
+  downPaymentTwo: number;
+  loanAmountTwo: number;
+  interestTwo: number;
+  monthlyPaymentThree: number;
+  downPaymentThree: number;
+  loanAmountThree: number;
+  interestThree: number;
   tax: number;
   serviceFee: number;
   financing: string;
+  financingTwo: string;
+  financingThree: string;
   description: string;
   status: string;
   imageUrls: string;
@@ -38,6 +48,23 @@ interface ContactData {
   firstName?: string;
   lastName?: string;
   preferences?: Record<string, any>;
+  [key: string]: any;
+}
+
+interface CampaignData {
+  selectedPlan?: {
+    planNumber: number;
+    planName: string;
+    downPayment: number;
+    loanAmount: number;
+    interestRate: number;
+    monthlyPayment: number;
+  } | null;
+  imageSelections?: Record<string, {
+    name: string;
+    imageIndex: number;
+    order: number;
+  }>;
   [key: string]: any;
 }
 
@@ -64,7 +91,13 @@ class TemplateRenderingService {
     this.landivoApiUrl = process.env.LANDIVO_API_URL || 'https://api.landivo.com';
   }
 
-  async renderTemplate(templateId: string, propertyId: string, contactData: ContactData, campaignSubject?: string): Promise<{
+  async renderTemplate(
+    templateId: string, 
+    propertyId: string, 
+    contactData: ContactData, 
+    campaignSubject?: string,
+    campaignData?: CampaignData
+  ): Promise<{
     subject: string;
     htmlContent: string;
     textContent: string;
@@ -86,12 +119,12 @@ class TemplateRenderingService {
       const processedPropertyData = this.processPropertyData(propertyData);
 
       // 4. Generate HTML content using React Email
-      const htmlContent = await this.generateEmailHTML(template, processedPropertyData, contactData);
+      const htmlContent = await this.generateEmailHTML(template, processedPropertyData, contactData, campaignData);
 
       // 5. Generate text version
-      const textContent = this.generateTextContent(template, processedPropertyData, contactData);
+      const textContent = this.generateTextContent(template, processedPropertyData, contactData, campaignData);
 
-      // 6. Use campaign subject if provided, otherwise generate one
+      // 6. Generate subject (use campaign subject if provided, else auto-generate)
       const subject = campaignSubject || this.generateSubject(template.name, processedPropertyData, contactData);
 
       return {
@@ -102,28 +135,16 @@ class TemplateRenderingService {
 
     } catch (error: any) {
       logger.error('Template rendering failed:', error);
-      throw error;
+      throw new Error(`Template rendering failed: ${error.message}`);
     }
   }
 
   private async fetchPropertyData(propertyId: string): Promise<LandivoProperty | null> {
     try {
-      const response = await axios.get(`${this.landivoApiUrl}/residency/allresd`);
-      const properties = response.data;
-
-      if (!Array.isArray(properties)) {
-        logger.error('Invalid properties response from Landivo');
-        return null;
-      }
-
-      const property = properties.find((p: any) => p.id === propertyId);
-      if (!property) {
-        logger.warn(`Property ${propertyId} not found in Landivo`);
-        return null;
-      }
-
-      return property;
-
+      const response = await axios.get(`${this.landivoApiUrl}/residency/${propertyId}`, {
+        timeout: 10000,
+      });
+      return response.data;
     } catch (error: any) {
       logger.error(`Failed to fetch property ${propertyId}:`, error);
       throw new Error(`Failed to fetch property data: ${error.message}`);
@@ -156,7 +177,8 @@ class TemplateRenderingService {
   private async generateEmailHTML(
     template: any,
     propertyData: ProcessedPropertyData,
-    contactData: ContactData
+    contactData: ContactData,
+    campaignData?: CampaignData
   ): Promise<string> {
     try {
       // Sort components by order
@@ -164,7 +186,7 @@ class TemplateRenderingService {
 
       // Create React elements for each component
       const renderedComponents = sortedComponents.map((component: EmailComponent) =>
-        this.renderComponentToReact(component, propertyData, contactData)
+        this.renderComponentToReact(component, propertyData, contactData, campaignData)
       ).filter(Boolean);
 
       // Create the email structure with React Email
@@ -190,7 +212,8 @@ class TemplateRenderingService {
   private renderComponentToReact(
     component: EmailComponent,
     propertyData: ProcessedPropertyData,
-    contactData: ContactData
+    contactData: ContactData,
+    campaignData?: CampaignData
   ): React.ReactElement | null {
     try {
       // Get component metadata from registry
@@ -201,7 +224,7 @@ class TemplateRenderingService {
       }
 
       // Merge default props with component props and context data
-      const finalProps = {
+      const finalProps: any = {
         ...componentMeta.defaultProps,
         ...component.props,
         // Inject property data as props for components that need it
@@ -211,6 +234,29 @@ class TemplateRenderingService {
         property: propertyData,
         contact: contactData,
       };
+
+      // Handle payment-calculator specific logic
+      if (component.type === 'payment-calculator' && campaignData?.selectedPlan) {
+        finalProps.selectedPlan = campaignData.selectedPlan.planNumber.toString();
+        logger.info(`Setting payment calculator to plan ${campaignData.selectedPlan.planNumber}`, {
+          componentId: component.id,
+          planNumber: campaignData.selectedPlan.planNumber,
+          planName: campaignData.selectedPlan.planName
+        });
+      }
+
+      // Handle property-image specific logic
+      if (component.type === 'property-image' && campaignData?.imageSelections) {
+        const imageSelection = campaignData.imageSelections[component.id];
+        if (imageSelection) {
+          finalProps.imageIndex = imageSelection.imageIndex;
+          logger.info(`Setting property image index to ${imageSelection.imageIndex}`, {
+            componentId: component.id,
+            imageIndex: imageSelection.imageIndex,
+            imageName: imageSelection.name
+          });
+        }
+      }
 
       // Create React element using the component from registry
       return React.createElement(componentMeta.component, {
@@ -227,7 +273,8 @@ class TemplateRenderingService {
   private generateTextContent(
     template: any,
     propertyData: ProcessedPropertyData,
-    contactData: ContactData
+    contactData: ContactData,
+    campaignData?: CampaignData
   ): string {
     try {
       const components = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
@@ -239,7 +286,7 @@ class TemplateRenderingService {
         const componentMeta = getComponent(component.type);
         if (!componentMeta) continue;
 
-        const textRepresentation = this.renderComponentToText(component, componentMeta, propertyData, contactData);
+        const textRepresentation = this.renderComponentToText(component, componentMeta, propertyData, contactData, campaignData);
         if (textRepresentation) {
           textContent += textRepresentation + '\n\n';
         }
@@ -263,7 +310,8 @@ class TemplateRenderingService {
     component: EmailComponent,
     componentMeta: any,
     propertyData: ProcessedPropertyData,
-    contactData: ContactData
+    contactData: ContactData,
+    campaignData?: CampaignData
   ): string {
     const finalProps = {
       ...componentMeta.defaultProps,
@@ -273,6 +321,12 @@ class TemplateRenderingService {
       property: propertyData,
       contact: contactData,
     };
+
+    // Handle payment-calculator in text
+    if (component.type === 'payment-calculator' && campaignData?.selectedPlan) {
+      const plan = campaignData.selectedPlan;
+      return `PAYMENT PLAN ${plan.planNumber}:\nMonthly Payment: $${plan.monthlyPayment}\nDown Payment: $${plan.downPayment}\nLoan Amount: $${plan.loanAmount}\nInterest Rate: ${plan.interestRate}%`;
+    }
 
     // Try to extract text from component props in order of preference
     const textFields = ['text', 'title', 'content', 'label', 'heading'];
