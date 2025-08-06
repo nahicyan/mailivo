@@ -296,7 +296,7 @@ export function Step4PaymentOptions({ formData, setFormData, errors, selectedTem
             Choose Payment Plan ({availablePlansCount} available)
           </Label>
           <p className="text-sm text-gray-600">
-            Select the financing option that works best for your budget.
+           Select the financing option that you want to send
           </p>
         </div>
 
