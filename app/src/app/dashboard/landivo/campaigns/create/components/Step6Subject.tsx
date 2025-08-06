@@ -40,6 +40,7 @@ const ADDRESS_FORMAT_TEMPLATES = [
     '{city}',
     '{state}',
     '{state} {zip}',
+    '{city} {zip}',
     '{county}, {state} {zip}',
     '{city}, {state} {zip}',
     '{county}, {city}, {state} {zip}'
