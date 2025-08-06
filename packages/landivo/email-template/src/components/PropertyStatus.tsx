@@ -124,10 +124,10 @@ export function PropertyStatus({
 
   return (
     <Section
-      className={`w-full py-4 ${className}`}
+      className={className}
       style={{
         width: '100%',
-        padding: '16px 0',
+        // padding: '16px 0',
       }}
     >
       <div style={{

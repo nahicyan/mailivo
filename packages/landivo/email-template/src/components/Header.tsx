@@ -19,10 +19,10 @@ export function Header({
 }: HeaderProps) {
   return (
     <Section
-      className={`w-full py-6 ${className}`}
+      className={className}
       style={{
         width: '100%',
-        padding: '24px 0',
+        // padding: '24px 0',
         textAlign: 'center',
         borderBottom: showBottomBorder ? '2px solid #e5e7eb' : 'none',
       }}

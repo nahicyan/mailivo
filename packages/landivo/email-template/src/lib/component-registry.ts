@@ -2,6 +2,7 @@
 import { ComponentRegistry } from '../types/component-metadata';
 
 // Import all email components and their metadata
+import { gapMetadata } from '../components/Gap';
 import { headerMetadata } from '../components/Header';
 import { propertyImageMetadata } from '../components/PropertyImage';
 import { propertyStatusMetadata } from '../components/PropertyStatus';
@@ -15,6 +16,7 @@ import { disclaimerMetadata } from '../components/Disclaimer'
 
 // Component registry - automatically includes all imported components
 export const componentRegistry: ComponentRegistry = {
+  [gapMetadata.type]: gapMetadata,
   [headerMetadata.type]: headerMetadata,
   [propertyImageMetadata.type]: propertyImageMetadata,
   [propertyStatusMetadata.type]: propertyStatusMetadata,

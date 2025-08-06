@@ -1,5 +1,6 @@
 // packages/landivo/email-template/src/index.ts
 // Export all components
+export * from './components/Gap';
 export * from './components/Header';
 export * from './components/PropertyImage';
 export * from './components/PropertyStatus';
