@@ -60,6 +60,14 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
   const [charCount, setCharCount] = useState(0);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const lastValueRef = useRef(value);
+  
+  // Store cursor position before emoji picker opens
+  const savedSelectionRef = useRef<{
+    startContainer: Node | null;
+    startOffset: number;
+    endContainer: Node | null;
+    endOffset: number;
+  } | null>(null);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -140,47 +148,165 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
     handleInput();
   };
 
+  // Save cursor position when emoji picker is about to open
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      savedSelectionRef.current = {
+        startContainer: range.startContainer,
+        startOffset: range.startOffset,
+        endContainer: range.endContainer,
+        endOffset: range.endOffset
+      };
+    } else {
+      // If no selection, save cursor at end
+      if (editorRef.current) {
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        savedSelectionRef.current = {
+          startContainer: range.startContainer,
+          startOffset: range.startOffset,
+          endContainer: range.endContainer,
+          endOffset: range.endOffset
+        };
+      }
+    }
+  };
+
+  // Restore saved selection
+  const restoreSelection = () => {
+    if (savedSelectionRef.current && editorRef.current) {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      
+      try {
+        // Check if the saved nodes are still in the DOM
+        if (savedSelectionRef.current.startContainer && 
+            editorRef.current.contains(savedSelectionRef.current.startContainer)) {
+          range.setStart(
+            savedSelectionRef.current.startContainer,
+            savedSelectionRef.current.startOffset
+          );
+          range.setEnd(
+            savedSelectionRef.current.endContainer || savedSelectionRef.current.startContainer,
+            savedSelectionRef.current.endOffset
+          );
+        } else {
+          // Fallback to end of content
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false);
+        }
+        
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      } catch (e) {
+        // If restoration fails, place cursor at end
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+    }
+  };
+
   const handleEmojiSelect = (emojiData: any) => {
     if (editorRef.current && !disabled) {
       const emoji = emojiData.emoji || emojiData.native || emojiData;
       
-      // Ensure the editor is focused and get current selection
+      // Focus the editor first
       editorRef.current.focus();
+      
+      // Restore the saved selection
+      restoreSelection();
+      
       const selection = window.getSelection();
       
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         
-        // Create text node and insert it
-        const textNode = document.createTextNode(emoji);
+        // Delete any selected content
         range.deleteContents();
+        
+        // Create and insert the emoji text node
+        const textNode = document.createTextNode(emoji);
         range.insertNode(textNode);
         
         // Move cursor after the inserted emoji
         range.setStartAfter(textNode);
         range.setEndAfter(textNode);
+        range.collapse(true);
+        
         selection.removeAllRanges();
         selection.addRange(range);
       } else {
-        // Fallback: append at end
-        editorRef.current.appendChild(document.createTextNode(emoji));
-        
-        // Set cursor at end
+        // Fallback: insert at cursor position or end
+        const textNode = document.createTextNode(emoji);
         const range = document.createRange();
-        range.selectNodeContents(editorRef.current);
-        range.collapse(false);
+        
+        if (editorRef.current.lastChild) {
+          range.setStartAfter(editorRef.current.lastChild);
+          range.setEndAfter(editorRef.current.lastChild);
+        } else {
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false);
+        }
+        
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        
         selection?.removeAllRanges();
         selection?.addRange(range);
       }
       
       handleInput();
       setIsEmojiPickerOpen(false);
+      
+      // Clear saved selection after use
+      savedSelectionRef.current = null;
     }
+  };
+
+  // Handle emoji picker open/close
+  const handleEmojiPickerOpenChange = (open: boolean) => {
+    if (open) {
+      // Save current selection before opening
+      saveSelection();
+    }
+    setIsEmojiPickerOpen(open);
   };
 
   const isCommandActive = (command: string): boolean => {
     return document.queryCommandState(command);
   };
+
+  // Save selection on any selection change while editor is focused
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      if (isFocused && !isEmojiPickerOpen && editorRef.current?.contains(document.activeElement)) {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          // Only save if the selection is within our editor
+          if (editorRef.current?.contains(range.commonAncestorContainer)) {
+            savedSelectionRef.current = {
+              startContainer: range.startContainer,
+              startOffset: range.startOffset,
+              endContainer: range.endContainer,
+              endOffset: range.endOffset
+            };
+          }
+        }
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [isFocused, isEmojiPickerOpen]);
 
   return (
     <div className={cn('border rounded-lg overflow-hidden', className)}>
@@ -261,7 +387,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
               <div className="h-6 w-px bg-gray-300 mx-1" />
               
               {/* Emoji Picker */}
-              <Popover open={isEmojiPickerOpen} onOpenChange={setIsEmojiPickerOpen}>
+              <Popover open={isEmojiPickerOpen} onOpenChange={handleEmojiPickerOpenChange}>
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
@@ -277,7 +403,6 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
                   <EmojiPicker
                     onEmojiClick={handleEmojiSelect}
                     autoFocusSearch={false}
-                    theme="light"
                     height={400}
                     width={350}
                     searchPlaceHolder="Search emojis..."
