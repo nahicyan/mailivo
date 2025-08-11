@@ -7,6 +7,7 @@ import { landivoRoutes } from './LandivoProperty.route';
 import { landivoEmailListsRoutes } from './LandivoEmailLists.route';
 import workflowRoutes from './workflows';
 import trackingRoutes from './tracking.routes';
+import subjectTemplateRoute from './subjectTemplateRoute';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.use('/landivo-email-lists', landivoEmailListsRoutes);
 router.use('/landivo', landivoRoutes);
 router.use('/workflows', workflowRoutes);
 router.use('/api/track', trackingRoutes);
+router.use("/api/subject-templates", subjectTemplateRoute);
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
