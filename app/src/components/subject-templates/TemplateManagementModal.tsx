@@ -111,13 +111,13 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
     }
   };
 
-  const insertVariable = (variableKey: string) => {
-    const variableText = `{${variableKey}}`;
-    const currentContent = richTextRef.current?.getContent() || '';
-    const newContent = currentContent + variableText;
-    richTextRef.current?.setContent(newContent);
-    setTemplateContent(newContent);
-  };
+
+const insertVariable = (variableKey: string) => {
+  const variableText = `{${variableKey}}`;
+  richTextRef.current?.insertAtCursor(variableText);
+  const updatedContent = richTextRef.current?.getContent() || '';
+  setTemplateContent(updatedContent);
+};
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

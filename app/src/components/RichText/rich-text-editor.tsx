@@ -42,6 +42,7 @@ export interface RichTextEditorRef {
   focus: () => void;
   getContent: () => string;
   setContent: (content: string) => void;
+  insertAtCursor: (text: string) => void;
 }
 
 export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
@@ -91,6 +92,56 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
         updateCharCount();
         lastValueRef.current = content;
         onChange?.(content);
+      }
+    },
+    insertAtCursor: (text: string) => {
+      if (editorRef.current && !disabled) {
+        // Focus the editor first
+        editorRef.current.focus();
+        
+        // Restore saved selection if available, otherwise get current selection
+        if (savedSelectionRef.current) {
+          restoreSelection();
+        }
+        
+        const selection = window.getSelection();
+        
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          
+          // Delete any selected content
+          range.deleteContents();
+          
+          // Create and insert the text node
+          const textNode = document.createTextNode(text);
+          range.insertNode(textNode);
+          
+          // Move cursor after the inserted text
+          range.setStartAfter(textNode);
+          range.setEndAfter(textNode);
+          range.collapse(true);
+          
+          selection.removeAllRanges();
+          selection.addRange(range);
+        } else {
+          // Fallback: insert at end
+          const textNode = document.createTextNode(text);
+          
+          if (editorRef.current.lastChild) {
+            editorRef.current.appendChild(textNode);
+          } else {
+            editorRef.current.appendChild(textNode);
+          }
+          
+          // Set cursor at end
+          const range = document.createRange();
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+        
+        handleInput();
       }
     }
   }));
