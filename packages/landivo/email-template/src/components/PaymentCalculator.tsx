@@ -189,7 +189,7 @@ export function PaymentCalculator({
     textAlign: 'center' as const,
     margin: '8px auto',
     width: '100%',
-    boxSizing: 'border-box',
+    boxSizing: 'border-box' as const,
   };
 
   const primaryButtonStyle = {
@@ -205,7 +205,7 @@ export function PaymentCalculator({
     textAlign: 'center' as const,
     margin: '8px auto 0',
     width: '100%',
-    boxSizing: 'border-box',
+    boxSizing: 'border-box' as const,
   };
 
   return (
@@ -252,7 +252,6 @@ export function PaymentCalculator({
                   <Text style={labelStyle}>Down Payment</Text>
                   <Text style={valueStyle}>${planData.downPayment?.toLocaleString() || planData.downPayment}</Text>
                 </div>
-
 
               </td>
 

@@ -76,7 +76,6 @@ export function PropertyImage({
             width: `${width}px`,
             height: `${height}px`,
             maxWidth: '100%',
-            height: 'auto',
             display: 'block',
             margin: '0 auto',
             borderRadius: `${borderRadius}px`,

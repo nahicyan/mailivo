@@ -37,7 +37,6 @@ export function Header({
             width: `${logoWidth}px`,
             height: `${logoHeight}px`,
             maxWidth: '100%',
-            height: 'auto',
             display: 'block',
             margin: '0 auto'
           }}
