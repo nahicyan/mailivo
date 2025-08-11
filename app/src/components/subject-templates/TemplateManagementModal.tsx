@@ -149,7 +149,7 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left Side - Form */}
                 <div className="space-y-4">
-                  <div>
+                  <div className="space-y-2 mb-6 lg:mb-8">
                     <Label>Template Name *</Label>
                     <Input
                       value={templateName}
@@ -159,7 +159,7 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
                     />
                   </div>
 
-                  <div>
+                  <div className="space-y-2 mb-6 lg:mb-8">
                     <Label>Insert Variables</Label>
                     <Select onValueChange={insertVariable}>
                       <SelectTrigger>

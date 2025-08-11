@@ -56,6 +56,7 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
     const [selectedAddressTemplate, setSelectedAddressTemplate] = useState('');
     const [generatedSubject, setGeneratedSubject] = useState('');
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [templateRequiresAddress, setTemplateRequiresAddress] = useState(false);
     const richTextEditorRef = useRef<RichTextEditorRef>(null);
 
     // Get enabled subject templates
@@ -86,18 +87,23 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
 
     // Handle template generation
     useEffect(() => {
-        if (selectedSubjectTemplate && selectedAddressTemplate && propertyData) {
-            generateSubjectLine();
+        if (selectedSubjectTemplate && propertyData) {
+            if (templateRequiresAddress && selectedAddressTemplate) {
+                generateSubjectLine();
+            } else if (!templateRequiresAddress) {
+                generateSubjectLine();
+            }
         }
-    }, [selectedSubjectTemplate, selectedAddressTemplate, propertyData]);
+    }, [selectedSubjectTemplate, selectedAddressTemplate, propertyData, templateRequiresAddress]);
 
-    const replaceVariables = (template: string, data: PropertyData): string => {
+    const replaceVariables = (template: string, data: PropertyData, addressFormat?: string): string => {
         let result = template;
         
-        // Replace address placeholder with formatted address
-        const addressFormat = selectedAddressTemplate;
-        const formattedAddress = replaceVariables(addressFormat, data);
-        result = result.replace(/{Address}/g, formattedAddress);
+        // Replace {address} placeholder with formatted address if addressFormat is provided
+        if (addressFormat && result.includes('{address}')) {
+            const formattedAddress = replaceVariables(addressFormat, data);
+            result = result.replace(/{address}/g, formattedAddress);
+        }
         
         // Replace other property variables
         const replacements: Record<string, any> = {
@@ -131,12 +137,22 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
     };
 
     const generateSubjectLine = () => {
-        if (!propertyData || !selectedSubjectTemplate || !selectedAddressTemplate) return;
+        if (!propertyData || !selectedSubjectTemplate) return;
 
         const template = enabledTemplates.find(t => t.id === selectedSubjectTemplate);
         if (!template) return;
 
-        const generated = replaceVariables(template.content, propertyData);
+        let generated: string;
+        
+        if (templateRequiresAddress && selectedAddressTemplate) {
+            generated = replaceVariables(template.content, propertyData, selectedAddressTemplate);
+        } else if (!templateRequiresAddress) {
+            generated = replaceVariables(template.content, propertyData);
+        } else {
+            // Template requires address but no format selected yet
+            return;
+        }
+
         setGeneratedSubject(generated);
         richTextEditorRef.current?.setContent(generated);
         
@@ -148,14 +164,39 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
 
     const handleSubjectTemplateChange = (templateId: string) => {
         setSelectedSubjectTemplate(templateId);
-        if (templateId && selectedAddressTemplate) {
-            generateSubjectLine();
+        
+        if (templateId) {
+            const template = enabledTemplates.find(t => t.id === templateId);
+            if (template) {
+                const requiresAddress = template.content.includes('{address}');
+                setTemplateRequiresAddress(requiresAddress);
+                
+                if (!requiresAddress) {
+                    // Template doesn't need address format, generate immediately
+                    setSelectedAddressTemplate('');
+                    if (propertyData) {
+                        const generated = replaceVariables(template.content, propertyData);
+                        setGeneratedSubject(generated);
+                        richTextEditorRef.current?.setContent(generated);
+                        setFormData(prev => ({
+                            ...prev,
+                            subject: generated
+                        }));
+                    }
+                } else {
+                    // Template needs address format, clear previous selection
+                    setSelectedAddressTemplate('');
+                }
+            }
+        } else {
+            setTemplateRequiresAddress(false);
+            setSelectedAddressTemplate('');
         }
     };
 
     const handleAddressTemplateChange = (template: string) => {
         setSelectedAddressTemplate(template);
-        if (selectedSubjectTemplate && template) {
+        if (selectedSubjectTemplate && template && propertyData) {
             generateSubjectLine();
         }
     };
@@ -203,12 +244,13 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
                 )}
 
                 {/* Template Management */}
-                <div className="flex items-center justify-between">
+                <div className="space-y-3">
                     <Label>Subject Line Templates</Label>
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setIsTemplateModalOpen(true)}
+                        className="w-fit"
                     >
                         <Settings className="h-4 w-4 mr-2" />
                         Manage Templates
@@ -249,27 +291,32 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
                             </Select>
                         </div>
 
-                        {/* Address Format Dropdown */}
-                        <div className="space-y-2">
-                            <Label>Address Format Template</Label>
-                            <Select
-                                value={selectedAddressTemplate}
-                                onValueChange={handleAddressTemplateChange}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select address format" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ADDRESS_FORMAT_TEMPLATES.map((template, index) => (
-                                        <SelectItem key={index} value={template}>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{template}</span>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* Address Format Dropdown - Only show if template requires address */}
+                        {templateRequiresAddress && (
+                            <div className="space-y-2">
+                                <Label>Address Format Template *</Label>
+                                <Select
+                                    value={selectedAddressTemplate}
+                                    onValueChange={handleAddressTemplateChange}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select address format" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ADDRESS_FORMAT_TEMPLATES.map((template, index) => (
+                                            <SelectItem key={index} value={template}>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{template}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    Required because the selected template contains an {'{address}'} variable
+                                </p>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <Alert>
@@ -302,10 +349,23 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
                 </div>
 
                 {/* Template Generation Helper */}
-                {selectedSubjectTemplate && selectedAddressTemplate && (
+                {selectedSubjectTemplate && (
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-                        <p>💡 Templates selected! Your subject line has been auto-generated above.</p>
-                        <p>You can further customize it using the rich text editor.</p>
+                        {templateRequiresAddress ? (
+                            selectedAddressTemplate ? (
+                                <>
+                                    <p>💡 Template with address format selected! Your subject line has been auto-generated above.</p>
+                                    <p>You can further customize it using the rich text editor.</p>
+                                </>
+                            ) : (
+                                <p>⏳ Please select an address format to complete the template generation.</p>
+                            )
+                        ) : (
+                            <>
+                                <p>💡 Template selected! Your subject line has been auto-generated above.</p>
+                                <p>You can further customize it using the rich text editor.</p>
+                            </>
+                        )}
                     </div>
                 )}
 
