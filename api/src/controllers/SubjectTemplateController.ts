@@ -21,11 +21,13 @@ export const subjectTemplateController = {
       }
 
       const templates = await SubjectTemplate.find(filter)
-        .sort({ createdAt: -1 })
-        .lean();
+        .sort({ createdAt: -1 });
 
-      res.json({ success: true, templates });
-    } catch (error) {
+      // Convert to JSON to apply the toJSON transform (_id -> id)
+      const templatesWithId = templates.map(template => template.toJSON());
+
+      res.json({ success: true, templates: templatesWithId });
+    } catch (error: any) {
       console.error('Error fetching subject templates:', error);
       res.status(500).json({ error: 'Failed to fetch templates' });
     }
@@ -45,15 +47,15 @@ export const subjectTemplateController = {
       const template = await SubjectTemplate.findOne({ 
         _id: id, 
         userId 
-      }).lean();
+      });
 
       if (!template) {
         res.status(404).json({ error: 'Template not found' });
         return;
       }
 
-      res.json({ success: true, template });
-    } catch (error) {
+      res.json({ success: true, template: template.toJSON() });
+    } catch (error: any) {
       console.error('Error fetching template:', error);
       res.status(500).json({ error: 'Failed to fetch template' });
     }
@@ -84,11 +86,10 @@ export const subjectTemplateController = {
       });
 
       await template.save();
-      const savedTemplate = template.toJSON();
 
       res.status(201).json({ 
         success: true, 
-        template: savedTemplate,
+        template: template.toJSON(),
         message: 'Template created successfully'
       });
     } catch (error: any) {
@@ -120,7 +121,7 @@ export const subjectTemplateController = {
         { _id: id, userId },
         updateData,
         { new: true, runValidators: true }
-      ).lean();
+      );
 
       if (!template) {
         res.status(404).json({ error: 'Template not found' });
@@ -129,7 +130,7 @@ export const subjectTemplateController = {
 
       res.json({ 
         success: true, 
-        template,
+        template: template.toJSON(),
         message: 'Template updated successfully'
       });
     } catch (error: any) {
@@ -167,7 +168,7 @@ export const subjectTemplateController = {
         success: true, 
         message: 'Template deleted successfully'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting template:', error);
       res.status(500).json({ error: 'Failed to delete template' });
     }
@@ -199,7 +200,7 @@ export const subjectTemplateController = {
         template: template.toJSON(),
         message: `Template ${template.isEnabled ? 'enabled' : 'disabled'} successfully`
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling template:', error);
       res.status(500).json({ error: 'Failed to toggle template' });
     }
