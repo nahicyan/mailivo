@@ -27,8 +27,14 @@ export default function LoginPage() {
 
     try {
       await login(formData.email, formData.password);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to login');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error && 'response' in err && 
+        typeof err.response === 'object' && err.response !== null &&
+        'data' in err.response && typeof err.response.data === 'object' && 
+        err.response.data !== null && 'error' in err.response.data
+        ? String(err.response.data.error)
+        : 'Failed to login';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -93,7 +99,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-4 text-center text-sm">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-primary hover:underline">
               Create account
             </Link>

@@ -46,8 +46,14 @@ export default function RegisterPage() {
         companyName: formData.companyName,
         companyDomain: formData.companyDomain,
       });
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to register');
+    } catch (err: unknown) {
+      setError(
+        err && typeof err === 'object' && 'response' in err && err.response &&
+          typeof err.response === 'object' && 'data' in err.response &&
+          err.response.data && typeof err.response.data === 'object' && 'error' in err.response.data
+          ? String(err.response.data.error) || 'Failed to register'
+          : 'Failed to register'
+      );
     } finally {
       setLoading(false);
     }
