@@ -35,16 +35,32 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
   const toggleMutation = useToggleSubjectTemplate();
 
   const templates = data?.templates || [];
+  const cleanHtmlContent = (html: string): string => {
+    // Create a temporary element to parse HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // Get text content which automatically converts HTML entities
+    let text = temp.textContent || temp.innerText || '';
+
+    // Preserve emojis and variables but remove extra whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+
+    return text;
+  };
 
   const handleSave = async () => {
-    if (!templateName.trim() || !templateContent.trim()) {
+    // Clean the HTML content to remove &nbsp; and other HTML entities
+    const cleanedContent = cleanHtmlContent(templateContent);
+
+    if (!templateName.trim() || !cleanedContent.trim()) {
       toast.error('Name and content are required');
       return;
     }
 
-    // Extract variables from content
+    // Extract variables from cleaned content
     const variables = PROPERTY_VARIABLES
-      .filter(variable => templateContent.includes(`{${variable.key}}`))
+      .filter(variable => cleanedContent.includes(`{${variable.key}}`))
       .map(variable => variable.key);
 
     try {
@@ -53,7 +69,7 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
           id: editingTemplate.id,
           data: {
             name: templateName,
-            content: templateContent,
+            content: cleanedContent, // Use cleaned content
             variables
           }
         });
@@ -61,7 +77,7 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
       } else {
         await createMutation.mutateAsync({
           name: templateName,
-          content: templateContent,
+          content: cleanedContent, // Use cleaned content
           variables
         });
         toast.success('Template created successfully');
@@ -112,12 +128,15 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
   };
 
 
-const insertVariable = (variableKey: string) => {
-  const variableText = `{${variableKey}}`;
-  richTextRef.current?.insertAtCursor(variableText);
-  const updatedContent = richTextRef.current?.getContent() || '';
-  setTemplateContent(updatedContent);
-};
+  const insertVariable = (variableKey: string) => {
+    if (richTextRef.current) {
+      richTextRef.current.insertAtCursor(`{${variableKey}}`);
+      // Get the cleaned content after insertion
+      const htmlContent = richTextRef.current.getContent();
+      const cleanedContent = cleanHtmlContent(htmlContent);
+      setTemplateContent(cleanedContent);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
