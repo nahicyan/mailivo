@@ -43,6 +43,7 @@ import {
   RefreshCw,
   AlertTriangle
 } from 'lucide-react';
+import { CampaignTypeDialog } from '@/components/campaigns/CampaignTypeDialog';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { Campaign } from '@/types/campaign';
 import { toast } from 'sonner';
@@ -60,6 +61,7 @@ export default function ManageCampaignsPage() {
   const [properties, setProperties] = useState<any[]>([]);
   const [emailLists, setEmailLists] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [campaignTypeDialogOpen, setCampaignTypeDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -144,7 +146,7 @@ export default function ManageCampaignsPage() {
     }
     const property = properties.find(p => p.id === propertyId || p._id === propertyId);
     if (!property) return propertyId;
-    
+
     return `${property.streetAddress || ''}, ${property.city || ''}, ${property.zip || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
   };
 
@@ -301,8 +303,9 @@ export default function ManageCampaignsPage() {
   };
 
   const handleCreateCampaign = () => {
-    router.push('/dashboard/landivo/campaigns/create');
+    setCampaignTypeDialogOpen(true);
   };
+
 
   // Calculate stats
   const totalSent = campaigns.reduce((sum, c) => sum + (c.metrics?.sent || 0), 0);
@@ -462,6 +465,12 @@ export default function ManageCampaignsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/*Campaign Type Dialog */}
+      <CampaignTypeDialog
+        open={campaignTypeDialogOpen}
+        onOpenChange={setCampaignTypeDialogOpen}
+      />
+
     </div>
   );
 }
