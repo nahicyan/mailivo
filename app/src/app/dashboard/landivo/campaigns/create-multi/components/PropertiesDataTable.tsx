@@ -1,7 +1,7 @@
 // app/src/app/dashboard/landivo/campaigns/create-multi/components/PropertiesDataTable.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -72,6 +72,7 @@ interface Props {
   selectedProperties: string[];
   onSelectAll: (checked: boolean) => void;
   onSelectProperty: (propertyId: string, checked: boolean) => void;
+  onSortOrderChange?: (sortedData: Property[]) => void;
   loading: boolean;
 }
 
@@ -87,6 +88,7 @@ export function PropertiesDataTable({
   selectedProperties,
   onSelectAll,
   onSelectProperty,
+  onSortOrderChange,
   loading
 }: Props) {
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
@@ -228,6 +230,13 @@ export function PropertiesDataTable({
       return 0;
     });
   }, [data, sortConfig]);
+
+  // Notify parent when sort order changes
+  useEffect(() => {
+    if (onSortOrderChange) {
+      onSortOrderChange(sortedData);
+    }
+  }, [sortedData, onSortOrderChange]);
 
   // Handle sorting
   const handleSort = (columnId: string) => {

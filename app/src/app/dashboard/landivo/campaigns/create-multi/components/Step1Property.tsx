@@ -1,7 +1,7 @@
 // app/src/app/dashboard/landivo/campaigns/create-multi/components/Step1Property.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo} from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Building, BarChart3 } from 'lucide-react';
 import { PropertiesDataTable } from './PropertiesDataTable';
 import { PropertiesTableFilter } from './PropertiesTableFilter';
-
 
 interface Property {
   id: string;
@@ -47,6 +46,7 @@ interface Props {
   properties: Property[];
   propertiesLoading: boolean;
   propertiesError: any;
+  onSortOrderChange?: (sortedIds: string[]) => void;
 }
 
 export function Step1Property({ 
@@ -55,7 +55,8 @@ export function Step1Property({
   errors, 
   properties = [], 
   propertiesLoading, 
-  propertiesError 
+  propertiesError,
+  onSortOrderChange
 }: Props) {
   // Selection state
   const [selectedProperties, setSelectedProperties] = useState<string[]>(
@@ -74,7 +75,7 @@ export function Step1Property({
     minPriceDisplay: '$0',
     maxPriceDisplay: '$10,000,000',
     minSqftDisplay: '0',
-    maxSqftDisplay: '500,000'
+    maxSqftDisplay: '50,000'
   });
   
   // Column visibility
@@ -225,6 +226,19 @@ export function Step1Property({
     }));
   };
 
+  // Handle sort order change from table
+  const handleSortOrderChange = (sortedData: Property[]) => {
+    // Extract only selected property IDs in their sorted order
+    const selectedInSortedOrder = sortedData
+      .filter(property => selectedProperties.includes(property.id))
+      .map(property => property.id);
+    
+    // Call parent callback if provided
+    if (onSortOrderChange && selectedInSortedOrder.length > 0) {
+      onSortOrderChange(selectedInSortedOrder);
+    }
+  };
+
   // Clear filters
   const clearAllFilters = () => {
     setFilters({
@@ -237,7 +251,7 @@ export function Step1Property({
       minPriceDisplay: '$0',
       maxPriceDisplay: '$10,000,000',
       minSqftDisplay: '0',
-      maxSqftDisplay: '500,000'
+      maxSqftDisplay: '50,000'
     });
     setSearchQuery("");
   };
@@ -275,7 +289,7 @@ export function Step1Property({
             <span>Select Properties for Campaign</span>
           </CardTitle>
           <div className="text-sm text-gray-600">
-            Choose multiple properties to include in your campaign
+            Choose multiple properties to include in your campaign. The order will be preserved based on table sorting.
           </div>
         </CardHeader>
       </Card>
@@ -326,6 +340,7 @@ export function Step1Property({
         selectedProperties={selectedProperties}
         onSelectAll={handleSelectAll}
         onSelectProperty={handleSelectProperty}
+        onSortOrderChange={handleSortOrderChange}
         loading={propertiesLoading}
       />
 

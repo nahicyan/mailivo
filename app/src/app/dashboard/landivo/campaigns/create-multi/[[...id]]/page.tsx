@@ -1,12 +1,13 @@
-// app/src/app/dashboard/landivo/campaigns/create/[[...id]]/page.tsx
+// app/src/app/dashboard/landivo/campaigns/create-multi/[[...id]]/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ArrowLeft, Mail, Loader2, RefreshCcw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, ArrowLeft, Mail, Loader2, RefreshCcw, Building } from 'lucide-react';
 import { CreateCampaignRequest } from '@/types/campaign';
 import { useLandivoProperties } from '@/hooks/useLandivoProperties';
 import { useTemplates } from '@/hooks/useTemplates';
@@ -23,7 +24,12 @@ import { Step7Schedule } from '../components/Step7Schedule';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
-export default function CreateCampaignPage() {
+interface ExtendedCreateCampaignRequest extends CreateCampaignRequest {
+    selectedProperties: string[];
+    sortedPropertyOrder: string[];
+}
+
+export default function CreateMultiCampaignPage() {
     const router = useRouter();
     const params = useParams();
     const [loading, setLoading] = useState(false);
@@ -31,12 +37,9 @@ export default function CreateCampaignPage() {
     const [currentStep, setCurrentStep] = useState(1);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Extract property ID from URL params
-    const propertyId = params.id?.[0] as string | undefined;
-
-    const [formData, setFormData] = useState<CreateCampaignRequest>({
+    const [formData, setFormData] = useState<ExtendedCreateCampaignRequest>({
         name: '',
-        property: '',
+        property: '', // Keep for compatibility
         emailList: '',
         emailTemplate: '',
         emailAddressGroup: '',
@@ -44,7 +47,9 @@ export default function CreateCampaignPage() {
         emailVolume: 1000,
         description: '',
         subject: '',
-        selectedPlan: null
+        selectedPlan: null,
+        selectedProperties: [],
+        sortedPropertyOrder: []
     });
 
     // Data fetching hooks
@@ -69,60 +74,48 @@ export default function CreateCampaignPage() {
         retry: 2
     });
 
-    // Handle property pre-selection when URL has property ID
-    useEffect(() => {
-        if (propertyId && properties && !propertiesLoading) {
-            const selectedProperty = properties.find(p => p.id === propertyId);
+    // Get selected properties with proper sorting
+    const selectedPropertiesData = useMemo(() => {
+        if (!properties || !formData.selectedProperties.length) return [];
+        
+        // If we have sorted order, use it; otherwise use selection order
+        const orderToUse = formData.sortedPropertyOrder.length > 0 
+            ? formData.sortedPropertyOrder 
+            : formData.selectedProperties;
             
-            if (selectedProperty) {
-                // Auto-fill campaign details and advance to step 2
-                setFormData(prev => ({
-                    ...prev,
-                    property: propertyId,
-                    name: `${selectedProperty.streetAddress}, ${selectedProperty.city}, ${selectedProperty.zip}`,
-                    description: selectedProperty.title
-                }));
-                
-                // Clear any property-related errors and advance to step 2
-                setErrors(prev => {
-                    const { property, ...rest } = prev;
-                    return rest;
-                });
-                
-                // Auto-advance to step 2 since property is pre-selected
-                setCurrentStep(2);
-            } else if (properties.length > 0) {
-                // Property ID not found - redirect to base create page
-                console.warn(`Property ID ${propertyId} not found, redirecting to step 1`);
-                router.replace('/dashboard/landivo/campaigns/create');
-                return;
-            }
-        }
-    }, [propertyId, properties, propertiesLoading, router]);
+        return orderToUse
+            .map(id => properties.find(p => p.id === id))
+            .filter(Boolean);
+    }, [properties, formData.selectedProperties, formData.sortedPropertyOrder]);
 
-    // Auto-fill campaign name and description when property is selected
-    const handlePropertyChange = (propertyId: string) => {
-        setFormData(prev => ({ ...prev, property: propertyId }));
-
-        if (propertyId && properties) {
-            const selectedProperty = properties.find(p => p.id === propertyId);
-            if (selectedProperty) {
-                setFormData(prev => ({
-                    ...prev,
-                    property: propertyId,
-                    name: `${selectedProperty.streetAddress}, ${selectedProperty.city}, ${selectedProperty.zip}`,
-                    description: selectedProperty.title
-                }));
-            }
+    // Generate campaign name from selected properties
+    const generateCampaignName = (selectedProps: any[]) => {
+        if (selectedProps.length === 0) return '';
+        if (selectedProps.length === 1) {
+            const prop = selectedProps[0];
+            return `${prop.streetAddress}, ${prop.city}, ${prop.zip}`;
         }
+        return `Multi-Property Campaign (${selectedProps.length} properties)`;
     };
+
+    // Update campaign name when properties change
+    useEffect(() => {
+        if (selectedPropertiesData.length > 0 && !formData.name.trim()) {
+            setFormData(prev => ({
+                ...prev,
+                name: generateCampaignName(selectedPropertiesData)
+            }));
+        }
+    }, [selectedPropertiesData]);
 
     const validateStep = (step: number): boolean => {
         const newErrors: Record<string, string> = {};
 
         switch (step) {
             case 1:
-                if (!formData.property) newErrors.property = 'Please select a property';
+                if (!formData.selectedProperties || formData.selectedProperties.length === 0) {
+                    newErrors.selectedProperties = 'Please select at least one property';
+                }
                 break;
             case 2:
                 if (!formData.name.trim()) newErrors.name = 'Campaign name is required';
@@ -156,11 +149,6 @@ export default function CreateCampaignPage() {
     };
 
     const handlePrevious = () => {
-        // If we're at step 2 and came from a direct property URL, go back to campaigns list
-        if (currentStep === 2 && propertyId) {
-            router.push('/dashboard/landivo/campaigns');
-            return;
-        }
         setCurrentStep(prev => Math.max(prev - 1, 1));
     };
 
@@ -174,8 +162,15 @@ export default function CreateCampaignPage() {
         setCurrentStep(step);
     };
 
+    // Handler for when table sorting changes in Step1Property
+    const handleSortOrderChange = (sortedIds: string[]) => {
+        setFormData(prev => ({
+            ...prev,
+            sortedPropertyOrder: sortedIds
+        }));
+    };
+
     const selectedTemplate = templates?.find(t => t.id === formData.emailTemplate);
-    const selectedProperty = properties?.find(p => p.id === formData.property);
 
     const stepProps = {
         formData,
@@ -188,7 +183,7 @@ export default function CreateCampaignPage() {
         setSelectedDate,
         propertiesLoading,
         propertiesError,
-        handlePropertyChange
+        onSortOrderChange: handleSortOrderChange
     };
 
     const handleSubmit = async () => {
@@ -200,17 +195,20 @@ export default function CreateCampaignPage() {
         try {
             const campaignStatus = formData.emailSchedule === 'immediate' ? 'active' : 'draft';
 
+            // Use sorted property order for the final submission
+            const finalPropertyOrder = formData.sortedPropertyOrder.length > 0 
+                ? formData.sortedPropertyOrder 
+                : formData.selectedProperties;
+
             const campaignData = {
                 ...formData,
                 status: campaignStatus,
                 source: 'landivo',
-                scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
-                subject: formData.subject || selectedTemplate?.subject || selectedTemplate?.title || `Campaign for ${formData.property}`,
-                htmlContent: selectedTemplate?.htmlContent || selectedTemplate?.content || selectedTemplate?.body || '<p>Email content here</p>',
-                textContent: selectedTemplate?.textContent || '',
-                audienceType: 'landivo',
-                segments: [formData.emailList],
-                estimatedRecipients: formData.emailVolume
+                type: 'multi-property',
+                properties: finalPropertyOrder, // Send as ordered array
+                scheduledDate: formData.emailSchedule === 'scheduled' 
+                    ? selectedDate?.toISOString() 
+                    : null
             };
 
             const response = await fetch(`${API_URL}/campaigns`, {
@@ -225,103 +223,74 @@ export default function CreateCampaignPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to create campaign');
+                throw new Error(errorData.message || 'Failed to create campaign');
             }
 
-            const newCampaign = await response.json();
-
-            if (formData.emailSchedule === 'immediate' && newCampaign.status === 'active') {
-                try {
-                    await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-                        },
-                        credentials: 'include'
-                    });
-                } catch (sendError) {
-                    console.warn('Auto-send failed:', sendError);
-                }
-            }
-
-            router.push('/dashboard/landivo/campaigns/manage');
-        } catch (error: any) {
-            setErrors({ submit: error.message || 'Failed to create campaign. Please try again.' });
+            const result = await response.json();
+            router.push(`/dashboard/landivo/campaigns/${result.id}`);
+            
+        } catch (error) {
+            console.error('Campaign creation failed:', error);
+            setErrors({ submit: error instanceof Error ? error.message : 'Unknown error occurred' });
         } finally {
             setLoading(false);
         }
     };
 
-    // Show loading state while properties are being fetched and we have a property ID
-    if (propertyId && propertiesLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                    <p className="text-muted-foreground">Loading property information...</p>
-                </div>
-            </div>
-        );
-    }
-
-    // Handle data loading errors
-    const hasErrors = propertiesError || templatesError || listsError;
-    if (hasErrors) {
-        return (
-            <div className="min-h-screen bg-gray-50 p-4">
-                <div className="max-w-2xl mx-auto pt-8">
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription className="ml-2">
-                            Failed to load required data. Please try again.
-                            <div className="flex gap-2 mt-3">
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => {
-                                        refetchProperties();
-                                        refetchTemplates();
-                                        refetchLists();
-                                    }}
-                                >
-                                    <RefreshCcw className="h-4 w-4 mr-2" />
-                                    Retry
-                                </Button>
-                                <Link href="/dashboard/landivo/campaigns">
-                                    <Button variant="secondary" size="sm">
-                                        <ArrowLeft className="h-4 w-4 mr-2" />
-                                        Back to Campaigns
-                                    </Button>
-                                </Link>
-                            </div>
-                        </AlertDescription>
-                    </Alert>
-                </div>
-            </div>
-        );
-    }
+    const hasErrors = !!(propertiesError || templatesError || listsError);
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <div className="container mx-auto py-8 px-4">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    <StepsSidebar currentStep={currentStep} />
-                    
-                    <div className="lg:col-span-3">
-                        <div className="bg-white rounded-lg border">
-                            <div className="p-6 border-b">
-                                <div className="flex items-center justify-between">
+            <div className="flex">
+                {/* Sidebar */}
+                <div className="w-64 bg-white shadow-sm">
+                    <StepsSidebar 
+                        currentStep={currentStep} 
+                        onStepClick={handleStepClick}
+                        isMultiProperty={true}
+                    />
+                </div>
+
+                {/* Main Content */}
+                <div className="flex-1">
+                    <div className="max-w-4xl mx-auto p-6">
+                        <div className="bg-white rounded-lg shadow-sm">
+                            {/* Header */}
+                            <div className="border-b border-gray-200 p-6">
+                                <div className="flex justify-between items-start">
                                     <div>
                                         <h1 className="text-2xl font-bold text-gray-900">
-                                            {propertyId ? 'Create Campaign for Property' : 'Create New Multi-Property Campaign'}
+                                            Create Multi-Property Campaign
                                         </h1>
                                         <p className="text-gray-600">
                                             Complete all steps to create your campaign
                                         </p>
-                                        {selectedProperty && currentStep >= 2 && (
-                                            <p className="text-sm text-blue-600 mt-1">
-                                                <strong>Property:</strong> {selectedProperty.streetAddress}, {selectedProperty.county}, {selectedProperty.city}, {selectedProperty.state} {selectedProperty.zip}
-                                            </p>
+                                        {/* Selected Properties Display */}
+                                        {selectedPropertiesData.length > 0 && currentStep >= 2 && (
+                                            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Building className="h-4 w-4 text-blue-600" />
+                                                    <span className="text-sm font-medium text-blue-800">
+                                                        Selected Properties ({selectedPropertiesData.length})
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {selectedPropertiesData.slice(0, 3).map((property) => (
+                                                        <Badge 
+                                                            key={property.id}
+                                                            variant="secondary" 
+                                                            className="text-xs"
+                                                        >
+                                                            {property.streetAddress}, {property.city}
+                                                        </Badge>
+                                                    ))}
+                                                    {selectedPropertiesData.length > 3 && (
+                                                        <Badge variant="secondary" className="text-xs">
+                                                            +{selectedPropertiesData.length - 3} more
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                     <Link href="/dashboard/landivo/campaigns/manage">
@@ -352,6 +321,7 @@ export default function CreateCampaignPage() {
                                     </Alert>
                                 )}
 
+                                {/* Step Content */}
                                 {currentStep === 1 && <Step1Property {...stepProps} />}
                                 {currentStep === 2 && <Step2BasicInfo {...stepProps} />}
                                 {currentStep === 3 && <Step3Audience {...stepProps} />}
@@ -366,7 +336,7 @@ export default function CreateCampaignPage() {
                                     setFormData={setFormData}
                                     errors={errors}
                                     selectedTemplate={selectedTemplate}
-                                    selectedProperty={selectedProperty}
+                                    selectedProperties={selectedPropertiesData}
                                 />}
                                 {currentStep === 6 && <Step6Subject {...stepProps} />}
                                 {currentStep === 7 && <Step7Schedule {...stepProps} />}
@@ -393,7 +363,7 @@ export default function CreateCampaignPage() {
                                                 ) : (
                                                     <>
                                                         <Mail className="mr-2 h-4 w-4" />
-                                                        Create Campaign
+                                                        Create Multi-Property Campaign
                                                     </>
                                                 )}
                                             </Button>
