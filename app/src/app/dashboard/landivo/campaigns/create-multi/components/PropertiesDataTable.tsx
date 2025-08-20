@@ -92,10 +92,117 @@ export function PropertiesDataTable({
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [expandedCells, setExpandedCells] = useState<{[key: string]: boolean}>({});
 
+  // CSS for rich text cells
+  const richTextCellStyles = `
+    .rich-text-cell {
+      line-height: 1.5;
+      transition: max-height 0.3s ease-in-out;
+    }
+    
+    .rich-text-cell p {
+      margin-bottom: 0.5rem;
+    }
+    
+    .rich-text-cell h1, .rich-text-cell h2, .rich-text-cell h3, 
+    .rich-text-cell h4, .rich-text-cell h5, .rich-text-cell h6 {
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    
+    .rich-text-cell ul, .rich-text-cell ol {
+      margin-left: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .rich-text-cell a {
+      color: #3b82f6;
+      text-decoration: underline;
+    }
+
+    .sticky-checkbox-header {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      background-color: rgb(249 250 251);
+      border-right: 1px solid rgb(229 231 235);
+      padding-right: 16px;
+    }
+
+    .sticky-checkbox-cell {
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      background-color: white;
+      border-right: 1px solid rgb(229 231 235);
+      padding-right: 16px;
+    }
+
+    .sticky-checkbox-cell.selected {
+      background-color: rgb(239 246 255);
+    }
+  `;
+
+  // Helper function to render rich text content with truncation
+  const renderRichTextContent = (content: any, rowId: string, columnId: string, maxLength = 100) => {
+    if (!content) return <span className="text-gray-400">N/A</span>;
+    
+    const isExpanded = expandedCells[`${rowId}-${columnId}`];
+    
+    // Strip HTML to get approximate text length for truncation decision
+    const textContent = content.replace(/<[^>]*>/g, '');
+    const needsTruncation = textContent.length > maxLength;
+    
+    // Create a safe version of the content for display
+    const displayContent = isExpanded || !needsTruncation ? 
+      content : 
+      content.substring(0, maxLength) + '...';
+    
+    return (
+      <div className="relative">
+        <div
+          className={`rich-text-cell ${isExpanded ? 'max-h-none' : 'max-h-24 overflow-hidden'}`}
+          dangerouslySetInnerHTML={{ __html: displayContent }}
+        />
+        
+        {needsTruncation && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpandedCells(prev => ({
+                ...prev,
+                [`${rowId}-${columnId}`]: !prev[`${rowId}-${columnId}`]
+              }));
+            }}
+            className="mt-1 text-xs text-blue-600 hover:text-blue-800 flex items-center"
+          >
+            {isExpanded ? (
+              <>Show less <ChevronUp className="ml-1 h-3 w-3" /></>
+            ) : (
+              <>Show more <ChevronDown className="ml-1 h-3 w-3" /></>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   // Get visible column configurations
   const displayColumns = useMemo(() => {
     return availableColumns.filter(col => visibleColumns.includes(col.id));
   }, [availableColumns, visibleColumns]);
+
+  // Get column value for sorting
+  const getColumnValue = (row: Property, columnId: string): any => {
+    const column = availableColumns.find(col => col.id === columnId);
+    if (!column) return '';
+
+    if (typeof column.accessor === 'function') {
+      return column.accessor(row);
+    }
+
+    return row[column.accessor as keyof Property];
+  };
 
   // Sort data
   const sortedData = useMemo(() => {
@@ -121,18 +228,6 @@ export function PropertiesDataTable({
       return 0;
     });
   }, [data, sortConfig]);
-
-  // Get column value for sorting
-  const getColumnValue = (row: Property, columnId: string): any => {
-    const column = availableColumns.find(col => col.id === columnId);
-    if (!column) return '';
-
-    if (typeof column.accessor === 'function') {
-      return column.accessor(row);
-    }
-
-    return row[column.accessor as keyof Property];
-  };
 
   // Handle sorting
   const handleSort = (columnId: string) => {
@@ -163,8 +258,13 @@ export function PropertiesDataTable({
   };
 
   // Format cell value
-  const formatCellValue = (value: any, columnId: string, isRichText?: boolean) => {
+  const formatCellValue = (value: any, columnId: string, rowId: string, isRichText?: boolean) => {
     if (value === null || value === undefined) return 'N/A';
+
+    // Handle rich text fields specially
+    if (isRichText) {
+      return renderRichTextContent(value, rowId, columnId);
+    }
 
     if (columnId === 'askingPrice' || columnId === 'minPrice' || columnId === 'hoaFee') {
       return new Intl.NumberFormat('en-US', { 
@@ -211,30 +311,6 @@ export function PropertiesDataTable({
       return value === true || value === 'Yes' ? 'Yes' : 'No';
     }
 
-    if (isRichText && typeof value === 'string' && value.length > 100) {
-      const cellKey = `${columnId}-${value.substring(0, 20)}`;
-      const isExpanded = expandedCells[cellKey];
-      
-      return (
-        <div>
-          <div className={isExpanded ? '' : 'line-clamp-2'}>
-            {value.replace(/<[^>]*>/g, '')} {/* Strip HTML tags */}
-          </div>
-          {value.length > 100 && (
-            <button
-              onClick={() => setExpandedCells(prev => ({
-                ...prev,
-                [cellKey]: !prev[cellKey]
-              }))}
-              className="text-blue-600 hover:text-blue-800 text-sm mt-1"
-            >
-              {isExpanded ? 'Show less' : 'Show more'}
-            </button>
-          )}
-        </div>
-      );
-    }
-
     return value.toString();
   };
 
@@ -264,15 +340,18 @@ export function PropertiesDataTable({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      {/* Inject CSS for rich text styling */}
+      <style>{richTextCellStyles}</style>
+      
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              {/* Select All Checkbox */}
-              <TableHead className="w-12">
+              {/* Select All Checkbox - Sticky */}
+              <TableHead className="w-12 sticky-checkbox-header">
                 <Checkbox
                   checked={isAllSelected}
-                  indeterminate={isSomeSelected}
+                  indeterminate={isSomeSelected || undefined}
                   onCheckedChange={onSelectAll}
                   aria-label="Select all properties"
                 />
@@ -305,8 +384,10 @@ export function PropertiesDataTable({
                   selectedProperties.includes(property.id) ? 'bg-blue-50' : ''
                 }`}
               >
-                {/* Select Checkbox */}
-                <TableCell>
+                {/* Select Checkbox - Sticky */}
+                <TableCell className={`sticky-checkbox-cell ${
+                  selectedProperties.includes(property.id) ? 'selected' : ''
+                }`}>
                   <Checkbox
                     checked={selectedProperties.includes(property.id)}
                     onCheckedChange={(checked) => 
@@ -321,7 +402,7 @@ export function PropertiesDataTable({
                   const value = getColumnValue(property, column.id);
                   return (
                     <TableCell key={column.id} className="max-w-xs">
-                      {formatCellValue(value, column.id, column.isRichText)}
+                      {formatCellValue(value, column.id, property.id, column.isRichText)}
                     </TableCell>
                   );
                 })}
