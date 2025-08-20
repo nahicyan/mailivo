@@ -77,12 +77,12 @@ export default function CreateMultiCampaignPage() {
     // Get selected properties with proper sorting
     const selectedPropertiesData = useMemo(() => {
         if (!properties || !formData.selectedProperties.length) return [];
-        
+
         // If we have sorted order, use it; otherwise use selection order
-        const orderToUse = formData.sortedPropertyOrder.length > 0 
-            ? formData.sortedPropertyOrder 
+        const orderToUse = formData.sortedPropertyOrder.length > 0
+            ? formData.sortedPropertyOrder
             : formData.selectedProperties;
-            
+
         return orderToUse
             .map(id => properties.find(p => p.id === id))
             .filter(Boolean);
@@ -196,8 +196,8 @@ export default function CreateMultiCampaignPage() {
             const campaignStatus = formData.emailSchedule === 'immediate' ? 'active' : 'draft';
 
             // Use sorted property order for the final submission
-            const finalPropertyOrder = formData.sortedPropertyOrder.length > 0 
-                ? formData.sortedPropertyOrder 
+            const finalPropertyOrder = formData.sortedPropertyOrder.length > 0
+                ? formData.sortedPropertyOrder
                 : formData.selectedProperties;
 
             const campaignData = {
@@ -206,8 +206,8 @@ export default function CreateMultiCampaignPage() {
                 source: 'landivo',
                 type: 'multi-property',
                 properties: finalPropertyOrder, // Send as ordered array
-                scheduledDate: formData.emailSchedule === 'scheduled' 
-                    ? selectedDate?.toISOString() 
+                scheduledDate: formData.emailSchedule === 'scheduled'
+                    ? selectedDate?.toISOString()
                     : null
             };
 
@@ -228,7 +228,7 @@ export default function CreateMultiCampaignPage() {
 
             const result = await response.json();
             router.push(`/dashboard/landivo/campaigns/${result.id}`);
-            
+
         } catch (error) {
             console.error('Campaign creation failed:', error);
             setErrors({ submit: error instanceof Error ? error.message : 'Unknown error occurred' });
@@ -244,8 +244,8 @@ export default function CreateMultiCampaignPage() {
             <div className="flex">
                 {/* Sidebar */}
                 <div className="w-64 bg-white shadow-sm">
-                    <StepsSidebar 
-                        currentStep={currentStep} 
+                    <StepsSidebar
+                        currentStep={currentStep}
                         onStepClick={handleStepClick}
                         isMultiProperty={true}
                     />
@@ -276,9 +276,9 @@ export default function CreateMultiCampaignPage() {
                                                 </div>
                                                 <div className="flex flex-wrap gap-1">
                                                     {selectedPropertiesData.slice(0, 3).map((property) => (
-                                                        <Badge 
+                                                        <Badge
                                                             key={property.id}
-                                                            variant="secondary" 
+                                                            variant="secondary"
                                                             className="text-xs"
                                                         >
                                                             {property.streetAddress}, {property.city}
@@ -308,7 +308,7 @@ export default function CreateMultiCampaignPage() {
                                     <Alert className="mb-6">
                                         <AlertTriangle className="h-4 w-4" />
                                         <AlertDescription>
-                                            There was an error loading the required data. 
+                                            There was an error loading the required data.
                                             Please try refreshing the page.
                                         </AlertDescription>
                                     </Alert>
@@ -325,13 +325,16 @@ export default function CreateMultiCampaignPage() {
                                 {currentStep === 1 && <Step1Property {...stepProps} />}
                                 {currentStep === 2 && <Step2BasicInfo {...stepProps} />}
                                 {currentStep === 3 && <Step3Audience {...stepProps} />}
-                                {currentStep === 4 && <Step4PaymentOptions 
-                                    formData={formData}
-                                    setFormData={setFormData}
-                                    errors={errors}
-                                    selectedTemplate={selectedTemplate}
-                                />}
-                                {currentStep === 5 && <Step5Picture 
+                                {currentStep === 4 && (
+                                    <Step4PaymentOptions
+                                        formData={formData}
+                                        setFormData={setFormData}
+                                        errors={errors}
+                                        selectedTemplate={selectedTemplate}
+                                        properties={properties} // ← Add this missing prop
+                                    />
+                                )}
+                                {currentStep === 5 && <Step5Picture
                                     formData={formData}
                                     setFormData={setFormData}
                                     errors={errors}

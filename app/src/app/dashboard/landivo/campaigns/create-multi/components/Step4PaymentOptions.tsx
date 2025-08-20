@@ -85,16 +85,9 @@ export function Step4PaymentOptions({
 
   // Filter properties with financing available
   const propertiesWithFinancing = useMemo(() => {
-    const withFinancing = selectedPropertiesData.filter(property => 
+    return selectedPropertiesData.filter(property => 
       property?.financing === 'Available'
     );
-    
-    // Debug logging
-    console.log('Selected properties:', selectedPropertiesData.length);
-    console.log('Properties with financing:', withFinancing.length);
-    console.log('Financing values:', selectedPropertiesData.map(p => ({ id: p?.id, financing: p?.financing })));
-    
-    return withFinancing;
   }, [selectedPropertiesData]);
 
   // Fetch payment data for properties with financing
