@@ -22,6 +22,7 @@ import { Step5Picture } from '../components/Step5Picture';
 import { Step6Subject } from '../components/Step6Subject';
 import { Step7Schedule } from '../components/Step7Schedule';
 import { validatePaymentOptions } from '@/utils/paymentValidation';
+import { validateMultiPropertySchedule, prepareMultiPropertyCampaignData } from '@/utils/multiPropertyValidation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
@@ -139,7 +140,9 @@ export default function CreateMultiCampaignPage() {
                 if (!formData.subject.trim()) newErrors.subject = 'Subject line is required';
                 break;
             case 7:
-                // Schedule step validation if needed
+                // NEW: Use multi-property schedule validation
+                const scheduleValidation = validateMultiPropertySchedule(formData, selectedDate);
+                Object.assign(newErrors, scheduleValidation.errors);
                 break;
         }
 
@@ -192,29 +195,12 @@ export default function CreateMultiCampaignPage() {
     };
 
     const handleSubmit = async () => {
-        if (!validateStep(7)) {
-            return;
-        }
+        if (!validateStep(7)) return;
 
         setLoading(true);
         try {
-            const campaignStatus = formData.emailSchedule === 'immediate' ? 'active' : 'draft';
-
-            // Use sorted property order for the final submission
-            const finalPropertyOrder = formData.sortedPropertyOrder.length > 0
-                ? formData.sortedPropertyOrder
-                : formData.selectedProperties;
-
-            const campaignData = {
-                ...formData,
-                status: campaignStatus,
-                source: 'landivo',
-                type: 'multi-property',
-                properties: finalPropertyOrder, // Send as ordered array
-                scheduledDate: formData.emailSchedule === 'scheduled'
-                    ? selectedDate?.toISOString()
-                    : null
-            };
+            // Use compatible data preparation
+            const campaignData = prepareMultiPropertyCampaignData(formData, selectedDate);
 
             const response = await fetch(`${API_URL}/campaigns`, {
                 method: 'POST',

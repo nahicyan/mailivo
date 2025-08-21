@@ -1,7 +1,7 @@
-// app/src/app/dashboard/landivo/campaigns/create-multi/components/Step5Picture.tsx
+// app/src/app/dashboard/landivo/campaigns/create-multi/components/Step5Picture.tsx - FIXED VERSION
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -84,13 +84,8 @@ const PropertyImageCard: React.FC<{
         {/* Image Selector */}
         {availableImages.length > 0 ? (
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-gray-600">
-              Select Image ({availableImages.length} available)
-            </Label>
-            <Select 
-              value={selectedIndex.toString()} 
-              onValueChange={handleImageChange}
-            >
+            <Label className="text-xs font-medium text-gray-700">Select Image</Label>
+            <Select value={selectedIndex.toString()} onValueChange={handleImageChange}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -104,32 +99,30 @@ const PropertyImageCard: React.FC<{
             </Select>
           </div>
         ) : (
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              No images available for this property
-            </AlertDescription>
-          </Alert>
+          <div className="text-center py-4">
+            <ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">No images available</p>
+          </div>
         )}
 
         {/* Image Preview */}
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-gray-600">Preview</Label>
-          <div className="aspect-[4/3] border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+          <Label className="text-xs font-medium text-gray-700">Preview</Label>
+          <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
             {currentImageUrl ? (
               <img
                 src={currentImageUrl}
-                alt={`${property.streetAddress} - Image ${selectedIndex + 1}`}
+                alt={`Property ${selectedIndex + 1}`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjZjNmNGY2Ii8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY5NzU4NiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2UgTm90IEZvdW5kPC90ZXh0Pgo8L3N2Zz4K';
+                  e.currentTarget.src = '/placeholder-property.jpg';
                 }}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
-                <div className="text-center text-gray-400">
-                  <ImageIcon className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-xs">No image available</p>
+                <div className="text-center">
+                  <ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No image selected</p>
                 </div>
               </div>
             )}
@@ -149,7 +142,12 @@ const ImageSelectionSummary: React.FC<{
   selections: PropertyImageSelection[];
   properties: Property[];
 }> = ({ selections, properties }) => {
-  if (selections.length === 0) return null;
+  // Deduplicate selections by propertyId to fix React key errors
+  const uniqueSelections = selections.filter((selection, index, array) => 
+    array.findIndex(s => s.propertyId === selection.propertyId) === index
+  );
+
+  if (uniqueSelections.length === 0) return null;
 
   return (
     <Card className="bg-green-50 border-green-200">
@@ -161,7 +159,7 @@ const ImageSelectionSummary: React.FC<{
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {selections.map((selection) => {
+          {uniqueSelections.map((selection) => {
             const property = properties.find(p => p.id === selection.propertyId);
             if (!property) return null;
             
@@ -204,19 +202,28 @@ export function Step5Picture({
       .filter(Boolean) as Property[];
   }, [properties, formData.selectedProperties, formData.sortedPropertyOrder]);
 
-  // Initialize and manage image selections
-  const [imageSelections, setImageSelections] = useState<PropertyImageSelection[]>(
-    formData.multiPropertyImageSelections || []
-  );
+  // Initialize image selections from form data (deduplicated)
+  const initialSelections = useMemo(() => {
+    const existing = formData.multiPropertyImageSelections || [];
+    // Deduplicate by propertyId
+    const unique = existing.filter((selection: PropertyImageSelection, index: number, array: PropertyImageSelection[]) => 
+      array.findIndex(s => s.propertyId === selection.propertyId) === index
+    );
+    return unique;
+  }, [formData.multiPropertyImageSelections]);
 
-  // Initialize default selections for properties without selections
+  // Local state for image selections
+  const [imageSelections, setImageSelections] = useState<PropertyImageSelection[]>(initialSelections);
+
+  // Initialize default selections for new properties
   useEffect(() => {
-    const needsInitialization = selectedPropertiesData.filter(property => 
-      !imageSelections.find(selection => selection.propertyId === property.id)
+    const currentPropertyIds = imageSelections.map(s => s.propertyId);
+    const newProperties = selectedPropertiesData.filter(property => 
+      !currentPropertyIds.includes(property.id)
     );
 
-    if (needsInitialization.length > 0) {
-      const newSelections = needsInitialization.map(property => {
+    if (newProperties.length > 0) {
+      const newSelections = newProperties.map(property => {
         const availableImages = parsePropertyImages(property.imageUrls);
         return {
           propertyId: property.id,
@@ -227,7 +234,7 @@ export function Step5Picture({
 
       setImageSelections(prev => [...prev, ...newSelections]);
     }
-  }, [selectedPropertiesData]);
+  }, [selectedPropertiesData]); // Only depend on selectedPropertiesData
 
   // Clean up selections for deselected properties
   useEffect(() => {
@@ -237,15 +244,26 @@ export function Step5Picture({
     );
   }, [selectedPropertiesData]);
 
-  // Update form data when selections change
-  useEffect(() => {
+  // Update form data when selections change (with deduplication)
+  const updateFormDataCallback = useCallback((selections: PropertyImageSelection[]) => {
+    // Deduplicate selections before saving
+    const uniqueSelections = selections.filter((selection, index, array) => 
+      array.findIndex(s => s.propertyId === selection.propertyId) === index
+    );
+
     setFormData(prev => ({
       ...prev,
-      multiPropertyImageSelections: imageSelections
+      multiPropertyImageSelections: uniqueSelections
     }));
-  }, [imageSelections, setFormData]);
+  }, [setFormData]);
 
-  const handleSelectionChange = (propertyId: string, imageIndex: number) => {
+  // Update form data when selections change
+  useEffect(() => {
+    updateFormDataCallback(imageSelections);
+  }, [imageSelections, updateFormDataCallback]);
+
+  // Handle selection change
+  const handleSelectionChange = useCallback((propertyId: string, imageIndex: number) => {
     const property = selectedPropertiesData.find(p => p.id === propertyId);
     if (!property) return;
 
@@ -253,18 +271,10 @@ export function Step5Picture({
     const imageUrl = availableImages[imageIndex] ? getFullImageUrl(availableImages[imageIndex]) : '';
 
     setImageSelections(prev => {
-      const existing = prev.find(s => s.propertyId === propertyId);
-      if (existing) {
-        return prev.map(s => 
-          s.propertyId === propertyId 
-            ? { ...s, imageIndex, imageUrl }
-            : s
-        );
-      } else {
-        return [...prev, { propertyId, imageIndex, imageUrl }];
-      }
+      const filtered = prev.filter(s => s.propertyId !== propertyId); // Remove existing
+      return [...filtered, { propertyId, imageIndex, imageUrl }]; // Add new
     });
-  };
+  }, [selectedPropertiesData]);
 
   // Error handling
   if (!selectedPropertiesData.length) {
