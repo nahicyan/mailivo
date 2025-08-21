@@ -21,6 +21,7 @@ import { Step4PaymentOptions } from '../components/Step4PaymentOptions';
 import { Step5Picture } from '../components/Step5Picture';
 import { Step6Subject } from '../components/Step6Subject';
 import { Step7Schedule } from '../components/Step7Schedule';
+import { validatePaymentOptions } from '@/utils/paymentValidation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
@@ -125,7 +126,11 @@ export default function CreateMultiCampaignPage() {
                 if (!formData.emailList) newErrors.emailList = 'Please select an email list';
                 break;
             case 4:
-                if (!formData.selectedPlan) newErrors.selectedPlan = 'Please select a payment plan';
+                // Add payment options validation
+                const { isValid, errors: paymentErrors } = validatePaymentOptions(formData, properties);
+                if (!isValid) {
+                    Object.assign(newErrors, paymentErrors);
+                }
                 break;
             case 5:
                 // Picture step - no strict validation required
@@ -331,7 +336,7 @@ export default function CreateMultiCampaignPage() {
                                         setFormData={setFormData}
                                         errors={errors}
                                         selectedTemplate={selectedTemplate}
-                                        properties={properties} // ← Add this missing prop
+                                        properties={properties}
                                     />
                                 )}
                                 {currentStep === 5 && <Step5Picture
