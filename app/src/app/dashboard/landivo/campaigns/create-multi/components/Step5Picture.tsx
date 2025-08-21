@@ -1,7 +1,6 @@
-// app/src/app/dashboard/landivo/campaigns/create-multi/components/Step5Picture.tsx - FIXED VERSION
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -202,79 +201,79 @@ export function Step5Picture({
       .filter(Boolean) as Property[];
   }, [properties, formData.selectedProperties, formData.sortedPropertyOrder]);
 
-  // Initialize image selections from form data (deduplicated)
-  const initialSelections = useMemo(() => {
-    const existing = formData.multiPropertyImageSelections || [];
-    // Deduplicate by propertyId
-    const unique = existing.filter((selection: PropertyImageSelection, index: number, array: PropertyImageSelection[]) => 
-      array.findIndex(s => s.propertyId === selection.propertyId) === index
-    );
-    return unique;
-  }, [formData.multiPropertyImageSelections]);
-
   // Local state for image selections
-  const [imageSelections, setImageSelections] = useState<PropertyImageSelection[]>(initialSelections);
+  const [imageSelections, setImageSelections] = useState<PropertyImageSelection[]>([]);
+  
+  // Ref to track if we've initialized selections
+  const initializedRef = useRef(false);
 
-  // Initialize default selections for new properties
+  // Initialize selections only once when properties change
   useEffect(() => {
-    const currentPropertyIds = imageSelections.map(s => s.propertyId);
-    const newProperties = selectedPropertiesData.filter(property => 
-      !currentPropertyIds.includes(property.id)
-    );
+    if (selectedPropertiesData.length === 0) {
+      setImageSelections([]);
+      initializedRef.current = false;
+      return;
+    }
 
-    if (newProperties.length > 0) {
-      const newSelections = newProperties.map(property => {
-        const availableImages = parsePropertyImages(property.imageUrls);
-        return {
-          propertyId: property.id,
-          imageIndex: 0,
-          imageUrl: availableImages[0] ? getFullImageUrl(availableImages[0]) : ''
-        };
+    // Only initialize if we haven't already or if properties changed
+    const currentPropertyIds = selectedPropertiesData.map(p => p.id).sort().join(',');
+    const existingPropertyIds = imageSelections.map(s => s.propertyId).sort().join(',');
+    
+    if (!initializedRef.current || currentPropertyIds !== existingPropertyIds) {
+      // Get existing selections from form data
+      const existingFromForm = (formData.multiPropertyImageSelections || [])
+        .filter((sel: PropertyImageSelection) => 
+          selectedPropertiesData.some(p => p.id === sel.propertyId)
+        );
+
+      // Create default selections for properties without existing selections
+      const newSelections: PropertyImageSelection[] = [];
+      
+      selectedPropertiesData.forEach(property => {
+        const existing = existingFromForm.find((sel: PropertyImageSelection) => sel.propertyId === property.id);
+        if (existing) {
+          newSelections.push(existing);
+        } else {
+          const availableImages = parsePropertyImages(property.imageUrls);
+          newSelections.push({
+            propertyId: property.id,
+            imageIndex: 0,
+            imageUrl: availableImages[0] ? getFullImageUrl(availableImages[0]) : ''
+          });
+        }
       });
 
-      setImageSelections(prev => [...prev, ...newSelections]);
+      setImageSelections(newSelections);
+      initializedRef.current = true;
     }
-  }, [selectedPropertiesData]); // Only depend on selectedPropertiesData
+  }, [selectedPropertiesData.map(p => p.id).join(',')]); // Only re-run when property IDs change
 
-  // Clean up selections for deselected properties
+  // Update form data when selections change (throttled)
   useEffect(() => {
-    const selectedPropertyIds = selectedPropertiesData.map(p => p.id);
-    setImageSelections(prev => 
-      prev.filter(selection => selectedPropertyIds.includes(selection.propertyId))
-    );
-  }, [selectedPropertiesData]);
-
-  // Update form data when selections change (with deduplication)
-  const updateFormDataCallback = useCallback((selections: PropertyImageSelection[]) => {
-    // Deduplicate selections before saving
-    const uniqueSelections = selections.filter((selection, index, array) => 
-      array.findIndex(s => s.propertyId === selection.propertyId) === index
-    );
-
-    setFormData(prev => ({
-      ...prev,
-      multiPropertyImageSelections: uniqueSelections
-    }));
-  }, [setFormData]);
-
-  // Update form data when selections change
-  useEffect(() => {
-    updateFormDataCallback(imageSelections);
-  }, [imageSelections, updateFormDataCallback]);
+    if (imageSelections.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        multiPropertyImageSelections: imageSelections
+      }));
+    }
+  }, [imageSelections]); // Remove setFormData from dependencies to prevent infinite loop
 
   // Handle selection change
-  const handleSelectionChange = useCallback((propertyId: string, imageIndex: number) => {
+  const handleSelectionChange = (propertyId: string, imageIndex: number) => {
     const property = selectedPropertiesData.find(p => p.id === propertyId);
     if (!property) return;
 
     const availableImages = parsePropertyImages(property.imageUrls);
     const imageUrl = availableImages[imageIndex] ? getFullImageUrl(availableImages[imageIndex]) : '';
 
-    setImageSelections(prev => {
-      const filtered = prev.filter(s => s.propertyId !== propertyId); // Remove existing
-      return [...filtered, { propertyId, imageIndex, imageUrl }]; // Add new
-    });
-  }, [selectedPropertiesData]);
+    setImageSelections(prev => 
+      prev.map(sel => 
+        sel.propertyId === propertyId 
+          ? { ...sel, imageIndex, imageUrl }
+          : sel
+      )
+    );
+  };
 
   // Error handling
   if (!selectedPropertiesData.length) {

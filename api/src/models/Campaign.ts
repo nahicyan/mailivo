@@ -1,4 +1,4 @@
-// api/src/models/Campaign.ts
+// api/src/models/Campaign.ts - UPDATED FOR MULTI-PROPERTY ARRAYS
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICampaign extends Document {
@@ -7,43 +7,61 @@ export interface ICampaign extends Document {
   htmlContent: string;
   textContent?: string;
 
-  // Legacy fields (backward compatibility)
-  property: string;
+  // UPDATED: property can be string (single) OR array (multi-property)
+  property: string | string[];
+  
   emailList: string;
   emailTemplate: string;
   emailAddressGroup?: string;
   emailSchedule: string;
   emailVolume: number;
 
-  // Image selections
+  // Image selections (works for both single and multi-property)
   imageSelections?: Record<string, {
-    name: string;
+    name?: string;
+    propertyId?: string;  // For multi-property
     imageIndex: number;
+    imageUrl?: string;    // For multi-property
     order: number;
   }>;
 
-  // Payment plan selection
+  // UPDATED: selectedPlan can be single object OR array of plans
   selectedPlan?: {
-    planNumber: number; // 1, 2, or 3
-    planName: string; // "Payment Plan 1", etc.
+    planNumber: number;
+    planName: string;
     downPayment: number;
     loanAmount: number;
     interestRate: number;
     monthlyPayment: number;
-  } | null;
+  } | Array<{
+    propertyId: string;
+    planNumber: number;
+    planName: string;
+    downPayment: number;
+    loanAmount: number;
+    interestRate: number;
+    monthlyPayment: number;
+  }> | null;
 
-  // New fields for enhanced functionality
+  // Optional multi-property metadata
+  multiPropertyMeta?: {
+    type: 'multi-property';
+    totalProperties: number;
+    financingEnabled: boolean;
+    planStrategy?: string;
+    propertiesWithFinancing: number;
+  };
+
+  // Standard fields
   audienceType?: 'all' | 'segment' | 'landivo';
   segments?: string[];
   estimatedRecipients?: number;
   spamScore?: number;
   sentAt?: Date;
-
   source: 'landivo' | 'manual' | 'api';
   status: 'draft' | 'active' | 'paused' | 'sending' | 'sent' | 'completed' | 'failed';
 
   metrics: {
-    // New metric names
     sent: number;
     delivered: number;
     opened: number;
@@ -51,8 +69,6 @@ export interface ICampaign extends Document {
     bounced: number;
     complained: number;
     totalRecipients: number;
-
-    // Legacy metric names (backward compatibility)
     open: number;
     bounces: number;
     successfulDeliveries: number;
@@ -74,31 +90,49 @@ const CampaignSchema: Schema = new Schema({
   htmlContent: { type: String, required: true },
   textContent: { type: String },
 
-  // Legacy fields
-  property: { type: String, required: true },
+  // UPDATED: property can be string or array
+  property: { 
+    type: Schema.Types.Mixed, // Allows both string and array
+    required: true,
+    validate: {
+      validator: function(v: any) {
+        return typeof v === 'string' || Array.isArray(v);
+      },
+      message: 'Property must be string or array'
+    }
+  },
+  
   emailList: { type: String, required: true },
   emailTemplate: { type: String, required: true },
   emailAddressGroup: { type: String },
   emailSchedule: { type: String, required: true },
   emailVolume: { type: Number, default: 0 },
 
-  //Image Selection
+  // Image selections (flexible for single and multi-property)
   imageSelections: {
     type: Schema.Types.Mixed,
     default: {}
   },
 
-  // Payment plan selection
+  // UPDATED: selectedPlan can be object or array
   selectedPlan: {
-    planNumber: { type: Number },
-    planName: { type: String },
-    downPayment: { type: Number },
-    loanAmount: { type: Number },
-    interestRate: { type: Number },
-    monthlyPayment: { type: Number }
+    type: Schema.Types.Mixed, // Allows object, array, or null
+    default: null
   },
 
-  // New fields
+  // Multi-property metadata
+  multiPropertyMeta: {
+    type: {
+      type: String,
+      enum: ['multi-property']
+    },
+    totalProperties: { type: Number },
+    financingEnabled: { type: Boolean },
+    planStrategy: { type: String },
+    propertiesWithFinancing: { type: Number }
+  },
+
+  // Standard fields
   audienceType: {
     type: String,
     enum: ['all', 'segment', 'landivo'],
@@ -121,7 +155,6 @@ const CampaignSchema: Schema = new Schema({
   },
 
   metrics: {
-    // New metrics
     sent: { type: Number, default: 0 },
     delivered: { type: Number, default: 0 },
     opened: { type: Number, default: 0 },
@@ -129,8 +162,6 @@ const CampaignSchema: Schema = new Schema({
     bounced: { type: Number, default: 0 },
     complained: { type: Number, default: 0 },
     totalRecipients: { type: Number, default: 0 },
-
-    // Legacy metrics
     open: { type: Number, default: 0 },
     bounces: { type: Number, default: 0 },
     successfulDeliveries: { type: Number, default: 0 },

@@ -200,8 +200,12 @@ export default function CreateMultiCampaignPage() {
         setLoading(true);
         try {
             // Use compatible data preparation
-            const campaignData = prepareMultiPropertyCampaignData(formData, selectedDate);
-
+            const campaignData = prepareMultiPropertyCampaignData(
+                formData,
+                selectedDate,
+                properties, // Pass properties array
+                selectedTemplate // Pass template
+            );
             const response = await fetch(`${API_URL}/campaigns`, {
                 method: 'POST',
                 headers: {
