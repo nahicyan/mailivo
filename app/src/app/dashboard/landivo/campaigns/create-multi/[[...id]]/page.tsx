@@ -344,7 +344,7 @@ export default function CreateMultiCampaignPage() {
                                     setFormData={setFormData}
                                     errors={errors}
                                     selectedTemplate={selectedTemplate}
-                                    selectedProperties={selectedPropertiesData}
+                                    properties={properties}
                                 />}
                                 {currentStep === 6 && <Step6Subject {...stepProps} />}
                                 {currentStep === 7 && <Step7Schedule {...stepProps} />}
