@@ -13,6 +13,7 @@ import { buyerGuidelinesMetadata } from '../components/BuyerGuidelines';
 import { propertyButtonsMetadata } from '../components/PropertyButtons';
 import { joinVipListMetadata } from '../components/JoinVipList';
 import { disclaimerMetadata } from '../components/Disclaimer'
+import { propertiesRowMetadata } from '../components/PropertiesRow'
 
 // Component registry - automatically includes all imported components
 export const componentRegistry: ComponentRegistry = {
@@ -27,6 +28,7 @@ export const componentRegistry: ComponentRegistry = {
   [propertyButtonsMetadata.type]: propertyButtonsMetadata,
   [joinVipListMetadata.type]: joinVipListMetadata,
   [disclaimerMetadata.type]: disclaimerMetadata,
+  [propertiesRowMetadata.type]: propertiesRowMetadata,
   // Future components will be added here automatically when imported
 };
 

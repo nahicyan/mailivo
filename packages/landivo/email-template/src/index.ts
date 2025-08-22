@@ -10,7 +10,8 @@ export * from './components/PaymentCalculator';
 export * from './components/BuyerGuidelines';
 export * from './components/PropertyButtons';
 export * from './components/JoinVipList';
-export * from './components/Disclaimer'
+export * from './components/Disclaimer';
+export * from './components/PropertiesRow';
 
 // Export registry and utilities
 export * from './lib/component-registry';
