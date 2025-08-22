@@ -7,6 +7,9 @@ export interface ICampaign extends Document {
   htmlContent: string;
   textContent?: string;
 
+  // Campaign type
+  type: 'single' | 'multi-property';
+
   // UPDATED: property can be string (single) OR array (multi-property)
   property: string | string[];
   
@@ -89,6 +92,13 @@ const CampaignSchema: Schema = new Schema({
   subject: { type: String, required: true },
   htmlContent: { type: String, required: true },
   textContent: { type: String },
+
+  // Campaign type
+  type: {
+    type: String,
+    enum: ['single', 'multi-property'],
+    required: true
+  },
 
   // UPDATED: property can be string or array
   property: { 

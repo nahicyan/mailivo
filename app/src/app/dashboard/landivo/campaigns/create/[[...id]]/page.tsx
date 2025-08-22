@@ -202,6 +202,7 @@ export default function CreateCampaignPage() {
 
             const campaignData = {
                 ...formData,
+                type: 'single',
                 status: campaignStatus,
                 source: 'landivo',
                 scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,

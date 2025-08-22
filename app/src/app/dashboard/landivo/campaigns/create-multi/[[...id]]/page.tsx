@@ -206,6 +206,7 @@ export default function CreateMultiCampaignPage() {
                 properties, // Pass properties array
                 selectedTemplate // Pass template
             );
+            campaignData.type = 'multi-property';
             const response = await fetch(`${API_URL}/campaigns`, {
                 method: 'POST',
                 headers: {
