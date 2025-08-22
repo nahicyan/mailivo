@@ -1,4 +1,4 @@
-// app/src/utils/multiPropertyValidation.ts
+// app/src/utils/multiPropertyValidation.ts - RESTRUCTURED TO MATCH SINGLE PROPERTY FORMAT
 
 /**
  * Validates multi-property campaign step 7 (schedule)
@@ -35,8 +35,10 @@ export function validateMultiPropertySchedule(
   };
 }
 
+// Removed - using template system instead
+
 /**
- * Prepares multi-property campaign data - NO HTML GENERATION
+ * Prepares multi-property campaign data - RESTRUCTURED LIKE SINGLE PROPERTY
  */
 export function prepareMultiPropertyCampaignData(
   formData: any,
@@ -56,6 +58,9 @@ export function prepareMultiPropertyCampaignData(
         array.findIndex(s => s.propertyId === selection.propertyId) === index
       )
     : [];
+
+  // Simple placeholder htmlContent like single property
+  const htmlContent = "<p>Multi-property email content will be generated from template</p>";
 
   // Convert image selections to format similar to single property
   const multiPropertyImageSelections: Record<string, any> = {};
@@ -82,11 +87,12 @@ export function prepareMultiPropertyCampaignData(
     });
   }
 
-  // Structure like single property but with arrays - NO htmlContent
+  // Structure like single property but with arrays
   const campaignData = {
     // Required fields
     name: formData.name,
     subject: formData.subject,
+    htmlContent: htmlContent,
     
     // CHANGED: property is now array instead of string
     property: finalPropertyOrder, // Array of property IDs
