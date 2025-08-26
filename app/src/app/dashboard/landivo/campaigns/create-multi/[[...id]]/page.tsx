@@ -223,7 +223,7 @@ export default function CreateMultiCampaignPage() {
             }
 
             const result = await response.json();
-            router.push(`/dashboard/landivo/campaigns/${result.id}`);
+            router.push(`/dashboard/landivo/campaigns/manage`);
 
         } catch (error) {
             console.error('Campaign creation failed:', error);
