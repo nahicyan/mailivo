@@ -59,10 +59,21 @@ interface CampaignData {
     loanAmount: number;
     interestRate: number;
     monthlyPayment: number;
-  } | null;
+  } | Array<{
+    propertyId: string;
+    planNumber: number;
+    planName: string;
+    downPayment: number;
+    loanAmount: number;
+    interestRate: number;
+    monthlyPayment: number;
+    isAvailable: boolean;
+  }> | null;
   imageSelections?: Record<string, {
-    name: string;
+    name?: string;
+    propertyId?: string;  // For multi-property
     imageIndex: number;
+    imageUrl?: string;    // For multi-property
     order: number;
   }>;
   [key: string]: any;
@@ -82,6 +93,28 @@ interface ProcessedPropertyData extends LandivoProperty {
   formattedPrice: string;
   formattedSqft: string;
   formattedMonthlyPayment: string;
+  disPrice?: number;
+  minPrice?: number;
+}
+
+interface ProcessedMultiPropertyData {
+  properties: ProcessedPropertyData[];
+  selectedPlans: Array<{
+    propertyId: string;
+    planNumber: number;
+    planName: string;
+    downPayment: number;
+    loanAmount: number;
+    interestRate: number;
+    monthlyPayment: number;
+    isAvailable: boolean;
+  }>;
+  imageSelections: Record<string, {
+    propertyId: string;
+    imageIndex: number;
+    imageUrl?: string;
+    order: number;
+  }>;
 }
 
 class TemplateRenderingService {
@@ -93,7 +126,7 @@ class TemplateRenderingService {
 
   async renderTemplate(
     templateId: string, 
-    propertyId: string, 
+    property: string | string[], 
     contactData: ContactData, 
     campaignSubject?: string,
     campaignData?: CampaignData
@@ -109,34 +142,152 @@ class TemplateRenderingService {
         throw new Error(`Template ${templateId} not found`);
       }
 
-      // 2. Fetch property data from Landivo
-      const propertyData = await this.fetchPropertyData(propertyId);
-      if (!propertyData) {
-        throw new Error(`Property ${propertyId} not found`);
+      // 2. Determine if this is single or multi-property campaign
+      const isMultiProperty = Array.isArray(property);
+
+      if (isMultiProperty) {
+        return await this.renderMultiPropertyTemplate(
+          template,
+          property as string[],
+          contactData,
+          campaignSubject,
+          campaignData
+        );
+      } else {
+        return await this.renderSinglePropertyTemplate(
+          template,
+          property as string,
+          contactData,
+          campaignSubject,
+          campaignData
+        );
       }
-
-      // 3. Process property data
-      const processedPropertyData = this.processPropertyData(propertyData);
-
-      // 4. Generate HTML content using React Email
-      const htmlContent = await this.generateEmailHTML(template, processedPropertyData, contactData, campaignData);
-
-      // 5. Generate text version
-      const textContent = this.generateTextContent(template, processedPropertyData, contactData, campaignData);
-
-      // 6. Generate subject (use campaign subject if provided, else auto-generate)
-      const subject = campaignSubject || this.generateSubject(template.name, processedPropertyData, contactData);
-
-      return {
-        subject,
-        htmlContent,
-        textContent
-      };
 
     } catch (error: any) {
       logger.error('Template rendering failed:', error);
       throw new Error(`Template rendering failed: ${error.message}`);
     }
+  }
+
+  private async renderSinglePropertyTemplate(
+    template: any,
+    propertyId: string,
+    contactData: ContactData,
+    campaignSubject?: string,
+    campaignData?: CampaignData
+  ): Promise<{
+    subject: string;
+    htmlContent: string;
+    textContent: string;
+  }> {
+    // Fetch and process single property data
+    const propertyData = await this.fetchPropertyData(propertyId);
+    if (!propertyData) {
+      throw new Error(`Property ${propertyId} not found`);
+    }
+
+    const processedPropertyData = this.processPropertyData(propertyData);
+
+    // Generate HTML content using React Email
+    const htmlContent = await this.generateEmailHTML(template, processedPropertyData, contactData, campaignData);
+
+    // Generate text version
+    const textContent = this.generateTextContent(template, processedPropertyData, contactData, campaignData);
+
+    // Generate subject
+    const subject = campaignSubject || this.generateSubject(template.name, processedPropertyData, contactData);
+
+    return {
+      subject,
+      htmlContent,
+      textContent
+    };
+  }
+
+  private async renderMultiPropertyTemplate(
+    template: any,
+    propertyIds: string[],
+    contactData: ContactData,
+    campaignSubject?: string,
+    campaignData?: CampaignData
+  ): Promise<{
+    subject: string;
+    htmlContent: string;
+    textContent: string;
+  }> {
+    // Fetch all properties
+    const propertyPromises = propertyIds.map(id => this.fetchPropertyData(id));
+    const propertyResults = await Promise.allSettled(propertyPromises);
+
+    // Process successful property fetches
+    const properties: ProcessedPropertyData[] = [];
+    propertyResults.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value) {
+        properties.push(this.processPropertyData(result.value));
+      } else {
+        logger.warn(`Failed to fetch property ${propertyIds[index]}:`, 
+          result.status === 'rejected' ? result.reason : 'Property not found');
+      }
+    });
+
+    if (properties.length === 0) {
+      throw new Error('No properties could be loaded for multi-property campaign');
+    }
+
+    // Process multi-property campaign data
+    const multiPropertyData: ProcessedMultiPropertyData = {
+      properties,
+      selectedPlans: this.processMultiPropertyPlans(campaignData?.selectedPlan as any, propertyIds),
+      imageSelections: this.processMultiPropertyImages(campaignData?.imageSelections || {})
+    };
+
+    // Generate HTML content using React Email
+    const htmlContent = await this.generateMultiPropertyEmailHTML(template, multiPropertyData, contactData);
+
+    // Generate text version
+    const textContent = this.generateMultiPropertyTextContent(template, multiPropertyData, contactData);
+
+    // Generate subject (use first property for subject generation)
+    const subject = campaignSubject || this.generateSubject(template.name, properties[0], contactData);
+
+    return {
+      subject,
+      htmlContent,
+      textContent
+    };
+  }
+
+  private processMultiPropertyPlans(
+    selectedPlan: Array<{
+      propertyId: string;
+      planNumber: number;
+      planName: string;
+      downPayment: number;
+      loanAmount: number;
+      interestRate: number;
+      monthlyPayment: number;
+      isAvailable: boolean;
+    }> | null,
+    propertyIds: string[]
+  ): Array<any> {
+    if (!selectedPlan || !Array.isArray(selectedPlan)) {
+      return [];
+    }
+    return selectedPlan.filter(plan => propertyIds.includes(plan.propertyId));
+  }
+
+  private processMultiPropertyImages(
+    imageSelections: Record<string, any>
+  ): Record<string, any> {
+    const processed: Record<string, any> = {};
+    
+    Object.entries(imageSelections).forEach(([key, selection]) => {
+      if (selection.propertyId) {
+        processed[key] = selection;
+      }
+    });
+    
+    return processed;
   }
 
   private async fetchPropertyData(propertyId: string): Promise<LandivoProperty | null> {
@@ -209,6 +360,40 @@ class TemplateRenderingService {
     }
   }
 
+  private async generateMultiPropertyEmailHTML(
+    template: any,
+    multiPropertyData: ProcessedMultiPropertyData,
+    contactData: ContactData
+  ): Promise<string> {
+    try {
+      // Sort components by order
+      const sortedComponents = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
+
+      // Create React elements for each component
+      const renderedComponents = sortedComponents.map((component: EmailComponent) =>
+        this.renderMultiPropertyComponentToReact(component, multiPropertyData, contactData)
+      ).filter(Boolean);
+
+      // Create the email structure with React Email
+      const emailElement = React.createElement(
+        'div',
+        { style: { fontFamily: 'Arial, sans-serif', backgroundColor: template.settings?.backgroundColor || '#ffffff' } },
+        ...renderedComponents
+      );
+
+      // Render to HTML using React Email
+      const htmlContent = await render(emailElement, {
+        pretty: false,
+      });
+
+      return htmlContent;
+
+    } catch (error: any) {
+      logger.error('Failed to generate multi-property HTML content:', error);
+      throw new Error(`Multi-property template rendering failed: ${error.message}`);
+    }
+  }
+
   private renderComponentToReact(
     component: EmailComponent,
     propertyData: ProcessedPropertyData,
@@ -237,11 +422,12 @@ class TemplateRenderingService {
 
       // Handle payment-calculator specific logic
       if (component.type === 'payment-calculator' && campaignData?.selectedPlan) {
-        finalProps.selectedPlan = campaignData.selectedPlan.planNumber.toString();
-        logger.info(`Setting payment calculator to plan ${campaignData.selectedPlan.planNumber}`, {
+        const plan = campaignData.selectedPlan as any;
+        finalProps.selectedPlan = plan.planNumber?.toString();
+        logger.info(`Setting payment calculator to plan ${plan.planNumber}`, {
           componentId: component.id,
-          planNumber: campaignData.selectedPlan.planNumber,
-          planName: campaignData.selectedPlan.planName
+          planNumber: plan.planNumber,
+          planName: plan.planName
         });
       }
 
@@ -270,75 +456,186 @@ class TemplateRenderingService {
     }
   }
 
+  private renderMultiPropertyComponentToReact(
+    component: EmailComponent,
+    multiPropertyData: ProcessedMultiPropertyData,
+    contactData: ContactData
+  ): React.ReactElement | null {
+    try {
+      // Get component metadata from registry
+      const componentMeta = getComponent(component.type);
+      if (!componentMeta) {
+        logger.warn(`Unknown component type: ${component.type}`);
+        return null;
+      }
+
+      // Merge default props with component props and context data
+      const finalProps: any = {
+        ...componentMeta.defaultProps,
+        ...component.props,
+        contactData,
+        contact: contactData,
+      };
+
+      // Handle properties-row component specifically for multi-property campaigns
+      if (component.type === 'properties-row') {
+        // Transform processed property data for PropertiesRow component
+        const propertiesForComponent = multiPropertyData.properties.map((property, _index) => {
+          // Find the selected plan for this property
+          const selectedPlan = multiPropertyData.selectedPlans.find(
+            plan => plan.propertyId === property.id
+          );
+
+          // Find image selection for this property
+          const imageSelection = Object.values(multiPropertyData.imageSelections).find(
+            (selection: any) => selection.propertyId === property.id
+          ) as any;
+
+          // Parse imageUrls to get available images
+          let imageUrls: string[] = [];
+          try {
+            imageUrls = typeof property.imageUrls === 'string' 
+              ? JSON.parse(property.imageUrls)
+              : property.imageUrls || [];
+          } catch {
+            imageUrls = [];
+          }
+
+          // Build the property object for PropertiesRow
+          return {
+            id: property.id,
+            images: imageUrls.map(url => `${this.landivoApiUrl}/${url}`),
+            imageUrls: imageUrls.map(url => `${this.landivoApiUrl}/${url}`),
+            county: property.county,
+            city: property.city,
+            state: property.state,
+            zip: property.zip,
+            streetAddress: property.streetAddress,
+            acre: property.acre,
+            askingPrice: property.askingPrice,
+            disPrice: property.disPrice || property.askingPrice,
+            minPrice: property.minPrice || property.askingPrice,
+            monthlyPayment: selectedPlan?.monthlyPayment || property.monthlyPaymentOne,
+            planName: selectedPlan?.planName,
+            title: property.title,
+            // Add selected image index if available
+            selectedImageIndex: imageSelection?.imageIndex || 0
+          };
+        });
+
+        finalProps.properties = propertiesForComponent;
+
+        logger.info(`Rendering properties-row with ${propertiesForComponent.length} properties`, {
+          componentId: component.id,
+          propertyCount: propertiesForComponent.length,
+          propertyIds: propertiesForComponent.map(p => p.id)
+        });
+
+      } else {
+        // For non-properties-row components, use the first property as primary data
+        const primaryProperty = multiPropertyData.properties[0];
+        finalProps.propertyData = primaryProperty;
+        finalProps.property = primaryProperty;
+
+        // Handle payment-calculator for multi-property (use first property's plan)
+        if (component.type === 'payment-calculator' && multiPropertyData.selectedPlans.length > 0) {
+          const firstPlan = multiPropertyData.selectedPlans[0];
+          finalProps.selectedPlan = firstPlan.planNumber?.toString();
+          logger.info(`Setting payment calculator to first property's plan ${firstPlan.planNumber}`, {
+            componentId: component.id,
+            propertyId: firstPlan.propertyId,
+            planNumber: firstPlan.planNumber
+          });
+        }
+
+        // Handle property-image for multi-property (use first property's image)
+        if (component.type === 'property-image') {
+          const firstPropertyImageSelection = Object.values(multiPropertyData.imageSelections)
+            .find((selection: any) => selection.propertyId === primaryProperty.id) as any;
+          
+          if (firstPropertyImageSelection) {
+            finalProps.imageIndex = firstPropertyImageSelection.imageIndex;
+            logger.info(`Setting property image index to ${firstPropertyImageSelection.imageIndex}`, {
+              componentId: component.id,
+              propertyId: primaryProperty.id,
+              imageIndex: firstPropertyImageSelection.imageIndex
+            });
+          }
+        }
+      }
+
+      // Create React element using the component from registry
+      return React.createElement(componentMeta.component, {
+        key: component.id,
+        ...finalProps
+      });
+
+    } catch (error: any) {
+      logger.error(`Failed to render multi-property component ${component.type}:`, error);
+      return null;
+    }
+  }
+
   private generateTextContent(
     template: any,
     propertyData: ProcessedPropertyData,
     contactData: ContactData,
-    campaignData?: CampaignData
+    _campaignData?: CampaignData
   ): string {
-    try {
-      const components = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
-
-      let textContent = '';
-
-      // Generate text content based on components
-      for (const component of components) {
+    // Generate text content for single property
+    const textParts = template.components
+      .sort((a: EmailComponent, b: EmailComponent) => a.order - b.order)
+      .map((component: EmailComponent) => {
         const componentMeta = getComponent(component.type);
-        if (!componentMeta) continue;
+        if (!componentMeta) return '';
+        
+        return this.renderComponentToText(component, componentMeta, propertyData, contactData);
+      })
+      .filter(Boolean);
 
-        const textRepresentation = this.renderComponentToText(component, componentMeta, propertyData, contactData, campaignData);
-        if (textRepresentation) {
-          textContent += textRepresentation + '\n\n';
-        }
-      }
-
-      // Add standard footer
-      textContent += '\n---\n';
-      textContent += 'Contact us for more information or to schedule a viewing.\n';
-      textContent += 'Unsubscribe: {{unsubscribeLink}}\n';
-      textContent += 'Visit us: https://landivo.com\n';
-
-      return textContent.trim();
-
-    } catch (error: any) {
-      logger.error('Failed to generate text content:', error);
-      throw new Error(`Text content generation failed: ${error.message}`);
-    }
+    return textParts.join('\n\n');
   }
 
-  private renderComponentToText(
-    component: EmailComponent,
-    componentMeta: any,
-    propertyData: ProcessedPropertyData,
-    contactData: ContactData,
-    campaignData?: CampaignData
+  private generateMultiPropertyTextContent(
+    template: any,
+    multiPropertyData: ProcessedMultiPropertyData,
+    contactData: ContactData
   ): string {
-    const finalProps = {
-      ...componentMeta.defaultProps,
-      ...component.props,
-      propertyData,
-      contactData,
-      property: propertyData,
-      contact: contactData,
-    };
+    // Generate text content for multi-property
+    const textParts = template.components
+      .sort((a: EmailComponent, b: EmailComponent) => a.order - b.order)
+      .map((component: EmailComponent) => {
+        const componentMeta = getComponent(component.type);
+        if (!componentMeta) return '';
+        
+        if (component.type === 'properties-row') {
+          // Generate text for all properties
+          return multiPropertyData.properties.map(property => 
+            `${property.title} - ${property.city}, ${property.state} ${property.zip} - $${property.formattedPrice}`
+          ).join('\n');
+        } else {
+          // Use first property for other components
+          return this.renderComponentToText(component, componentMeta, multiPropertyData.properties[0], contactData);
+        }
+      })
+      .filter(Boolean);
 
-    // Handle payment-calculator in text
-    if (component.type === 'payment-calculator' && campaignData?.selectedPlan) {
-      const plan = campaignData.selectedPlan;
-      return `PAYMENT PLAN ${plan.planNumber}:\nMonthly Payment: $${plan.monthlyPayment}\nDown Payment: $${plan.downPayment}\nLoan Amount: $${plan.loanAmount}\nInterest Rate: ${plan.interestRate}%`;
+    return textParts.join('\n\n');
+  }
+
+  private renderComponentToText(component: any, _componentMeta: any, propertyData: any, _contactData: any): string {
+    switch (component.type) {
+      case 'header':
+        return component.props.text || '';
+      case 'property-image':
+        return `[Image: ${propertyData.title}]`;
+      case 'properties-row':
+        return `Properties: ${propertyData.title} - ${propertyData.city}, ${propertyData.state}`;
+      case 'payment-calculator':
+        return `Monthly Payment: $${propertyData.formattedMonthlyPayment}`;
+      default:
+        return '';
     }
-
-    // Try to extract text from component props in order of preference
-    const textFields = ['text', 'title', 'content', 'label', 'heading'];
-
-    for (const field of textFields) {
-      if (finalProps[field] && typeof finalProps[field] === 'string') {
-        return finalProps[field];
-      }
-    }
-
-    // If no text fields found, return component display name
-    return `[${componentMeta.displayName || component.name}]`;
   }
 
   private generateSubject(_templateName: string, propertyData: ProcessedPropertyData, contactData: ContactData): string {

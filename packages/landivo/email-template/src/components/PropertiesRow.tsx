@@ -29,7 +29,7 @@ export interface PropertiesRowProps {
   priceFontSize?: number;
   monthlyPaymentFontSize?: number;
   crossedOutFontSize?: number;
-  // Template builder props
+  // Template builder props (fallback for single property preview)
   propertyData?: any;
   selectedProperty?: any;
 }
@@ -50,6 +50,7 @@ interface Property {
   monthlyPayment?: number;
   planName?: string;
   title?: string;
+  selectedImageIndex?: number; // Index of the selected image for this property
 }
 
 const ADDRESS_FORMAT_TEMPLATES: Record<string, string> = {
@@ -84,7 +85,7 @@ export function PropertiesRow({
   priceFontSize = 18,
   monthlyPaymentFontSize = 14,
   crossedOutFontSize = 14,
-  // Template builder props
+  // Template builder props (fallback)
   propertyData,
   selectedProperty
 }: PropertiesRowProps) {
@@ -94,6 +95,12 @@ export function PropertiesRow({
   
   // Create demo properties - for template builder preview, duplicate the selected property
   const getDisplayProperties = (): Property[] => {
+    // If we have actual properties from multi-property campaign, use those
+    if (properties.length > 0) {
+      return properties.slice(0, 3); // Limit to 3 properties for display
+    }
+
+    // If we have a template property (from template builder), use it for demo
     if (templateProperty) {
       // Parse imageUrls if it's a string
       let imageUrls: string[] = [];
@@ -142,11 +149,6 @@ export function PropertiesRow({
       ];
     }
 
-    // Fallback demo properties when no property is selected
-    if (properties.length > 0) {
-      return properties.slice(0, 3);
-    }
-
     // Default demo properties for preview
     return [
       {
@@ -193,207 +195,191 @@ export function PropertiesRow({
 
   const displayProperties = getDisplayProperties();
 
+  // Format address based on addressFormat template
   const formatAddress = (property: Property): string => {
-    if (!property.city && !property.county && !property.state) return '';
-    
     let formatted = addressFormat;
-    formatted = formatted.replace(/{county}/g, property.county || '');
-    formatted = formatted.replace(/{city}/g, property.city || '');
-    formatted = formatted.replace(/{state}/g, property.state || '');
-    formatted = formatted.replace(/{zip}/g, property.zip || '');
     
-    // Clean up extra commas and spaces
-    return formatted
-      .replace(/,\s*,/g, ',')
-      .replace(/^,\s*/, '')
-      .replace(/,\s*$/, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    formatted = formatted.replace('{county}', property.county || '');
+    formatted = formatted.replace('{city}', property.city || '');
+    formatted = formatted.replace('{state}', property.state || '');
+    formatted = formatted.replace('{zip}', property.zip || '');
+    
+    // Clean up extra spaces and commas
+    formatted = formatted.replace(/,\s*,/g, ',').replace(/,\s*$/, '').replace(/^\s*,/, '');
+    return formatted.trim();
   };
 
-  const formatPrice = (property: Property): { main: string; sub?: string; crossedOut?: string } => {
-    const askingPrice = property.askingPrice || 0;
-    const disPrice = property.disPrice || 0;
-    const monthlyPayment = property.monthlyPayment || 0;
-    const discount = askingPrice > 0 && disPrice > 0 ? askingPrice - disPrice : 0;
+  // Get property image URL
+  const getPropertyImageUrl = (property: Property): string => {
+    const imageUrls = property.images || property.imageUrls || [];
+    const selectedIndex = property.selectedImageIndex || 0;
+    
+    if (imageUrls.length > selectedIndex) {
+      return imageUrls[selectedIndex];
+    } else if (imageUrls.length > 0) {
+      return imageUrls[0];
+    }
+    
+    // Fallback placeholder
+    return `https://via.placeholder.com/300x${imageHeight}/d1d5db/6b7280?text=No+Image`;
+  };
 
-    const formatCurrency = (amount: number) => `${amount.toLocaleString()}`;
-    const formatMonthly = (amount: number) => `${amount.toLocaleString()}/mo`;
+  // Format pricing based on pricingStyle
+  const formatPricing = (property: Property): { main: string; secondary?: string; crossedOut?: string } => {
+    const askingPrice = property.askingPrice || 0;
+    const disPrice = property.disPrice || askingPrice;
+    const monthlyPayment = property.monthlyPayment || 0;
+    const discount = askingPrice - disPrice;
 
     switch (pricingStyle) {
       case 'askingPrice':
-        return { main: formatCurrency(askingPrice) };
-        
+        return { main: `$${askingPrice.toLocaleString()}` };
+      
       case 'askingPriceWithPayment':
-        return { 
-          main: formatCurrency(askingPrice),
-          sub: monthlyPayment > 0 ? formatMonthly(monthlyPayment) : undefined
+        return {
+          main: `$${askingPrice.toLocaleString()}`,
+          secondary: monthlyPayment > 0 ? `or $${monthlyPayment}/mo` : undefined
         };
-        
+      
       case 'disPrice':
-        return { 
-          crossedOut: formatCurrency(askingPrice),
-          main: formatCurrency(disPrice) 
-        };
-        
+        return { main: `$${disPrice.toLocaleString()}` };
+      
       case 'disPriceWithPayment':
-        return { 
-          crossedOut: formatCurrency(askingPrice),
-          main: formatCurrency(disPrice),
-          sub: monthlyPayment > 0 ? formatMonthly(monthlyPayment) : undefined
+        return {
+          main: `$${disPrice.toLocaleString()}`,
+          secondary: monthlyPayment > 0 ? `or $${monthlyPayment}/mo` : undefined
         };
-        
+      
       case 'discount':
-        return { main: `${formatCurrency(discount)} Off` };
-        
+        return { main: discount > 0 ? `Save $${discount.toLocaleString()}!` : `$${askingPrice.toLocaleString()}` };
+      
       case 'discountWithPayment':
-        return { 
-          main: `${formatCurrency(discount)} Off`,
-          sub: monthlyPayment > 0 ? formatMonthly(monthlyPayment) : undefined
+        return {
+          main: discount > 0 ? `Save $${discount.toLocaleString()}!` : `$${askingPrice.toLocaleString()}`,
+          secondary: monthlyPayment > 0 ? `or $${monthlyPayment}/mo` : undefined,
+          crossedOut: discount > 0 ? `$${askingPrice.toLocaleString()}` : undefined
         };
-        
+      
       default:
-        return { main: formatCurrency(askingPrice) };
+        return { main: `$${askingPrice.toLocaleString()}` };
     }
   };
 
-  const formatAcreage = (property: Property): string => {
-    if (!property.acre) return '';
-    return `${property.acre} Acre${property.acre !== 1 ? 's' : ''}`;
-  };
-
-  const containerStyle = {
-    backgroundColor,
-    borderRadius: `${borderRadius}px`,
-    border: showBorder ? '1px solid #e5e7eb' : 'none',
-    padding: '20px',
-    width: '100%',
-    maxWidth: '600px',
-    margin: '0 auto'
-  };
-
-  const tableStyle = {
-    width: '100%',
-    borderCollapse: 'collapse' as const,
-    tableLayout: 'fixed' as const
-  };
-
-  const cellStyle = {
-    width: '33.333%',
-    padding: `0 ${propertySpacing / 2}px`,
-    verticalAlign: 'top' as const,
-    textAlign: 'center' as const
-  };
-
-  const imageStyle = {
-    width: '100%',
-    height: `${imageHeight}px`,
-    objectFit: 'cover' as const,
-    borderRadius: '8px',
-    border: `3px solid ${primaryColor}`,
-    display: 'block'
-  };
-
-  const addressStyle = {
-    fontSize: `${addressFontSize}px`,
-    color: textColor,
-    fontWeight: '500',
-    margin: '8px 0 4px 0',
-    lineHeight: '1.4'
-  };
-
-  const acreageStyle = {
-    fontSize: `${acreageFontSize}px`,
-    color: acreageColor,
-    margin: '0 0 8px 0',
-    fontWeight: '500'
-  };
-
-  const priceStyle = {
-    fontSize: `${priceFontSize}px`,
-    color: priceColor,
-    fontWeight: 'bold',
-    margin: '0'
-  };
-
-  const crossedOutStyle = {
-    fontSize: `${crossedOutFontSize}px`,
-    color: '#9ca3af',
-    textDecoration: 'line-through',
-    margin: '0 0 2px 0'
-  };
-
-  const subPriceStyle = {
-    fontSize: `${monthlyPaymentFontSize}px`,
-    color: monthlyPaymentColor,
-    margin: '2px 0 0 0'
-  };
-
   return (
-    <Section
+    <Section 
       className={className}
       style={{
-        width: '100%',
-        padding: '16px 0'
+        backgroundColor,
+        borderRadius: showBorder ? borderRadius : 0,
+        border: showBorder ? '1px solid #e5e7eb' : 'none',
+        padding: '20px',
+        margin: '0'
       }}
     >
-      <div style={containerStyle}>
-        <table style={tableStyle}>
+      <div style={{
+        width: '100%',
+        margin: '0 auto',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            margin: '0'
+          }}
+        >
           <tbody>
             <tr>
               {displayProperties.map((property, index) => {
+                const pricing = formatPricing(property);
                 const address = formatAddress(property);
-                const pricing = formatPrice(property);
-                const acreage = formatAcreage(property);
-                
-                // Get image URL - try multiple sources
-                const imageUrl = property.images?.[0] || property.imageUrls?.[0] || 
-                  `https://via.placeholder.com/300x${imageHeight}/e5e7eb/9ca3af?text=No+Image`;
+                const imageUrl = getPropertyImageUrl(property);
 
                 return (
-                  <td key={property.id} style={cellStyle}>
+                  <td
+                    key={property.id || index}
+                    style={{
+                      width: `${100 / displayProperties.length}%`,
+                      verticalAlign: 'top',
+                      padding: index === 0 ? '0' : `0 0 0 ${propertySpacing}px`,
+                      textAlign: 'center'
+                    }}
+                  >
                     {/* Property Image */}
-                    <Img
-                      src={imageUrl}
-                      alt={`Property in ${property.city || 'Unknown Location'}`}
-                      style={imageStyle}
-                    />
-                    
-                    {/* Address */}
-                    {address && (
-                      <Text style={addressStyle}>
-                        {address}
-                      </Text>
-                    )}
-                    
-                    {/* Acreage */}
-                    {acreage && (
-                      <Text style={acreageStyle}>
-                        {acreage}
-                      </Text>
-                    )}
-                    
-                    {/* Pricing Section */}
-                    <div>
-                      {/* Crossed Out Price (for discounted pricing) */}
-                      {pricing.crossedOut && (
-                        <Text style={crossedOutStyle}>
-                          {pricing.crossedOut}
-                        </Text>
-                      )}
-                      
-                      {/* Main Price */}
-                      <Text style={priceStyle}>
-                        {pricing.main}
-                      </Text>
-                      
-                      {/* Sub Price (monthly payment) */}
-                      {pricing.sub && (
-                        <Text style={subPriceStyle}>
-                          {pricing.sub}
-                        </Text>
-                      )}
+                    <div style={{ marginBottom: '12px' }}>
+                      <Img
+                        src={imageUrl}
+                        alt={property.title || `Property ${index + 1}`}
+                        style={{
+                          width: '100%',
+                          height: `${imageHeight}px`,
+                          objectFit: 'cover',
+                          borderRadius: `${borderRadius}px`,
+                          border: `2px solid ${primaryColor}`,
+                          display: 'block'
+                        }}
+                      />
                     </div>
+
+                    {/* Property Address */}
+                    <Text style={{
+                      fontSize: `${addressFontSize}px`,
+                      color: textColor,
+                      fontWeight: '500',
+                      margin: '0 0 8px 0',
+                      lineHeight: '1.3',
+                      textAlign: 'center'
+                    }}>
+                      {address}
+                    </Text>
+
+                    {/* Property Acreage */}
+                    {property.acre && (
+                      <Text style={{
+                        fontSize: `${acreageFontSize}px`,
+                        color: acreageColor,
+                        margin: '0 0 8px 0',
+                        textAlign: 'center'
+                      }}>
+                        {property.acre} acres
+                      </Text>
+                    )}
+
+                    {/* Crossed-out Price */}
+                    {pricing.crossedOut && (
+                      <Text style={{
+                        fontSize: `${crossedOutFontSize}px`,
+                        color: '#9ca3af',
+                        textDecoration: 'line-through',
+                        margin: '0 0 4px 0',
+                        textAlign: 'center'
+                      }}>
+                        {pricing.crossedOut}
+                      </Text>
+                    )}
+
+                    {/* Main Price */}
+                    <Text style={{
+                      fontSize: `${priceFontSize}px`,
+                      color: priceColor,
+                      fontWeight: 'bold',
+                      margin: '0 0 4px 0',
+                      textAlign: 'center'
+                    }}>
+                      {pricing.main}
+                    </Text>
+
+                    {/* Monthly Payment */}
+                    {pricing.secondary && (
+                      <Text style={{
+                        fontSize: `${monthlyPaymentFontSize}px`,
+                        color: monthlyPaymentColor,
+                        margin: '0',
+                        textAlign: 'center'
+                      }}>
+                        {pricing.secondary}
+                      </Text>
+                    )}
                   </td>
                 );
               })}
@@ -412,7 +398,7 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
   displayName: 'Properties Row',
   version: 'v1.0',
   icon: <Grid className="w-5 h-5" />,
-  description: 'Display three properties in a horizontal row with images, addresses, and pricing',
+  description: 'Display multiple properties in a horizontal row with images, addresses, and pricing',
   category: 'content',
   available: true,
   defaultProps: {
@@ -480,41 +466,6 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
       description: 'Color of monthly payment text'
     },
     {
-      key: 'addressFontSize',
-      label: 'Address Font Size',
-      type: 'number',
-      defaultValue: 14,
-      description: 'Font size of address text in pixels'
-    },
-    {
-      key: 'acreageFontSize',
-      label: 'Acreage Font Size',
-      type: 'number',
-      defaultValue: 14,
-      description: 'Font size of acreage text in pixels'
-    },
-    {
-      key: 'priceFontSize',
-      label: 'Price Font Size',
-      type: 'number',
-      defaultValue: 18,
-      description: 'Font size of main price text in pixels'
-    },
-    {
-      key: 'monthlyPaymentFontSize',
-      label: 'Monthly Payment Font Size',
-      type: 'number',
-      defaultValue: 14,
-      description: 'Font size of monthly payment text in pixels'
-    },
-    {
-      key: 'crossedOutFontSize',
-      label: 'Crossed Out Price Font Size',
-      type: 'number',
-      defaultValue: 14,
-      description: 'Font size of crossed out price text in pixels'
-    },
-    {
       key: 'addressFormat',
       label: 'Address Format',
       type: 'select',
@@ -522,10 +473,10 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
         { label: 'County Only', value: '{county}' },
         { label: 'City Only', value: '{city}' },
         { label: 'State Only', value: '{state}' },
-        { label: 'State, Zip', value: '{state} {zip}' },
-        { label: 'City, Zip', value: '{city} {zip}' },
-        { label: 'County, State, Zip', value: '{county}, {state} {zip}' },
-        { label: 'City, State, Zip', value: '{city}, {state} {zip}' },
+        { label: 'State + ZIP', value: '{state} {zip}' },
+        { label: 'City + ZIP', value: '{city} {zip}' },
+        { label: 'County, State + ZIP', value: '{county}, {state} {zip}' },
+        { label: 'City, State + ZIP', value: '{city}, {state} {zip}' },
         { label: 'Full Address', value: '{county}, {city}, {state} {zip}' }
       ],
       defaultValue: '{city}, {state} {zip}',
@@ -573,6 +524,20 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
       type: 'boolean',
       defaultValue: false,
       description: 'Display border around the entire component'
+    },
+    {
+      key: 'addressFontSize',
+      label: 'Address Font Size',
+      type: 'number',
+      defaultValue: 14,
+      description: 'Font size for address text in pixels'
+    },
+    {
+      key: 'priceFontSize',
+      label: 'Price Font Size',
+      type: 'number',
+      defaultValue: 18,
+      description: 'Font size for price text in pixels'
     },
     {
       key: 'className',
