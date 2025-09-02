@@ -32,6 +32,8 @@ export interface PropertiesRowProps {
   // Template builder props (fallback for single property preview)
   propertyData?: any;
   selectedProperty?: any;
+  // Context flag to differentiate email vs preview
+  isEmailContext?: boolean;
 }
 
 interface Property {
@@ -50,7 +52,7 @@ interface Property {
   monthlyPayment?: number;
   planName?: string;
   title?: string;
-  selectedImageIndex?: number; // Index of the selected image for this property
+  selectedImageIndex?: number;
 }
 
 const ADDRESS_FORMAT_TEMPLATES: Record<string, string> = {
@@ -87,7 +89,8 @@ export function PropertiesRow({
   crossedOutFontSize = 14,
   // Template builder props (fallback)
   propertyData,
-  selectedProperty
+  selectedProperty,
+  isEmailContext = false
 }: PropertiesRowProps) {
 
   // Use selectedProperty or propertyData from template builder if available
@@ -95,9 +98,10 @@ export function PropertiesRow({
   
   // Create demo properties - for template builder preview, duplicate the selected property
   const getDisplayProperties = (): Property[] => {
-    // If we have actual properties from multi-property campaign, use those
+    // If we have actual properties from multi-property campaign
     if (properties.length > 0) {
-      return properties.slice(0, 3); // Limit to 3 properties for display
+      // In email context, show all properties. In preview, limit to 3
+      return isEmailContext ? properties : properties.slice(0, 3);
     }
 
     // If we have a template property (from template builder), use it for demo
@@ -195,6 +199,15 @@ export function PropertiesRow({
 
   const displayProperties = getDisplayProperties();
 
+  // Helper function to chunk properties into groups of 3 for multiple rows
+  const chunkProperties = (props: Property[], chunkSize: number = 3): Property[][] => {
+    const chunks: Property[][] = [];
+    for (let i = 0; i < props.length; i += chunkSize) {
+      chunks.push(props.slice(i, i + chunkSize));
+    }
+    return chunks;
+  };
+
   // Format address based on addressFormat template
   const formatAddress = (property: Property): string => {
     let formatted = addressFormat;
@@ -265,6 +278,19 @@ export function PropertiesRow({
     }
   };
 
+  if (displayProperties.length === 0) {
+    return (
+      <Section style={{ padding: '16px', textAlign: 'center' }}>
+        <Text style={{ color: '#6b7280', fontStyle: 'italic' }}>
+          No properties to display
+        </Text>
+      </Section>
+    );
+  }
+
+  // Chunk properties into rows of 3
+  const propertyRows = chunkProperties(displayProperties, 3);
+
   return (
     <Section 
       className={className}
@@ -277,115 +303,129 @@ export function PropertiesRow({
       }}
     >
       <div style={{
+        maxWidth: '600px',
         width: '100%',
         margin: '0 auto',
         fontFamily: 'Arial, sans-serif'
       }}>
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            margin: '0'
-          }}
-        >
-          <tbody>
-            <tr>
-              {displayProperties.map((property, index) => {
-                const pricing = formatPricing(property);
-                const address = formatAddress(property);
-                const imageUrl = getPropertyImageUrl(property);
+        {propertyRows.map((propertiesInRow, rowIndex) => (
+          <table
+            key={`row-${rowIndex}`}
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              margin: '0',
+              marginBottom: rowIndex < propertyRows.length - 1 ? `${propertySpacing}px` : '0'
+            }}
+          >
+            <tbody>
+              <tr>
+                {propertiesInRow.map((property, index) => {
+                  const pricing = formatPricing(property);
+                  const address = formatAddress(property);
+                  const imageUrl = getPropertyImageUrl(property);
 
-                return (
-                  <td
-                    key={property.id || index}
-                    style={{
-                      width: `${100 / displayProperties.length}%`,
-                      verticalAlign: 'top',
-                      padding: index === 0 ? '0' : `0 0 0 ${propertySpacing}px`,
-                      textAlign: 'center'
-                    }}
-                  >
-                    {/* Property Image */}
-                    <div style={{ marginBottom: '12px' }}>
-                      <Img
-                        src={imageUrl}
-                        alt={property.title || `Property ${index + 1}`}
-                        style={{
-                          width: '100%',
-                          height: `${imageHeight}px`,
-                          objectFit: 'cover',
-                          borderRadius: `${borderRadius}px`,
-                          border: `2px solid ${primaryColor}`,
-                          display: 'block'
-                        }}
-                      />
-                    </div>
+                  return (
+                    <td
+                      key={property.id || index}
+                      style={{
+                        width: '33.333%', // Fixed width for consistency
+                        verticalAlign: 'top',
+                        padding: index === 0 ? '0' : `0 0 0 ${propertySpacing}px`,
+                        textAlign: 'center'
+                      }}
+                    >
+                      {/* Property Image */}
+                      <div style={{ marginBottom: '12px' }}>
+                        <Img
+                          src={imageUrl}
+                          alt={property.title || `Property ${index + 1}`}
+                          style={{
+                            width: '100%',
+                            maxWidth: '100%',
+                            height: `${imageHeight}px`,
+                            objectFit: 'cover',
+                            borderRadius: `${borderRadius}px`,
+                            border: `2px solid ${primaryColor}`,
+                            display: 'block'
+                          }}
+                        />
+                      </div>
 
-                    {/* Property Address */}
-                    <Text style={{
-                      fontSize: `${addressFontSize}px`,
-                      color: textColor,
-                      fontWeight: '500',
-                      margin: '0 0 8px 0',
-                      lineHeight: '1.3',
-                      textAlign: 'center'
-                    }}>
-                      {address}
-                    </Text>
-
-                    {/* Property Acreage */}
-                    {property.acre && (
+                      {/* Property Address */}
                       <Text style={{
-                        fontSize: `${acreageFontSize}px`,
-                        color: acreageColor,
+                        fontSize: `${addressFontSize}px`,
+                        color: textColor,
+                        fontWeight: '500',
                         margin: '0 0 8px 0',
+                        lineHeight: '1.3',
                         textAlign: 'center'
                       }}>
-                        {property.acre} acres
+                        {address}
                       </Text>
-                    )}
 
-                    {/* Crossed-out Price */}
-                    {pricing.crossedOut && (
+                      {/* Property Acreage */}
+                      {property.acre && (
+                        <Text style={{
+                          fontSize: `${acreageFontSize}px`,
+                          color: acreageColor,
+                          margin: '0 0 8px 0',
+                          textAlign: 'center'
+                        }}>
+                          {property.acre} acres
+                        </Text>
+                      )}
+
+                      {/* Crossed-out Price */}
+                      {pricing.crossedOut && (
+                        <Text style={{
+                          fontSize: `${crossedOutFontSize}px`,
+                          color: '#9ca3af',
+                          textDecoration: 'line-through',
+                          margin: '0 0 4px 0',
+                          textAlign: 'center'
+                        }}>
+                          {pricing.crossedOut}
+                        </Text>
+                      )}
+
+                      {/* Main Price */}
                       <Text style={{
-                        fontSize: `${crossedOutFontSize}px`,
-                        color: '#9ca3af',
-                        textDecoration: 'line-through',
+                        fontSize: `${priceFontSize}px`,
+                        color: priceColor,
+                        fontWeight: 'bold',
                         margin: '0 0 4px 0',
                         textAlign: 'center'
                       }}>
-                        {pricing.crossedOut}
+                        {pricing.main}
                       </Text>
-                    )}
 
-                    {/* Main Price */}
-                    <Text style={{
-                      fontSize: `${priceFontSize}px`,
-                      color: priceColor,
-                      fontWeight: 'bold',
-                      margin: '0 0 4px 0',
-                      textAlign: 'center'
-                    }}>
-                      {pricing.main}
-                    </Text>
-
-                    {/* Monthly Payment */}
-                    {pricing.secondary && (
-                      <Text style={{
-                        fontSize: `${monthlyPaymentFontSize}px`,
-                        color: monthlyPaymentColor,
-                        margin: '0',
-                        textAlign: 'center'
-                      }}>
-                        {pricing.secondary}
-                      </Text>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          </tbody>
-        </table>
+                      {/* Monthly Payment */}
+                      {pricing.secondary && (
+                        <Text style={{
+                          fontSize: `${monthlyPaymentFontSize}px`,
+                          color: monthlyPaymentColor,
+                          margin: '0',
+                          textAlign: 'center'
+                        }}>
+                          {pricing.secondary}
+                        </Text>
+                      )}
+                    </td>
+                  );
+                })}
+                
+                {/* Fill empty columns if row has less than 3 properties */}
+                {propertiesInRow.length < 3 && Array.from({ length: 3 - propertiesInRow.length }).map((_, emptyIndex) => (
+                  <td key={`empty-${emptyIndex}`} style={{
+                    width: '33.333%',
+                    padding: '0'
+                  }}></td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        ))}
       </div>
     </Section>
   );
@@ -398,7 +438,7 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
   displayName: 'Properties Row',
   version: 'v1.0',
   icon: <Grid className="w-5 h-5" />,
-  description: 'Display multiple properties in a horizontal row with images, addresses, and pricing',
+  description: 'Display multiple properties in a horizontal row with images, addresses, and pricing. In emails, shows all properties with wrapping.',
   category: 'content',
   available: true,
   defaultProps: {
@@ -420,7 +460,8 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
     acreageFontSize: 14,
     priceFontSize: 18,
     monthlyPaymentFontSize: 14,
-    crossedOutFontSize: 14
+    crossedOutFontSize: 14,
+    isEmailContext: false
   },
   configFields: [
     {
@@ -533,11 +574,32 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
       description: 'Font size for address text in pixels'
     },
     {
+      key: 'acreageFontSize',
+      label: 'Acreage Font Size',
+      type: 'number',
+      defaultValue: 14,
+      description: 'Font size for acreage text in pixels'
+    },
+    {
       key: 'priceFontSize',
       label: 'Price Font Size',
       type: 'number',
       defaultValue: 18,
       description: 'Font size for price text in pixels'
+    },
+    {
+      key: 'monthlyPaymentFontSize',
+      label: 'Monthly Payment Font Size',
+      type: 'number',
+      defaultValue: 14,
+      description: 'Font size for monthly payment text in pixels'
+    },
+    {
+      key: 'crossedOutFontSize',
+      label: 'Crossed Out Font Size',
+      type: 'number',
+      defaultValue: 14,
+      description: 'Font size for crossed out price text in pixels'
     },
     {
       key: 'className',

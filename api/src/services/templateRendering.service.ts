@@ -456,125 +456,146 @@ class TemplateRenderingService {
     }
   }
 
-  private renderMultiPropertyComponentToReact(
-    component: EmailComponent,
-    multiPropertyData: ProcessedMultiPropertyData,
-    contactData: ContactData
-  ): React.ReactElement | null {
-    try {
-      // Get component metadata from registry
-      const componentMeta = getComponent(component.type);
-      if (!componentMeta) {
-        logger.warn(`Unknown component type: ${component.type}`);
-        return null;
-      }
-
-      // Merge default props with component props and context data
-      const finalProps: any = {
-        ...componentMeta.defaultProps,
-        ...component.props,
-        contactData,
-        contact: contactData,
-      };
-
-      // Handle properties-row component specifically for multi-property campaigns
-      if (component.type === 'properties-row') {
-        // Transform processed property data for PropertiesRow component
-        const propertiesForComponent = multiPropertyData.properties.map((property, _index) => {
-          // Find the selected plan for this property
-          const selectedPlan = multiPropertyData.selectedPlans.find(
-            plan => plan.propertyId === property.id
-          );
-
-          // Find image selection for this property
-          const imageSelection = Object.values(multiPropertyData.imageSelections).find(
-            (selection: any) => selection.propertyId === property.id
-          ) as any;
-
-          // Parse imageUrls to get available images
-          let imageUrls: string[] = [];
-          try {
-            imageUrls = typeof property.imageUrls === 'string' 
-              ? JSON.parse(property.imageUrls)
-              : property.imageUrls || [];
-          } catch {
-            imageUrls = [];
-          }
-
-          // Build the property object for PropertiesRow
-          return {
-            id: property.id,
-            images: imageUrls.map(url => `${this.landivoApiUrl}/${url}`),
-            imageUrls: imageUrls.map(url => `${this.landivoApiUrl}/${url}`),
-            county: property.county,
-            city: property.city,
-            state: property.state,
-            zip: property.zip,
-            streetAddress: property.streetAddress,
-            acre: property.acre,
-            askingPrice: property.askingPrice,
-            disPrice: property.disPrice || property.askingPrice,
-            minPrice: property.minPrice || property.askingPrice,
-            monthlyPayment: selectedPlan?.monthlyPayment || property.monthlyPaymentOne,
-            planName: selectedPlan?.planName,
-            title: property.title,
-            // Add selected image index if available
-            selectedImageIndex: imageSelection?.imageIndex || 0
-          };
-        });
-
-        finalProps.properties = propertiesForComponent;
-
-        logger.info(`Rendering properties-row with ${propertiesForComponent.length} properties`, {
-          componentId: component.id,
-          propertyCount: propertiesForComponent.length,
-          propertyIds: propertiesForComponent.map(p => p.id)
-        });
-
-      } else {
-        // For non-properties-row components, use the first property as primary data
-        const primaryProperty = multiPropertyData.properties[0];
-        finalProps.propertyData = primaryProperty;
-        finalProps.property = primaryProperty;
-
-        // Handle payment-calculator for multi-property (use first property's plan)
-        if (component.type === 'payment-calculator' && multiPropertyData.selectedPlans.length > 0) {
-          const firstPlan = multiPropertyData.selectedPlans[0];
-          finalProps.selectedPlan = firstPlan.planNumber?.toString();
-          logger.info(`Setting payment calculator to first property's plan ${firstPlan.planNumber}`, {
-            componentId: component.id,
-            propertyId: firstPlan.propertyId,
-            planNumber: firstPlan.planNumber
-          });
-        }
-
-        // Handle property-image for multi-property (use first property's image)
-        if (component.type === 'property-image') {
-          const firstPropertyImageSelection = Object.values(multiPropertyData.imageSelections)
-            .find((selection: any) => selection.propertyId === primaryProperty.id) as any;
-          
-          if (firstPropertyImageSelection) {
-            finalProps.imageIndex = firstPropertyImageSelection.imageIndex;
-            logger.info(`Setting property image index to ${firstPropertyImageSelection.imageIndex}`, {
-              componentId: component.id,
-              propertyId: primaryProperty.id,
-              imageIndex: firstPropertyImageSelection.imageIndex
-            });
-          }
-        }
-      }
-
-      // Create React element using the component from registry
-      return React.createElement(componentMeta.component, {
-        key: component.id,
-        ...finalProps
-      });
-
-    } catch (error: any) {
-      logger.error(`Failed to render multi-property component ${component.type}:`, error);
+private renderMultiPropertyComponentToReact(
+  component: EmailComponent,
+  multiPropertyData: ProcessedMultiPropertyData,
+  contactData: ContactData
+): React.ReactElement | null {
+  try {
+    // Get component metadata from registry
+    const componentMeta = getComponent(component.type);
+    if (!componentMeta) {
+      logger.warn(`Unknown component type: ${component.type}`);
       return null;
     }
+
+    // Merge default props with component props and context data
+    const finalProps: any = {
+      ...componentMeta.defaultProps,
+      ...component.props,
+      // Inject multi-property data
+      contactData,
+      // For multi-property campaigns, always use the first property as primary context
+      propertyData: multiPropertyData.properties[0],
+      property: multiPropertyData.properties[0],
+      contact: contactData,
+    };
+
+    // Special handling for PropertiesRow component in multi-property emails
+    if (component.type === 'properties-row') {
+      finalProps.properties = multiPropertyData.properties;
+      finalProps.isEmailContext = true; // This is the key flag for email rendering
+      
+      // Apply image selections if available
+      if (multiPropertyData.imageSelections) {
+        finalProps.properties = multiPropertyData.properties.map(property => {
+          const imageSelectionKey = Object.keys(multiPropertyData.imageSelections)
+            .find(key => multiPropertyData.imageSelections[key].propertyId === property.id);
+          
+          if (imageSelectionKey) {
+            const selection = multiPropertyData.imageSelections[imageSelectionKey];
+            
+            // Parse imageUrls from property data
+            let parsedImageUrls: string[] = [];
+            try {
+              parsedImageUrls = typeof property.imageUrls === 'string' 
+                ? JSON.parse(property.imageUrls)
+                : property.imageUrls || [];
+            } catch {
+              parsedImageUrls = [];
+            }
+
+            // Convert to full URLs
+            let imageUrls = parsedImageUrls.map(url => `${this.landivoApiUrl}/${url}`);
+            
+            if (selection.imageUrl) {
+              // If selection has a specific imageUrl, use it as the primary image
+              imageUrls = [selection.imageUrl, ...imageUrls];
+            }
+            
+            return {
+              ...property,
+              selectedImageIndex: selection.imageIndex || 0,
+              imageUrls,
+              images: imageUrls,
+              primaryImageUrl: selection.imageUrl
+            };
+          }
+          return property;
+        });
+      }
+
+      // Apply selected plans for pricing
+      if (multiPropertyData.selectedPlans) {
+        finalProps.properties = finalProps.properties.map((property: any) => {
+          const plan = multiPropertyData.selectedPlans.find(
+            (p: any) => p.propertyId === property.id
+          );
+          if (plan) {
+            return {
+              ...property,
+              monthlyPayment: plan.monthlyPayment,
+              planName: plan.planName,
+              downPayment: plan.downPayment,
+              loanAmount: plan.loanAmount,
+              interestRate: plan.interestRate
+            };
+          }
+          return property;
+        });
+      }
+    }
+
+    // Handle payment-calculator specific logic for multi-property
+    if (component.type === 'payment-calculator' && multiPropertyData.selectedPlans.length > 0) {
+      // Use the first property's plan for payment calculator
+      const firstPropertyPlan = multiPropertyData.selectedPlans[0];
+      finalProps.selectedPlan = firstPropertyPlan.planNumber?.toString();
+      finalProps.planData = firstPropertyPlan;
+      logger.info(`Setting multi-property payment calculator to plan ${firstPropertyPlan.planNumber}`, {
+        componentId: component.id,
+        planNumber: firstPropertyPlan.planNumber,
+        planName: firstPropertyPlan.planName
+      });
+    }
+
+    // Handle property-image specific logic for multi-property
+    if (component.type === 'property-image' && multiPropertyData.imageSelections) {
+      // Use the first property's image selection
+      const firstPropertyId = multiPropertyData.properties[0]?.id;
+      if (firstPropertyId) {
+        const imageSelectionKey = Object.keys(multiPropertyData.imageSelections)
+          .find(key => multiPropertyData.imageSelections[key].propertyId === firstPropertyId);
+        
+        if (imageSelectionKey) {
+          const imageSelection = multiPropertyData.imageSelections[imageSelectionKey];
+          finalProps.imageIndex = imageSelection.imageIndex;
+          finalProps.selectedImageUrl = imageSelection.imageUrl;
+          logger.info(`Setting multi-property image index to ${imageSelection.imageIndex}`, {
+            componentId: component.id,
+            imageIndex: imageSelection.imageIndex,
+            propertyId: firstPropertyId
+          });
+        }
+      }
+    }
+
+    // For other components, use first property as context but mark as email context
+    if (component.type !== 'properties-row') {
+      finalProps.isEmailContext = true;
+    }
+
+    // Create React element using the component from registry
+    return React.createElement(componentMeta.component, {
+      key: component.id,
+      ...finalProps
+    });
+
+  } catch (error: any) {
+    logger.error(`Failed to render multi-property component ${component.type}:`, error);
+    return null;
   }
+}
 
   private generateTextContent(
     template: any,
