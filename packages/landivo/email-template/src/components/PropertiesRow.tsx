@@ -309,15 +309,17 @@ export function PropertiesRow({
         fontFamily: 'Arial, sans-serif'
       }}>
         {propertyRows.map((propertiesInRow, rowIndex) => (
-          <table
-            key={`row-${rowIndex}`}
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              margin: '0',
-              marginBottom: rowIndex < propertyRows.length - 1 ? `${propertySpacing}px` : '0'
-            }}
-          >
+          <div key={`row-${rowIndex}`} style={{ 
+            marginBottom: rowIndex < propertyRows.length - 1 ? `${propertySpacing}px` : '0',
+            textAlign: 'center'
+          }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                margin: '0'
+              }}
+            >
             <tbody>
               <tr>
                 {propertiesInRow.map((property, index) => {
@@ -331,7 +333,7 @@ export function PropertiesRow({
                       style={{
                         width: '33.333%', // Fixed width for consistency
                         verticalAlign: 'top',
-                        padding: index === 0 ? '0' : `0 0 0 ${propertySpacing}px`,
+                        padding: `0 ${propertySpacing / 2}px`,
                         textAlign: 'center'
                       }}
                     >
@@ -425,6 +427,7 @@ export function PropertiesRow({
               </tr>
             </tbody>
           </table>
+          </div>
         ))}
       </div>
     </Section>
