@@ -17,11 +17,31 @@ const validate = (req: any, res: any, next: any) => {
   next();
 };
 
+// Custom property validation for both single and multi-property campaigns
+const propertyValidation = body('property').custom((value) => {
+  // Handle single property (string)
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return true;
+  }
+  
+  // Handle multi-property (array)
+  if (Array.isArray(value) && value.length > 0) {
+    // Ensure all array elements are non-empty strings
+    const allValid = value.every(id => typeof id === 'string' && id.trim().length > 0);
+    if (!allValid) {
+      throw new Error('All property IDs must be valid strings');
+    }
+    return true;
+  }
+  
+  throw new Error('Property is required (string for single property, array for multi-property)');
+});
+
 // Campaign CRUD routes
 router.get('/', campaignController.getAllCampaigns.bind(campaignController));
 router.post('/', [
   body('name').notEmpty().withMessage('Campaign name is required'),
-  body('property').notEmpty().withMessage('Property is required'),
+  propertyValidation, // FIXED: Custom validation for both single and multi-property
   body('emailList').notEmpty().withMessage('Email list is required'),
   body('emailTemplate').notEmpty().withMessage('Email template is required'),
   body('emailVolume').isInt({ min: 1 }).withMessage('Email volume must be positive'),

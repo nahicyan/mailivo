@@ -194,7 +194,7 @@ export default function CreateMultiCampaignPage() {
         onSortOrderChange: handleSortOrderChange
     };
 
-    const handleSubmit = async () => {
+const handleSubmit = async () => {
         if (!validateStep(7)) return;
 
         setLoading(true);
@@ -222,7 +222,23 @@ export default function CreateMultiCampaignPage() {
                 throw new Error(errorData.message || 'Failed to create campaign');
             }
 
-            const result = await response.json();
+            const newCampaign = await response.json();
+
+            // FIX: Add immediate sending logic for multi-property campaigns
+            if (formData.emailSchedule === 'immediate' && newCampaign.status === 'active') {
+                try {
+                    await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+                        },
+                        credentials: 'include'
+                    });
+                } catch (sendError) {
+                    console.warn('Auto-send failed for multi-property campaign:', sendError);
+                }
+            }
+
             router.push(`/dashboard/landivo/campaigns/manage`);
 
         } catch (error) {
