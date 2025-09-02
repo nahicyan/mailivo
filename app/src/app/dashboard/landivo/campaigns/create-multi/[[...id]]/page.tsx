@@ -195,59 +195,65 @@ export default function CreateMultiCampaignPage() {
     };
 
 const handleSubmit = async () => {
-        if (!validateStep(7)) return;
+    if (!validateStep(7)) return;
 
-        setLoading(true);
-        try {
-            // Use compatible data preparation
-            const campaignData = prepareMultiPropertyCampaignData(
-                formData,
-                selectedDate,
-                properties, // Pass properties array
-                selectedTemplate // Pass template
-            );
-            campaignData.type = 'multi-property';
-            const response = await fetch(`${API_URL}/campaigns`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-                },
-                credentials: 'include',
-                body: JSON.stringify(campaignData)
-            });
+    setLoading(true);
+    try {
+        // Use compatible data preparation
+        const campaignData = prepareMultiPropertyCampaignData(
+            formData,
+            selectedDate,
+            properties, // Pass properties array
+            selectedTemplate // Pass template
+        );
+        
+        // Set campaign type and add missing audience fields
+        campaignData.type = 'multi-property';
+        campaignData.audienceType = 'landivo';
+        campaignData.segments = [formData.emailList];
+        campaignData.estimatedRecipients = formData.emailVolume;
+        
+        const response = await fetch(`${API_URL}/campaigns`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+            },
+            credentials: 'include',
+            body: JSON.stringify(campaignData)
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create campaign');
-            }
-
-            const newCampaign = await response.json();
-
-            // FIX: Add immediate sending logic for multi-property campaigns
-            if (formData.emailSchedule === 'immediate' && newCampaign.status === 'active') {
-                try {
-                    await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-                        },
-                        credentials: 'include'
-                    });
-                } catch (sendError) {
-                    console.warn('Auto-send failed for multi-property campaign:', sendError);
-                }
-            }
-
-            router.push(`/dashboard/landivo/campaigns/manage`);
-
-        } catch (error) {
-            console.error('Campaign creation failed:', error);
-            setErrors({ submit: error instanceof Error ? error.message : 'Unknown error occurred' });
-        } finally {
-            setLoading(false);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to create campaign');
         }
-    };
+
+        const newCampaign = await response.json();
+
+        // Add immediate sending logic for multi-property campaigns
+        if (formData.emailSchedule === 'immediate' && newCampaign.status === 'active') {
+            try {
+                await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+                    },
+                    credentials: 'include'
+                });
+            } catch (sendError) {
+                console.warn('Auto-send failed for multi-property campaign:', sendError);
+            }
+        }
+
+        router.push(`/dashboard/landivo/campaigns/manage`);
+
+    } catch (error) {
+        console.error('Campaign creation failed:', error);
+        setErrors({ submit: error instanceof Error ? error.message : 'Unknown error occurred' });
+    } finally {
+        setLoading(false);
+    }
+};
 
     const hasErrors = !!(propertiesError || templatesError || listsError);
 
