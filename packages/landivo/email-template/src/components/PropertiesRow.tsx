@@ -21,6 +21,7 @@ export interface PropertiesRowProps {
   priceColor?: string;
   acreageColor?: string;
   monthlyPaymentColor?: string;
+  crossedOutColor?: string;
   imageHeight?: number;
   propertySpacing?: number;
   // Font sizes
@@ -79,6 +80,7 @@ export function PropertiesRow({
   priceColor = '#059669',
   acreageColor = '#6b7280',
   monthlyPaymentColor = '#6b7280',
+  crossedOutColor = '#9ca3af',
   imageHeight = 200,
   propertySpacing = 16,
   // Font sizes
@@ -104,51 +106,35 @@ export function PropertiesRow({
       return isEmailContext ? properties : properties.slice(0, 3);
     }
 
-    // If we have a template property (from template builder), use it for demo
+    // For template builder - create 3 demo properties based on selected property
     if (templateProperty) {
-      // Parse imageUrls if it's a string
-      let imageUrls: string[] = [];
-      try {
-        imageUrls = typeof templateProperty.imageUrls === 'string' 
-          ? JSON.parse(templateProperty.imageUrls)
-          : templateProperty.imageUrls || [];
-      } catch {
-        imageUrls = [];
-      }
-
-      const propertyForDisplay: Property = {
-        id: templateProperty.id || '1',
-        images: imageUrls,
-        imageUrls: imageUrls,
-        county: templateProperty.county || '',
-        city: templateProperty.city || '',
-        state: templateProperty.state || '',
-        zip: templateProperty.zip || '',
-        streetAddress: templateProperty.streetAddress || '',
-        acre: templateProperty.acre || 0,
-        askingPrice: templateProperty.askingPrice || 0,
-        disPrice: templateProperty.disPrice || 0,
-        minPrice: templateProperty.minPrice || 0,
-        monthlyPayment: templateProperty.monthlyPayment || 299,
-        title: templateProperty.title || ''
-      };
-
-      // Return 3 copies for demonstration (with slight variations)
       return [
-        propertyForDisplay,
         {
-          ...propertyForDisplay,
-          id: '2',
-          city: propertyForDisplay.city || 'Austin',
-          askingPrice: (propertyForDisplay.askingPrice || 100000) + 50000,
-          monthlyPayment: (propertyForDisplay.monthlyPayment || 299) + 100
+          ...templateProperty,
+          id: 'template1',
+          city: templateProperty.city || 'Dallas',
+          state: templateProperty.state || 'TX',
+          zip: templateProperty.zip || '75201'
         },
         {
-          ...propertyForDisplay,
-          id: '3',
-          city: propertyForDisplay.city || 'Houston', 
-          askingPrice: (propertyForDisplay.askingPrice || 100000) + 25000,
-          monthlyPayment: (propertyForDisplay.monthlyPayment || 299) + 50
+          ...templateProperty,
+          id: 'template2',
+          city: 'Austin',
+          state: 'TX',
+          zip: '78701',
+          askingPrice: (templateProperty.askingPrice || 150000) + 50000,
+          disPrice: (templateProperty.disPrice || 140000) + 50000,
+          monthlyPayment: (templateProperty.monthlyPayment || 299) + 100
+        },
+        {
+          ...templateProperty,
+          id: 'template3',
+          city: 'Houston', 
+          state: 'TX',
+          zip: '77001',
+          askingPrice: (templateProperty.askingPrice || 150000) + 25000,
+          disPrice: (templateProperty.disPrice || 140000) + 25000,
+          monthlyPayment: (templateProperty.monthlyPayment || 299) + 50
         }
       ];
     }
@@ -292,20 +278,21 @@ export function PropertiesRow({
   const propertyRows = chunkProperties(displayProperties, 3);
 
   return (
-    <Section 
+    <Section
       className={className}
       style={{
-        backgroundColor,
-        borderRadius: showBorder ? borderRadius : 0,
-        border: showBorder ? '1px solid #e5e7eb' : 'none',
-        padding: '20px',
-        margin: '0'
+        width: '100%',
+        // padding: '16px 0',
       }}
     >
+      {/* Container with proper width constraints like other components */}
       <div style={{
         maxWidth: '600px',
-        width: '100%',
         margin: '0 auto',
+        backgroundColor,
+        borderRadius: `${borderRadius}px`,
+        border: showBorder ? '1px solid #e5e7eb' : 'none',
+        padding: '20px',
         fontFamily: 'Arial, sans-serif'
       }}>
         {propertyRows.map((propertiesInRow, rowIndex) => (
@@ -322,6 +309,14 @@ export function PropertiesRow({
             >
             <tbody>
               <tr>
+                {/* Add empty cell for centering when row has fewer than 3 properties */}
+                {propertiesInRow.length < 3 && propertiesInRow.length === 1 && (
+                  <td style={{ width: '33.333%', padding: '0' }}></td>
+                )}
+                {propertiesInRow.length < 3 && propertiesInRow.length === 2 && (
+                  <td style={{ width: '16.666%', padding: '0' }}></td>
+                )}
+                
                 {propertiesInRow.map((property, index) => {
                   const pricing = formatPricing(property);
                   const address = formatAddress(property);
@@ -382,7 +377,7 @@ export function PropertiesRow({
                       {pricing.crossedOut && (
                         <Text style={{
                           fontSize: `${crossedOutFontSize}px`,
-                          color: '#9ca3af',
+                          color: crossedOutColor,
                           textDecoration: 'line-through',
                           margin: '0 0 4px 0',
                           textAlign: 'center'
@@ -417,13 +412,13 @@ export function PropertiesRow({
                   );
                 })}
                 
-                {/* Fill empty columns if row has less than 3 properties */}
-                {propertiesInRow.length < 3 && Array.from({ length: 3 - propertiesInRow.length }).map((_, emptyIndex) => (
-                  <td key={`empty-${emptyIndex}`} style={{
-                    width: '33.333%',
-                    padding: '0'
-                  }}></td>
-                ))}
+                {/* Add empty cell for centering when row has fewer than 3 properties */}
+                {propertiesInRow.length < 3 && propertiesInRow.length === 1 && (
+                  <td style={{ width: '33.333%', padding: '0' }}></td>
+                )}
+                {propertiesInRow.length < 3 && propertiesInRow.length === 2 && (
+                  <td style={{ width: '16.666%', padding: '0' }}></td>
+                )}
               </tr>
             </tbody>
           </table>
@@ -457,6 +452,7 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
     priceColor: '#059669',
     acreageColor: '#6b7280',
     monthlyPaymentColor: '#6b7280',
+    crossedOutColor: '#9ca3af',
     imageHeight: 200,
     propertySpacing: 16,
     addressFontSize: 14,
@@ -508,6 +504,13 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
       type: 'color',
       defaultValue: '#6b7280',
       description: 'Color of monthly payment text'
+    },
+    {
+      key: 'crossedOutColor',
+      label: 'Crossed Out Price Color',
+      type: 'color',
+      defaultValue: '#9ca3af',
+      description: 'Color of crossed out price text'
     },
     {
       key: 'addressFormat',

@@ -1,4 +1,4 @@
-// app/src/emails/components/Header.tsx
+// packages/landivo/email-template/src/components/Header.tsx
 import React from 'react';
 import { Section } from '@react-email/components';
 import { Type } from 'lucide-react';
@@ -22,7 +22,7 @@ export function Header({
       className={className}
       style={{
         width: '100%',
-        // padding: '24px 0',
+        padding: '0 0 20px 0', // Add 20px bottom padding for gap
         textAlign: 'center',
         borderBottom: showBottomBorder ? '2px solid #e5e7eb' : 'none',
       }}
@@ -46,7 +46,7 @@ export function Header({
   );
 }
 
-// Component metadata for the template builder
+// Rest of the component metadata remains the same...
 export const headerMetadata: EmailComponentMetadata = {
   type: 'header',
   name: 'header',
