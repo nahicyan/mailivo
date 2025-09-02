@@ -24,6 +24,10 @@ export interface PropertiesRowProps {
   crossedOutColor?: string;
   imageHeight?: number;
   propertySpacing?: number;
+  // Divider options
+  showRowDivider?: boolean;
+  rowDividerColor?: string;
+  rowDividerWidth?: number;
   // Font sizes
   addressFontSize?: number;
   acreageFontSize?: number;
@@ -83,6 +87,10 @@ export function PropertiesRow({
   crossedOutColor = '#9ca3af',
   imageHeight = 200,
   propertySpacing = 16,
+  // Divider options
+  showRowDivider = true,
+  rowDividerColor = '#e5e7eb',
+  rowDividerWidth = 2,
   // Font sizes
   addressFontSize = 14,
   acreageFontSize = 14,
@@ -422,7 +430,26 @@ export function PropertiesRow({
               </tr>
             </tbody>
           </table>
-          </div>
+
+          
+          {/* Row divider - only show between rows, not after the last row */}
+          {showRowDivider && rowIndex < propertyRows.length - 1 && (
+            <div style={{
+              margin: `${propertySpacing}px 0`,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <hr style={{
+                width: '100%',
+                height: `${rowDividerWidth}px`,
+                backgroundColor: rowDividerColor,
+                border: 'none',
+                margin: '0'
+              }} />
+            </div>
+          )}
+        </div>
         ))}
       </div>
     </Section>
@@ -455,6 +482,9 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
     crossedOutColor: '#9ca3af',
     imageHeight: 200,
     propertySpacing: 16,
+    showRowDivider: true,
+    rowDividerColor: '#e5e7eb',
+    rowDividerWidth: 2,
     addressFontSize: 14,
     acreageFontSize: 14,
     priceFontSize: 18,
@@ -571,6 +601,27 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
       type: 'boolean',
       defaultValue: false,
       description: 'Display border around the entire component'
+    },
+    {
+      key: 'showRowDivider',
+      label: 'Show Row Dividers',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'Display horizontal dividers between property rows'
+    },
+    {
+      key: 'rowDividerColor',
+      label: 'Row Divider Color',
+      type: 'color',
+      defaultValue: '#e5e7eb',
+      description: 'Color of the horizontal dividers between rows'
+    },
+    {
+      key: 'rowDividerWidth',
+      label: 'Row Divider Width',
+      type: 'number',
+      defaultValue: 2,
+      description: 'Thickness of the row dividers in pixels'
     },
     {
       key: 'addressFontSize',
