@@ -14,6 +14,7 @@ import { propertyButtonsMetadata } from '../components/PropertyButtons';
 import { joinVipListMetadata } from '../components/JoinVipList';
 import { disclaimerMetadata } from '../components/Disclaimer'
 import { propertiesRowMetadata } from '../components/PropertiesRow'
+import { textDesignMetadata } from '../components/TextDesign';
 
 // Component registry - automatically includes all imported components
 export const componentRegistry: ComponentRegistry = {
@@ -29,6 +30,7 @@ export const componentRegistry: ComponentRegistry = {
   [joinVipListMetadata.type]: joinVipListMetadata,
   [disclaimerMetadata.type]: disclaimerMetadata,
   [propertiesRowMetadata.type]: propertiesRowMetadata,
+  [textDesignMetadata.type]: textDesignMetadata,
   // Future components will be added here automatically when imported
 };
 

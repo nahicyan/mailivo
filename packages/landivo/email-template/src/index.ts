@@ -12,6 +12,7 @@ export * from './components/PropertyButtons';
 export * from './components/JoinVipList';
 export * from './components/Disclaimer';
 export * from './components/PropertiesRow';
+export * from './components/TextDesign';
 
 // Export registry and utilities
 export * from './lib/component-registry';
