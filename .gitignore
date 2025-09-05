@@ -43,3 +43,6 @@ logs/
 # Cache
 .eslintcache
 .npm
+
+#Static Image
+/uploads
