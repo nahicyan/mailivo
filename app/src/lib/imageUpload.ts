@@ -9,6 +9,8 @@ export interface UploadedImage {
   dimensions?: { width: number; height: number };
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export async function uploadImages(files: FileList): Promise<UploadedImage[]> {
   const formData = new FormData();
   
@@ -17,9 +19,10 @@ export async function uploadImages(files: FileList): Promise<UploadedImage[]> {
   }
 
   try {
-    const response = await fetch('/api/upload/images', {
+const response = await fetch(`${API_URL}/api/upload/images`, {
       method: 'POST',
       body: formData,
+      credentials: 'include', // For auth cookies
     });
 
     if (!response.ok) {
@@ -36,7 +39,9 @@ export async function uploadImages(files: FileList): Promise<UploadedImage[]> {
 
 export async function getUploadedImages(): Promise<UploadedImage[]> {
   try {
- const response = await fetch('/api/upload/images');
+    const response = await fetch(`${API_URL}api/upload/images`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch images');
     }

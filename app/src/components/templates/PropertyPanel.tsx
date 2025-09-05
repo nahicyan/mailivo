@@ -254,13 +254,20 @@ export function PropertyPanel({
                   type="file"
                   multiple
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const files = e.target.files;
-                    if (files && files.length > 0) {
-                      console.log("Files selected:", files);
-                      alert(
-                        `Selected ${files.length} image(s). Upload functionality to be implemented.`
-                      );
+                    if (!files || files.length === 0) return;
+
+                    try {
+                      const uploadedImages = await uploadImages(files);
+                      if (uploadedImages.length > 0) {
+                        handlePropChange("imageUrl", uploadedImages[0].url);
+                        handlePropChange("imageSource", "url");
+                        alert(`Uploaded ${uploadedImages.length} image(s)`);
+                      }
+                    } catch (error) {
+                      console.error("Upload failed:", error);
+                      alert("Upload failed");
                     }
                   }}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
