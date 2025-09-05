@@ -39,7 +39,7 @@ const response = await fetch(`${API_URL}/api/upload/images`, {
 
 export async function getUploadedImages(): Promise<UploadedImage[]> {
   try {
-    const response = await fetch(`${API_URL}api/upload/images`, {
+    const response = await fetch(`${API_URL}/api/upload/images`, {
       credentials: 'include',
     });
     if (!response.ok) {

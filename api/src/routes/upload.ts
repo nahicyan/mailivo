@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 
 const router = express.Router();
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -47,7 +48,7 @@ router.post('/images', upload.array('files'), (req, res) => {
 
     const uploadedImages = files.map(file => ({
       id: uuidv4(),
-      url: `/uploads/images/${file.filename}`,
+      url: `${API_URL}/uploads/images/${file.filename}`,
       name: file.originalname,
       size: file.size,
       format: path.extname(file.originalname).slice(1).toUpperCase(),
@@ -84,7 +85,7 @@ router.get('/images', (_req, res) => {
         
         return {
           id: file,
-          url: `/uploads/images/${file}`,
+          url: `${API_URL}/uploads/images/${file}`,
           name: file,
           size: stats.size,
           format: path.extname(file).slice(1).toUpperCase(),
