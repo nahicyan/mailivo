@@ -59,20 +59,27 @@ export function ImageUploadDialog({
     }
   }, [open]);
 
-  const fetchGalleryImages = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (templateId) params.append('templateId', templateId);
-      
-      const response = await fetch(`/api/template-images?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        setGalleryImages(data.images || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch gallery:', error);
+const fetchGalleryImages = async () => {
+  try {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+    
+    // Don't filter by templateId to show all images
+    const response = await fetch(`${API_URL}/template-images`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      },
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Gallery images:', data.images); // Debug log
+      setGalleryImages(data.images || []);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch gallery:', error);
+  }
+};
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();

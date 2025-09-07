@@ -28,7 +28,7 @@ export function StaticImage({
   imageUrl = '',
   altText = 'Image',
   width = 600,
-  height,
+  height = 400,
   alignment = 'center',
   linkUrl = '',
   borderRadius = 0,
@@ -42,18 +42,15 @@ export function StaticImage({
   objectFit = 'cover'
 }: StaticImageProps) {
   
-  // Get image source with fallback
   const getImageSrc = () => {
     if (imageUrl) {
-      // Ensure absolute URL for emails
       if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-        // Use API URL for uploaded images
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
         return imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`;
       }
       return imageUrl;
     }
-    return 'https://via.placeholder.com/600x400/e5e7eb/6b7280?text=No+Image';
+    return 'https://via.placeholder.com/600x400/e5e7eb/6b7280?text=Click+to+upload+image';
   };
 
   const imageSrc = getImageSrc();
@@ -75,6 +72,7 @@ export function StaticImage({
     backgroundColor,
     padding,
     margin,
+    minHeight: '100px', 
     ...getAlignmentStyle()
   };
 
@@ -82,6 +80,7 @@ export function StaticImage({
   const imageStyle: React.CSSProperties = {
     width: `${width}px`,
     height: height ? `${height}px` : 'auto',
+    minHeight: '100px',
     maxWidth: '100%',
     display: alignment === 'center' ? 'block' : 'inline-block',
     margin: alignment === 'center' ? '0 auto' : '0',
@@ -145,7 +144,7 @@ export const staticImageMetadata: EmailComponentMetadata = {
     imageUrl: '',
     altText: 'Image',
     width: 600,
-    height: undefined,
+    height: 400,
     alignment: 'center',
     linkUrl: '',
     borderRadius: 0,

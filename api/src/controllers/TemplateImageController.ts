@@ -1,17 +1,17 @@
 // api/src/controllers/TemplateImageController.ts
-import { Response } from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs/promises';
-import sharp from 'sharp';
-import { v4 as uuidv4 } from 'uuid';
-import TemplateImage from '../models/TemplateImage';
-import { AuthRequest } from '../middleware/auth.middleware';
+import { Response } from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs/promises";
+import sharp from "sharp";
+import { v4 as uuidv4 } from "uuid";
+import TemplateImage from "../models/TemplateImage";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: async (_req, _file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads', 'template-images');
+    const uploadDir = path.join(process.cwd(), "uploads", "template-images");
     // Ensure directory exists when needed
     await fs.mkdir(uploadDir, { recursive: true });
     cb(null, uploadDir);
@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
   filename: (_req, file, cb) => {
     const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
-  }
+  },
 });
 
 const upload = multer({
@@ -29,15 +29,17 @@ const upload = multer({
   },
   fileFilter: (_req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|svg|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error("Only image files are allowed"));
     }
-  }
+  },
 });
 
 class TemplateImageController {
@@ -45,7 +47,7 @@ class TemplateImageController {
   async uploadImage(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.file) {
-        res.status(400).json({ error: 'No image file provided' });
+        res.status(400).json({ error: "No image file provided" });
         return;
       }
 
@@ -54,12 +56,15 @@ class TemplateImageController {
 
       // Optimize image using sharp
       const optimizedFileName = `optimized-${req.file.filename}`;
-      const optimizedPath = path.join(path.dirname(req.file.path), optimizedFileName);
+      const optimizedPath = path.join(
+        path.dirname(req.file.path),
+        optimizedFileName
+      );
 
       await sharp(req.file.path)
         .resize(1200, null, {
           withoutEnlargement: true,
-          fit: 'inside'
+          fit: "inside",
         })
         .jpeg({ quality: 85 })
         .toFile(optimizedPath);
@@ -67,10 +72,14 @@ class TemplateImageController {
       // Delete original file
       await fs.unlink(req.file.path);
 
-      // Construct URL
-      const imageUrl = `${process.env.API_URL || 'http://localhost:3001'}/uploads/template-images/${optimizedFileName}`;
+      // Construct URL using environment variable
+      const baseUrl =
+        process.env.API_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        "https://api.mailivo.landivo.com";
+      const imageUrl = `${baseUrl}/uploads/template-images/${optimizedFileName}`;
 
-      // Save to database
+      // Save to database with correct URL
       const templateImage = new TemplateImage({
         filename: optimizedFileName,
         originalName: req.file.originalname,
@@ -78,7 +87,7 @@ class TemplateImageController {
         size: (await fs.stat(optimizedPath)).size,
         mimeType: req.file.mimetype,
         userId,
-        templateId: templateId || null
+        templateId: templateId || null,
       });
 
       await templateImage.save();
@@ -90,12 +99,12 @@ class TemplateImageController {
           _id: templateImage._id,
           url: templateImage.url,
           filename: templateImage.filename,
-          uploadedAt: templateImage.createdAt
-        }
+          uploadedAt: templateImage.createdAt,
+        },
       });
     } catch (error: any) {
-      console.error('Image upload error:', error);
-      res.status(500).json({ error: 'Failed to upload image' });
+      console.error("Image upload error:", error);
+      res.status(500).json({ error: "Failed to upload image" });
     }
   }
 
@@ -103,7 +112,7 @@ class TemplateImageController {
   async uploadMultipleImages(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.files || !Array.isArray(req.files)) {
-        res.status(400).json({ error: 'No image files provided' });
+        res.status(400).json({ error: "No image files provided" });
         return;
       }
 
@@ -114,12 +123,15 @@ class TemplateImageController {
       for (const file of req.files) {
         // Optimize each image
         const optimizedFileName = `optimized-${file.filename}`;
-        const optimizedPath = path.join(path.dirname(file.path), optimizedFileName);
+        const optimizedPath = path.join(
+          path.dirname(file.path),
+          optimizedFileName
+        );
 
         await sharp(file.path)
           .resize(1200, null, {
             withoutEnlargement: true,
-            fit: 'inside'
+            fit: "inside",
           })
           .jpeg({ quality: 85 })
           .toFile(optimizedPath);
@@ -128,7 +140,8 @@ class TemplateImageController {
         await fs.unlink(file.path);
 
         // Construct URL
-        const imageUrl = `${process.env.API_URL || 'http://localhost:3001'}/uploads/template-images/${optimizedFileName}`;
+          const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+          const imageUrl = `${baseUrl}/uploads/template-images/${optimizedFileName}`;
 
         // Save to database
         const templateImage = new TemplateImage({
@@ -138,7 +151,7 @@ class TemplateImageController {
           size: (await fs.stat(optimizedPath)).size,
           mimeType: file.mimetype,
           userId,
-          templateId: templateId || null
+          templateId: templateId || null,
         });
 
         await templateImage.save();
@@ -146,17 +159,17 @@ class TemplateImageController {
           _id: templateImage._id,
           url: templateImage.url,
           filename: templateImage.filename,
-          uploadedAt: templateImage.createdAt
+          uploadedAt: templateImage.createdAt,
         });
       }
 
       res.status(201).json({
         success: true,
-        images: uploadedImages
+        images: uploadedImages,
       });
     } catch (error: any) {
-      console.error('Multiple image upload error:', error);
-      res.status(500).json({ error: 'Failed to upload images' });
+      console.error("Multiple image upload error:", error);
+      res.status(500).json({ error: "Failed to upload images" });
     }
   }
 
@@ -177,7 +190,7 @@ class TemplateImageController {
         .sort({ createdAt: -1 })
         .limit(Number(limit))
         .skip(skip)
-        .select('_id url filename createdAt templateId');
+        .select("_id url filename createdAt templateId");
 
       const total = await TemplateImage.countDocuments(query);
 
@@ -188,12 +201,12 @@ class TemplateImageController {
           total,
           page: Number(page),
           limit: Number(limit),
-          pages: Math.ceil(total / Number(limit))
-        }
+          pages: Math.ceil(total / Number(limit)),
+        },
       });
     } catch (error: any) {
-      console.error('Get images error:', error);
-      res.status(500).json({ error: 'Failed to fetch images' });
+      console.error("Get images error:", error);
+      res.status(500).json({ error: "Failed to fetch images" });
     }
   }
 
@@ -206,7 +219,7 @@ class TemplateImageController {
       const image = await TemplateImage.findOne({ _id: id, userId });
 
       if (!image) {
-        res.status(404).json({ error: 'Image not found' });
+        res.status(404).json({ error: "Image not found" });
         return;
       }
 
@@ -220,12 +233,12 @@ class TemplateImageController {
           size: image.size,
           mimeType: image.mimeType,
           uploadedAt: image.createdAt,
-          templateId: image.templateId
-        }
+          templateId: image.templateId,
+        },
       });
     } catch (error: any) {
-      console.error('Get image error:', error);
-      res.status(500).json({ error: 'Failed to fetch image' });
+      console.error("Get image error:", error);
+      res.status(500).json({ error: "Failed to fetch image" });
     }
   }
 
@@ -238,16 +251,21 @@ class TemplateImageController {
       const image = await TemplateImage.findOne({ _id: id, userId });
 
       if (!image) {
-        res.status(404).json({ error: 'Image not found' });
+        res.status(404).json({ error: "Image not found" });
         return;
       }
 
       // Delete file from disk
-      const filePath = path.join(process.cwd(), 'uploads', 'template-images', image.filename);
+      const filePath = path.join(
+        process.cwd(),
+        "uploads",
+        "template-images",
+        image.filename
+      );
       try {
         await fs.unlink(filePath);
       } catch (err) {
-        console.error('Failed to delete file:', err);
+        console.error("Failed to delete file:", err);
       }
 
       // Delete from database
@@ -255,11 +273,11 @@ class TemplateImageController {
 
       res.json({
         success: true,
-        message: 'Image deleted successfully'
+        message: "Image deleted successfully",
       });
     } catch (error: any) {
-      console.error('Delete image error:', error);
-      res.status(500).json({ error: 'Failed to delete image' });
+      console.error("Delete image error:", error);
+      res.status(500).json({ error: "Failed to delete image" });
     }
   }
 }
