@@ -4,6 +4,7 @@ import { EmailTemplate } from '../models/EmailTemplate.model';
 import { logger } from '../utils/logger';
 import { getComponent, componentRegistry } from '@landivo/email-template';
 import { render } from '@react-email/render';
+import { emailImageService } from './emailImageService';
 import React from 'react';
 
 interface LandivoProperty {
@@ -401,6 +402,10 @@ class TemplateRenderingService {
     campaignData?: CampaignData
   ): React.ReactElement | null {
     try {
+    // Handle static-image component
+    if (component.type === 'static-image') {
+      return emailImageService.renderImageComponent(component, propertyData, contactData);
+    }
       // Get component metadata from registry
       const componentMeta = getComponent(component.type);
       if (!componentMeta) {

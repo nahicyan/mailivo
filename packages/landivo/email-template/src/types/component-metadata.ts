@@ -10,6 +10,8 @@ export interface ComponentConfigField {
   required?: boolean;
   defaultValue?: any;
   description?: string;
+  min?: number; 
+  max?: number;
 }
 
 export interface EmailComponentMetadata {
