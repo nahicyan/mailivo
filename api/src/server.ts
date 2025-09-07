@@ -1,7 +1,7 @@
 // api/src/server.ts
 import dotenv from 'dotenv';
 dotenv.config();
-
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -23,6 +23,10 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('combined'));
 app.use(cookieParser());
+
+//File Upload
+app.use('/api', routes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // CORS
 app.use(cors({

@@ -116,8 +116,12 @@ export function ImageUploadDialog({
     if (templateId) formData.append('templateId', templateId);
 
     try {
-      const response = await fetch('/api/template-images/upload', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+      const response = await fetch(`${API_URL}/template-images/upload`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
         body: formData
       });
 
@@ -125,6 +129,9 @@ export function ImageUploadDialog({
         const data = await response.json();
         onImageSelect(data.imageUrl);
         onOpenChange(false);
+      } else {
+        const error = await response.text();
+        console.error('Upload failed:', error);
       }
     } catch (error) {
       console.error('Upload failed:', error);
@@ -279,3 +286,4 @@ export function ImageUploadDialog({
     </Dialog>
   );
 }
+

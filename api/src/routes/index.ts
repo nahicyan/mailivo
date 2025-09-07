@@ -1,7 +1,5 @@
 // api/src/routes/index.ts
 import { Router } from 'express';
-import express from 'express';
-import path from 'path';
 import { authRoutes } from './auth.route';
 import { campaignRoutes } from './campaign.route';
 import { templatesRoutes } from './template.route';
@@ -20,10 +18,9 @@ router.use('/templates', templatesRoutes);
 router.use('/landivo-email-lists', landivoEmailListsRoutes);
 router.use('/landivo', landivoRoutes);
 router.use('/workflows', workflowRoutes);
-router.use('/api/track', trackingRoutes);
-router.use("/api/subject-templates", subjectTemplateRoute);
-router.use('/api/template-images', templateImageRoutes);
-router.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+router.use('/track', trackingRoutes);
+router.use("/subject-templates", subjectTemplateRoute);
+router.use('/template-images', templateImageRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
