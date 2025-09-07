@@ -16,6 +16,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { X, Settings } from 'lucide-react';
 import { getComponent } from '@landivo/email-template';
+import { StaticImageBuilder } from './StaticImageBuilder';
 
 interface PropertyPanelProps {
   component: EmailComponent;
@@ -47,6 +48,7 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
         return null;
       }
     }
+    
 
     switch (field.type) {
       case 'text':
@@ -101,7 +103,7 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option) => (
+                {field.options?.map((option: any) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -185,6 +187,40 @@ export function PropertyPanel({ component, onUpdate, onClose }: PropertyPanelPro
         return null;
     }
   };
+  // Special handling for static-image component
+if (component.type === 'static-image') {
+  return (
+    <div className="fixed inset-y-0 right-0 w-80 bg-white border-l border-gray-200 shadow-lg z-50 flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-2">
+          <Settings className="h-4 w-4" />
+          <h3 className="font-medium">Static Image Properties</h3>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-4">
+        <StaticImageBuilder
+          {...localProps}
+          onUpdate={(updates) => {
+            const newProps = { ...localProps, ...updates };
+            setLocalProps(newProps);
+            onUpdate({ props: newProps });
+          }}
+        />
+        
+        {/* Render other config fields below the builder */}
+        <div className="mt-6 space-y-4">
+          {componentMeta?.configFields
+            ?.filter((field) => !['imageUrl', 'linkUrl'].includes(field.key))
+            ?.map(renderConfigField)}
+        </div>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div className="fixed bottom-0 right-0 w-80 h-96 bg-white border-l border-t border-gray-200 shadow-lg z-50">
