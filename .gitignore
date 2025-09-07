@@ -43,3 +43,7 @@ logs/
 # Cache
 .eslintcache
 .npm
+
+#Upload
+api/uploads/
+uploads/
