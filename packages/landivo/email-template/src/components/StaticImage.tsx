@@ -47,7 +47,9 @@ export function StaticImage({
     if (imageUrl) {
       // Ensure absolute URL for emails
       if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-        return `${process.env.NEXT_PUBLIC_API_URL || 'https://api.landivo.com'}${imageUrl}`;
+        // Use API URL for uploaded images
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+        return imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`;
       }
       return imageUrl;
     }
@@ -62,7 +64,7 @@ export function StaticImage({
       case 'left':
         return { textAlign: 'left' };
       case 'right':
-        return { textAlign: 'right'};
+        return { textAlign: 'right' };
       default:
         return { textAlign: 'center' };
     }
@@ -276,4 +278,5 @@ export const staticImageMetadata: EmailComponentMetadata = {
   ],
   component: StaticImage
 };
+
 export default StaticImage;

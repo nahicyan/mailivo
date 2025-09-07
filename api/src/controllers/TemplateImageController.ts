@@ -12,6 +12,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 const storage = multer.diskStorage({
   destination: async (_req, _file, cb) => {
     const uploadDir = path.join(process.cwd(), 'uploads', 'template-images');
+    // Ensure directory exists when needed
     await fs.mkdir(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },

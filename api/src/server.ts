@@ -12,8 +12,10 @@ import morgan from 'morgan';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import { routes } from './routes';
+import { initializeUploadDirectories } from './utils/initUploads';
 
 const app = express();
+initializeUploadDirectories();
 
 // Fix trust proxy issue
 app.set('trust proxy', 1);
