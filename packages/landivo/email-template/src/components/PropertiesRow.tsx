@@ -19,7 +19,7 @@ export interface PropertiesRowProps {
     | "discount"
     | "discountWithPayment";
   primaryColor?: string;
-  textColor?: string;
+  addressColor?: string;
   priceColor?: string;
   acreageColor?: string;
   monthlyPaymentColor?: string;
@@ -82,7 +82,7 @@ export function PropertiesRow({
   addressFormat = "{city}, {state} {zip}",
   pricingStyle = "askingPrice",
   primaryColor = "#2563eb",
-  textColor = "#374151",
+  addressColor = "#374151",
   priceColor = "#059669",
   acreageColor = "#6b7280",
   monthlyPaymentColor = "#6b7280",
@@ -412,7 +412,7 @@ export function PropertiesRow({
                           <Text
                             style={{
                               fontSize: `${addressFontSize}px`,
-                              color: textColor,
+                              color: addressColor,
                               fontWeight: "500",
                               margin: "0 0 8px 0",
                               lineHeight: "1.3",
@@ -543,7 +543,7 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
     addressFormat: "{city}, {state} {zip}",
     pricingStyle: "askingPrice",
     primaryColor: "#2563eb",
-    textColor: "#374151",
+    addressColor: "#374151",
     priceColor: "#059669",
     acreageColor: "#6b7280",
     monthlyPaymentColor: "#6b7280",
@@ -576,11 +576,11 @@ export const propertiesRowMetadata: EmailComponentMetadata = {
       description: "Color of the border around property images",
     },
     {
-      key: "textColor",
-      label: "Text Color",
+      key: "addressColor",
+      label: "Address Color",
       type: "color",
       defaultValue: "#374151",
-      description: "Color of address text",
+      description: "Color of property address text",
     },
     {
       key: "priceColor",
