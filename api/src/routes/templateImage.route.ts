@@ -1,6 +1,4 @@
-// ============================================
 // api/src/routes/templateImage.route.ts
-// ============================================
 import { Router } from 'express';
 import { templateImageController, upload } from '../controllers/TemplateImageController';
 import { authenticate } from '../middleware/auth.middleware';

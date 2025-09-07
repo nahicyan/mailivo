@@ -20,7 +20,8 @@ router.use('/landivo', landivoRoutes);
 router.use('/workflows', workflowRoutes);
 router.use('/api/track', trackingRoutes);
 router.use("/api/subject-templates", subjectTemplateRoute);
-router.use('/template-images', templateImageRoutes);
+router.use('/api/template-images', templateImageRoutes);
+router.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
