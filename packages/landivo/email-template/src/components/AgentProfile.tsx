@@ -262,6 +262,7 @@ export const agentProfileMetadata: EmailComponentMetadata = {
   description: 'Display agent contact information with profile picture and action button',
   category: 'contact',
   available: true,
+  component: AgentProfile,
   defaultProps: {
     className: '',
     backgroundColor: '#ffffff',
