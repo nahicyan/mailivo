@@ -29,6 +29,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.
 interface ExtendedCreateCampaignRequest extends CreateCampaignRequest {
     selectedProperties: string[];
     sortedPropertyOrder: string[];
+        selectedAgent?: string; 
 }
 
 export default function CreateMultiCampaignPage() {
@@ -51,7 +52,8 @@ export default function CreateMultiCampaignPage() {
         subject: '',
         selectedPlan: null,
         selectedProperties: [],
-        sortedPropertyOrder: []
+        sortedPropertyOrder: [],
+        selectedAgent: '' 
     });
 
     // Data fetching hooks

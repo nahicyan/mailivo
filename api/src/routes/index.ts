@@ -9,6 +9,7 @@ import workflowRoutes from './workflows';
 import trackingRoutes from './tracking.routes';
 import subjectTemplateRoute from './subjectTemplateRoute';
 import { templateImageRoutes } from './templateImage.route';
+import userProfileRoute from './userProfileRoute';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.use('/workflows', workflowRoutes);
 router.use('/track', trackingRoutes);
 router.use("/subject-templates", subjectTemplateRoute);
 router.use('/template-images', templateImageRoutes);
+router.use('/api/user', userProfileRoute);
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

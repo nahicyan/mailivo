@@ -16,6 +16,7 @@ import { disclaimerMetadata } from '../components/Disclaimer'
 import { propertiesRowMetadata } from '../components/PropertiesRow'
 import { textDesignMetadata } from '../components/TextDesign';
 import { staticImageMetadata } from '../components/StaticImage';
+import { agentProfileMetadata } from '../components/AgentProfile';
 
 // Component registry - automatically includes all imported components
 export const componentRegistry: ComponentRegistry = {
@@ -33,6 +34,7 @@ export const componentRegistry: ComponentRegistry = {
   [propertiesRowMetadata.type]: propertiesRowMetadata,
   [textDesignMetadata.type]: textDesignMetadata,
   [staticImageMetadata.type]: staticImageMetadata,
+  [agentProfileMetadata.type]: agentProfileMetadata,  
   // Future components will be added here automatically when imported
 };
 

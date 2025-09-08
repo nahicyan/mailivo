@@ -1,10 +1,16 @@
-// ===== User Model (api/src/models/User.model.ts) =====
-import { Schema, model, Document } from 'mongoose';
+// api/src/models/User.model.ts
+import { Schema, model, Document, Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
+  _id: Types.ObjectId;
   email: string;
   password: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  profileRole?: string;
+  avatarUrl?: string;
   company: {
     name: string;
     domain: string;
@@ -37,6 +43,26 @@ const userSchema = new Schema<IUser>({
     type: String,
     required: true,
   },
+  firstName: {
+    type: String,
+    trim: true,
+  },
+  lastName: {
+    type: String,
+    trim: true,
+  },
+  phone: {
+    type: String,
+    trim: true,
+  },
+  profileRole: {
+    type: String,
+    trim: true,
+  },
+  avatarUrl: {
+    type: String,
+    trim: true,
+  },
   company: {
     name: { type: String, required: true },
     domain: { type: String, required: true },
@@ -56,6 +82,9 @@ const userSchema = new Schema<IUser>({
     },
   },
 }, { timestamps: true });
+
+// Index for public profiles
+userSchema.index({ profileRole: 1, firstName: 1, lastName: 1 });
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
