@@ -34,8 +34,7 @@ export const componentRegistry: ComponentRegistry = {
   [propertiesRowMetadata.type]: propertiesRowMetadata,
   [textDesignMetadata.type]: textDesignMetadata,
   [staticImageMetadata.type]: staticImageMetadata,
-  [agentProfileMetadata.type]: agentProfileMetadata,  
-  // Future components will be added here automatically when imported
+  [agentProfileMetadata.type]: agentProfileMetadata,
 };
 
 // Helper functions for working with the registry
@@ -53,4 +52,16 @@ export const getComponentsByCategory = (category: string) => {
 
 export const getAvailableComponents = () => {
   return Object.values(componentRegistry).filter(comp => comp.available);
+};
+
+// Helper function to check if template has agent profile components
+export const hasAgentProfileComponents = (template: any) => {
+  if (!template?.components) return false;
+  return template.components.some((component: any) => component.type === 'agent-profile');
+};
+
+// Helper function to check if template has agent profile components
+export const hasAgentProfileComponents = (template: any) => {
+  if (!template?.components) return false;
+  return template.components.some((component: any) => component.type === 'agent-profile');
 };

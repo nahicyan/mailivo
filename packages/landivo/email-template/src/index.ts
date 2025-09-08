@@ -21,4 +21,4 @@ export * from './lib/component-registry';
 export * from './types/component-metadata';
 
 // Export convenient collections
-export { componentRegistry as default } from './lib/component-registry';
+export { componentRegistry as default, hasAgentProfileComponents } from './lib/component-registry';
