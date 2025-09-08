@@ -59,9 +59,3 @@ export const hasAgentProfileComponents = (template: any) => {
   if (!template?.components) return false;
   return template.components.some((component: any) => component.type === 'agent-profile');
 };
-
-// Helper function to check if template has agent profile components
-export const hasAgentProfileComponents = (template: any) => {
-  if (!template?.components) return false;
-  return template.components.some((component: any) => component.type === 'agent-profile');
-};
