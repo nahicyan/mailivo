@@ -226,7 +226,7 @@ export function AgentProfile({
                 textAlign: 'center'
               }}>
                 <Link
-                  href={`mailto:${finalEmail}?subject=Property Inquiry&body=Hi ${resolvedAgentData?.firstName || ''},\n\nI'm interested in making an offer on one of your properties. Please contact me at your earliest convenience.\n\nThank you!`}
+                  href={`mailto:${displayEmail}?subject=Property Inquiry&body=Hi ${agentData?.firstName ||''},
                   style={{
                     display: 'inline-block',
                     backgroundColor: '#2563eb',
@@ -239,7 +239,7 @@ export function AgentProfile({
                     textAlign: 'center',
                     border: 'none',
                     lineHeight: '1.2'
-                  }}
+                  }`}
                 >
                   Make an Offer
                 </Link>
@@ -260,7 +260,7 @@ export const agentProfileMetadata: EmailComponentMetadata = {
   version: 'v1.0',
   icon: <User className="w-5 h-5" />,
   description: 'Display agent contact information with profile picture and action button',
-  category: 'contact',
+  category: 'content',
   available: true,
   component: AgentProfile,
   defaultProps: {
