@@ -1,5 +1,5 @@
 // api/src/models/Campaign.ts - UPDATED FOR MULTI-PROPERTY ARRAYS
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICampaign extends Document {
   name: string;
@@ -8,11 +8,11 @@ export interface ICampaign extends Document {
   textContent?: string;
 
   // Campaign type
-  type: 'single' | 'multi-property';
+  type: "single" | "multi-property";
 
   // UPDATED: property can be string (single) OR array (multi-property)
   property: string | string[];
-  
+
   emailList: string;
   emailTemplate: string;
   emailAddressGroup?: string;
@@ -20,35 +20,41 @@ export interface ICampaign extends Document {
   emailVolume: number;
 
   // Image selections (works for both single and multi-property)
-  imageSelections?: Record<string, {
-    name?: string;
-    propertyId?: string;  // For multi-property
-    imageIndex: number;
-    imageUrl?: string;    // For multi-property
-    order: number;
-  }>;
+  imageSelections?: Record<
+    string,
+    {
+      name?: string;
+      propertyId?: string; // For multi-property
+      imageIndex: number;
+      imageUrl?: string; // For multi-property
+      order: number;
+    }
+  >;
 
   // UPDATED: selectedPlan can be single object OR array of plans
-  selectedPlan?: {
-    planNumber: number;
-    planName: string;
-    downPayment: number;
-    loanAmount: number;
-    interestRate: number;
-    monthlyPayment: number;
-  } | Array<{
-    propertyId: string;
-    planNumber: number;
-    planName: string;
-    downPayment: number;
-    loanAmount: number;
-    interestRate: number;
-    monthlyPayment: number;
-  }> | null;
-
+  selectedPlan?:
+    | {
+        planNumber: number;
+        planName: string;
+        downPayment: number;
+        loanAmount: number;
+        interestRate: number;
+        monthlyPayment: number;
+      }
+    | Array<{
+        propertyId: string;
+        planNumber: number;
+        planName: string;
+        downPayment: number;
+        loanAmount: number;
+        interestRate: number;
+        monthlyPayment: number;
+      }>
+    | null;
+  selectedAgent?: string;
   // Optional multi-property metadata
   multiPropertyMeta?: {
-    type: 'multi-property';
+    type: "multi-property";
     totalProperties: number;
     financingEnabled: boolean;
     planStrategy?: string;
@@ -56,13 +62,20 @@ export interface ICampaign extends Document {
   };
 
   // Standard fields
-  audienceType?: 'all' | 'segment' | 'landivo';
+  audienceType?: "all" | "segment" | "landivo";
   segments?: string[];
   estimatedRecipients?: number;
   spamScore?: number;
   sentAt?: Date;
-  source: 'landivo' | 'manual' | 'api';
-  status: 'draft' | 'active' | 'paused' | 'sending' | 'sent' | 'completed' | 'failed';
+  source: "landivo" | "manual" | "api";
+  status:
+    | "draft"
+    | "active"
+    | "paused"
+    | "sending"
+    | "sent"
+    | "completed"
+    | "failed";
 
   metrics: {
     sent: number;
@@ -87,107 +100,121 @@ export interface ICampaign extends Document {
   updatedAt: Date;
 }
 
-const CampaignSchema: Schema = new Schema({
-  name: { type: String, required: true },
-  subject: { type: String, required: true },
-  htmlContent: { type: String, required: true },
-  textContent: { type: String },
+const CampaignSchema: Schema = new Schema(
+  {
+    name: { type: String, required: true },
+    subject: { type: String, required: true },
+    htmlContent: { type: String, required: true },
+    textContent: { type: String },
 
-  // Campaign type
-  type: {
-    type: String,
-    enum: ['single', 'multi-property'],
-    required: true
-  },
-
-  // UPDATED: property can be string or array
-  property: { 
-    type: Schema.Types.Mixed, // Allows both string and array
-    required: true,
-    validate: {
-      validator: function(v: any) {
-        return typeof v === 'string' || Array.isArray(v);
-      },
-      message: 'Property must be string or array'
-    }
-  },
-  
-  emailList: { type: String, required: true },
-  emailTemplate: { type: String, required: true },
-  emailAddressGroup: { type: String },
-  emailSchedule: { type: String, required: true },
-  emailVolume: { type: Number, default: 0 },
-
-  // Image selections (flexible for single and multi-property)
-  imageSelections: {
-    type: Schema.Types.Mixed,
-    default: {}
-  },
-
-  // UPDATED: selectedPlan can be object or array
-  selectedPlan: {
-    type: Schema.Types.Mixed, // Allows object, array, or null
-    default: null
-  },
-
-  // Multi-property metadata
-  multiPropertyMeta: {
+    // Campaign type
     type: {
       type: String,
-      enum: ['multi-property']
+      enum: ["single", "multi-property"],
+      required: true,
     },
-    totalProperties: { type: Number },
-    financingEnabled: { type: Boolean },
-    planStrategy: { type: String },
-    propertiesWithFinancing: { type: Number }
-  },
 
-  // Standard fields
-  audienceType: {
-    type: String,
-    enum: ['all', 'segment', 'landivo'],
-    default: 'all'
-  },
-  segments: [{ type: String }],
-  estimatedRecipients: { type: Number, default: 0 },
-  spamScore: { type: Number, min: 0, max: 10 },
-  sentAt: { type: Date },
+    // UPDATED: property can be string or array
+    property: {
+      type: Schema.Types.Mixed, // Allows both string and array
+      required: true,
+      validate: {
+        validator: function (v: any) {
+          return typeof v === "string" || Array.isArray(v);
+        },
+        message: "Property must be string or array",
+      },
+    },
 
-  source: {
-    type: String,
-    enum: ['landivo', 'manual', 'api'],
-    default: 'manual'
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'active', 'paused', 'sending', 'sent', 'completed', 'failed'],
-    default: 'draft'
-  },
+    emailList: { type: String, required: true },
+    emailTemplate: { type: String, required: true },
+    emailAddressGroup: { type: String },
+    emailSchedule: { type: String, required: true },
+    emailVolume: { type: Number, default: 0 },
 
-  metrics: {
-    sent: { type: Number, default: 0 },
-    delivered: { type: Number, default: 0 },
-    opened: { type: Number, default: 0 },
-    clicked: { type: Number, default: 0 },
-    bounced: { type: Number, default: 0 },
-    complained: { type: Number, default: 0 },
-    totalRecipients: { type: Number, default: 0 },
-    open: { type: Number, default: 0 },
-    bounces: { type: Number, default: 0 },
-    successfulDeliveries: { type: Number, default: 0 },
-    clicks: { type: Number, default: 0 },
-    didNotOpen: { type: Number, default: 0 },
-    mobileOpen: { type: Number, default: 0 }
-  },
+    // Agent selection for templates with agent profile
+    selectedAgent: { type: String, default: null },
 
-  description: { type: String },
-  scheduledDate: { type: Date },
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true }
-}, {
-  timestamps: true
-});
+    // Image selections (flexible for single and multi-property)
+    imageSelections: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+
+    // UPDATED: selectedPlan can be object or array
+    selectedPlan: {
+      type: Schema.Types.Mixed, // Allows object, array, or null
+      default: null,
+    },
+
+    // Multi-property metadata
+    multiPropertyMeta: {
+      type: {
+        type: String,
+        enum: ["multi-property"],
+      },
+      totalProperties: { type: Number },
+      financingEnabled: { type: Boolean },
+      planStrategy: { type: String },
+      propertiesWithFinancing: { type: Number },
+    },
+
+    // Standard fields
+    audienceType: {
+      type: String,
+      enum: ["all", "segment", "landivo"],
+      default: "all",
+    },
+    segments: [{ type: String }],
+    estimatedRecipients: { type: Number, default: 0 },
+    spamScore: { type: Number, min: 0, max: 10 },
+    sentAt: { type: Date },
+
+    source: {
+      type: String,
+      enum: ["landivo", "manual", "api"],
+      default: "manual",
+    },
+    status: {
+      type: String,
+      enum: [
+        "draft",
+        "active",
+        "paused",
+        "sending",
+        "sent",
+        "completed",
+        "failed",
+      ],
+      default: "draft",
+    },
+
+    metrics: {
+      sent: { type: Number, default: 0 },
+      delivered: { type: Number, default: 0 },
+      opened: { type: Number, default: 0 },
+      clicked: { type: Number, default: 0 },
+      bounced: { type: Number, default: 0 },
+      complained: { type: Number, default: 0 },
+      totalRecipients: { type: Number, default: 0 },
+      open: { type: Number, default: 0 },
+      bounces: { type: Number, default: 0 },
+      successfulDeliveries: { type: Number, default: 0 },
+      clicks: { type: Number, default: 0 },
+      didNotOpen: { type: Number, default: 0 },
+      mobileOpen: { type: Number, default: 0 },
+    },
+
+    description: { type: String },
+    scheduledDate: { type: Date },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 CampaignSchema.index({ userId: 1, status: 1 });
 CampaignSchema.index({ userId: 1, createdAt: -1 });
 
-export const Campaign = mongoose.model<ICampaign>('Campaign', CampaignSchema);
+export const Campaign = mongoose.model<ICampaign>("Campaign", CampaignSchema);
