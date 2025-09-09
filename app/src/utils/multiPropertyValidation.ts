@@ -109,10 +109,12 @@ export function prepareMultiPropertyCampaignData(
     scheduledDate: formData.emailSchedule === 'scheduled' 
       ? selectedDate?.toISOString() 
       : null,
-    // Add selectedAgent if present
-    ...(formData.selectedAgent && { selectedAgent: formData.selectedAgent }),
+    
     // CHANGED: Multiple payment plans instead of single selectedPlan
     selectedPlan: multiPropertyPaymentPlans, // Array of payment plans
+    
+    // Include selectedAgent if present (moved here for proper ordering)
+    selectedAgent: formData.selectedAgent || null,
     
     // CHANGED: Multiple image selections (similar structure to single property)
     imageSelections: multiPropertyImageSelections,
