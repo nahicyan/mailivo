@@ -393,12 +393,6 @@ export default function CreateMultiCampaignPage() {
       campaignData.audienceType = "landivo";
       campaignData.segments = [formData.emailList];
       campaignData.estimatedRecipients = formData.emailVolume;
-
-      // Include agent selection if template has agent profile
-      if (hasAgentProfile && formData.selectedAgent) {
-        campaignData.selectedAgent = formData.selectedAgent;
-      }
-
       const response = await fetch(`${API_URL}/campaigns`, {
         method: "POST",
         headers: {
