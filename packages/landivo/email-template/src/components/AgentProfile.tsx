@@ -123,6 +123,7 @@ export function AgentProfile({
   const containerStyle = {
     maxWidth: '600px',
     margin: '0 auto',
+    backgroundColor,
     borderRadius: `${borderRadius}px`,
     border: showBorder ? `1px solid ${styleConfig.borderColor}` : 'none',
     boxShadow: styleConfig.shadowStyle,
@@ -232,7 +233,6 @@ export function AgentProfile({
   <Section
     style={{
       padding: '20px 0',
-      backgroundColor: backgroundColor || '#f8f9fa',
     }}
   >
       <div style={containerStyle}>
