@@ -229,7 +229,12 @@ export function AgentProfile({
   };
 
   return (
-    <Section className={className} style={{ width: '100%', padding: '20px 0', backgroundColor, }}>
+  <Section
+    style={{
+      padding: '20px 0',
+      backgroundColor: backgroundColor || '#f8f9fa',
+    }}
+  >
       <div style={containerStyle}>
         <table style={tableStyle}>
           <tbody>
