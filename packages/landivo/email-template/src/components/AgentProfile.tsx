@@ -1,6 +1,6 @@
 // packages/landivo/email-template/src/components/AgentProfile.tsx
 import React from 'react';
-import { Section, Text, Img, Link } from '@react-email/components';
+import { Section, Text, Img, Link, Button } from '@react-email/components';
 import { EmailComponentMetadata } from '../types/component-metadata';
 import { User } from 'lucide-react';
 
@@ -43,7 +43,9 @@ export function AgentProfile({
   // Use override values or fall back to agent data
   const displayPhone = overridePhone || agentData?.phone || '';
   const displayEmail = overrideEmail || agentData?.email || '';
-  const fullName = `${agentData?.firstName || ''} ${agentData?.lastName || ''}`.trim();
+  const firstName = agentData?.firstName || '';
+  const lastName = agentData?.lastName || '';
+  const fullName = `${firstName} ${lastName}`.trim();
   const avatarUrl = agentData?.avatarUrl ? `https://api.landivo.com/${agentData.avatarUrl}` : '';
 
   // Style variations
@@ -56,8 +58,12 @@ export function AgentProfile({
           shadowStyle: 'none',
           nameColor: '#1f2937',
           roleColor: '#6b7280',
+          phoneColor: '#2563eb',
+          emailColor: '#6b7280',
           nameSize: '20px',
-          roleSize: '14px'
+          roleSize: '14px',
+          buttonBg: '#2563eb',
+          buttonHoverBg: '#1d4ed8'
         };
       case 'minimal':
         return {
@@ -66,30 +72,43 @@ export function AgentProfile({
           shadowStyle: 'none',
           nameColor: '#374151',
           roleColor: '#9ca3af',
+          phoneColor: '#2563eb',
+          emailColor: '#9ca3af',
           nameSize: '18px',
-          roleSize: '13px'
+          roleSize: '13px',
+          buttonBg: '#3b82f6',
+          buttonHoverBg: '#2563eb'
         };
       default: // modern
         return {
           containerPadding: '20px',
           borderColor: '#e5e7eb',
-          shadowStyle: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          shadowStyle: '0 2px 8px rgba(0, 0, 0, 0.08)',
           nameColor: '#111827',
           roleColor: '#6b7280',
+          phoneColor: '#2563eb',
+          emailColor: '#6b7280',
           nameSize: '19px',
-          roleSize: '14px'
+          roleSize: '14px',
+          buttonBg: '#2563eb',
+          buttonHoverBg: '#1d4ed8'
         };
     }
   };
 
   const styleConfig = getStyleConfig();
 
+  // Build mailto link with proper encoding
+  const mailtoSubject = encodeURIComponent('Property Inquiry');
+  const mailtoBody = encodeURIComponent(`Hi ${firstName || 'there'},\n\nI'm interested in learning more about the property you have listed.\n\nBest regards`);
+  const mailtoLink = `mailto:${displayEmail}?subject=${mailtoSubject}&body=${mailtoBody}`;
+
   return (
     <Section
       className={className}
       style={{
         width: '100%',
-        padding: '16px 0',
+        padding: '20px 0',
       }}
     >
       <div style={{
@@ -100,94 +119,30 @@ export function AgentProfile({
         border: showBorder ? `1px solid ${styleConfig.borderColor}` : 'none',
         boxShadow: styleConfig.shadowStyle,
         padding: styleConfig.containerPadding,
-        textAlign: alignment
+        overflow: 'hidden'
       }}>
-        
-        {/* Main Content Container */}
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{
+          width: '100%',
+          borderSpacing: '0',
+          borderCollapse: 'collapse'
+        }}>
           <tbody>
             <tr>
-              <td style={{ 
-                verticalAlign: 'top',
-                paddingRight: showProfileImage ? '16px' : '0',
-                width: showProfileImage ? 'auto' : '100%'
-              }}>
-                {/* Agent Info Section */}
-                <div style={{ marginBottom: '12px' }}>
-                  <Text style={{
-                    margin: '0 0 4px 0',
-                    fontSize: styleConfig.nameSize,
-                    fontWeight: '600',
-                    color: styleConfig.nameColor,
-                    lineHeight: '1.3'
-                  }}>
-                    Contact {fullName || 'Agent'}
-                  </Text>
-                  
-                  {agentData?.profileRole && (
-                    <Text style={{
-                      margin: '0 0 8px 0',
-                      fontSize: styleConfig.roleSize,
-                      color: styleConfig.roleColor,
-                      fontStyle: 'italic'
-                    }}>
-                      {agentData.profileRole}
-                    </Text>
-                  )}
-                </div>
-
-                {/* Contact Information */}
-                <div style={{ marginBottom: '16px' }}>
-                  {displayPhone && (
-                    <div style={{ marginBottom: '6px' }}>
-                      <Link
-                        href={`tel:${displayPhone}`}
-                        style={{
-                          color: '#2563eb',
-                          textDecoration: 'none',
-                          fontSize: '16px',
-                          fontWeight: '500',
-                          display: 'block'
-                        }}
-                      >
-                        {displayPhone}
-                      </Link>
-                    </div>
-                  )}
-                  
-                  {displayEmail && (
-                    <div>
-                      <Link
-                        href={`mailto:${displayEmail}`}
-                        style={{
-                          color: '#6b7280',
-                          textDecoration: 'none',
-                          fontSize: '14px',
-                          display: 'block'
-                        }}
-                      >
-                        {displayEmail}
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </td>
-
               {/* Profile Image Column */}
               {showProfileImage && (
                 <td style={{ 
-                  verticalAlign: 'top',
+                  verticalAlign: 'middle',
                   width: '80px',
-                  textAlign: 'right'
+                  paddingRight: '20px'
                 }}>
                   <div style={{
                     width: '80px',
                     height: '80px',
                     borderRadius: '50%',
                     overflow: 'hidden',
-                    border: '2px solid #e5e7eb',
+                    border: '3px solid #e5e7eb',
                     backgroundColor: '#f3f4f6',
-                    display: 'inline-block'
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
                   }}>
                     {avatarUrl ? (
                       <Img
@@ -209,7 +164,8 @@ export function AgentProfile({
                         justifyContent: 'center',
                         backgroundColor: '#f9fafb',
                         color: '#9ca3af',
-                        fontSize: '24px'
+                        fontSize: '32px',
+                        fontFamily: 'Arial, sans-serif'
                       }}>
                         👤
                       </div>
@@ -218,31 +174,105 @@ export function AgentProfile({
                 </td>
               )}
 
+              {/* Agent Info Column */}
+              <td style={{ 
+                verticalAlign: 'middle',
+                paddingRight: '20px',
+                width: 'auto'
+              }}>
+                {/* Agent Name and Role */}
+                <div style={{ marginBottom: '8px' }}>
+                  <Text style={{
+                    margin: '0 0 2px 0',
+                    fontSize: styleConfig.nameSize,
+                    fontWeight: '600',
+                    color: styleConfig.nameColor,
+                    lineHeight: '1.3',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                  }}>
+                    {fullName || 'Agent'}
+                  </Text>
+                  
+                  {agentData?.profileRole && (
+                    <Text style={{
+                      margin: '0',
+                      fontSize: styleConfig.roleSize,
+                      color: styleConfig.roleColor,
+                      fontStyle: 'italic',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                    }}>
+                      {agentData.profileRole}
+                    </Text>
+                  )}
+                </div>
+
+                {/* Contact Information */}
+                <div style={{ marginTop: '8px' }}>
+                  {displayPhone && (
+                    <div style={{ marginBottom: '4px' }}>
+                      <Link
+                        href={`tel:${displayPhone.replace(/\D/g, '')}`}
+                        style={{
+                          color: styleConfig.phoneColor,
+                          textDecoration: 'none',
+                          fontSize: '16px',
+                          fontWeight: '500',
+                          display: 'inline-block',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        }}
+                      >
+                        📱 {displayPhone}
+                      </Link>
+                    </div>
+                  )}
+                  
+                  {displayEmail && (
+                    <div>
+                      <Link
+                        href={`mailto:${displayEmail}`}
+                        style={{
+                          color: styleConfig.emailColor,
+                          textDecoration: 'none',
+                          fontSize: '14px',
+                          display: 'inline-block',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        }}
+                      >
+                        ✉️ {displayEmail}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </td>
+
               {/* Make Offer Button Column */}
               <td style={{ 
                 verticalAlign: 'middle',
-                paddingLeft: '16px',
                 width: '140px',
-                textAlign: 'center'
+                textAlign: 'right'
               }}>
-                <Link
-                  href={`mailto:${displayEmail}?subject=Property Inquiry&body=Hi ${agentData?.firstName ||''},
+                <Button
+                  href={mailtoLink}
                   style={{
                     display: 'inline-block',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: styleConfig.buttonBg,
                     color: '#ffffff',
-                    padding: '12px 20px',
+                    padding: '14px 24px',
                     borderRadius: '8px',
                     textDecoration: 'none',
-                    fontSize: '14px',
+                    fontSize: '15px',
                     fontWeight: '600',
                     textAlign: 'center',
                     border: 'none',
-                    lineHeight: '1.2'
-                  }`}
+                    lineHeight: '1.2',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
                 >
                   Make an Offer
-                </Link>
+                </Button>
               </td>
             </tr>
           </tbody>
