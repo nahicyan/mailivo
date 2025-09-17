@@ -31,7 +31,7 @@ interface AgentProfileProps {
 
 export function AgentProfile({
   className = '',
-  backgroundColor = '#ffffff',
+  backgroundColor = '#f8f9fa',
   borderRadius = 12,
   showBorder = true,
   showProfileImage = true,
@@ -322,7 +322,7 @@ export const agentProfileMetadata: EmailComponentMetadata = {
   component: AgentProfile,
   defaultProps: {
     className: '',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8f9fa',
     borderRadius: 12,
     showBorder: true,
     showProfileImage: true,
@@ -353,7 +353,7 @@ export const agentProfileMetadata: EmailComponentMetadata = {
       key: 'backgroundColor',
       label: 'Background Color',
       type: 'color',
-      defaultValue: '#ffffff'
+      defaultValue: '#f8f9fa'
     },
     {
       key: 'borderRadius',
