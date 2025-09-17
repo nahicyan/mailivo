@@ -1,8 +1,8 @@
 // packages/landivo/email-template/src/components/AgentProfile.tsx
 import React from 'react';
-import { Section, Text, Img, Link, Button } from '@react-email/components';
-import { EmailComponentMetadata } from '../types/component-metadata';
+import { Section, Text, Img, Link, Button, Row, Column } from '@react-email/components';
 import { User } from 'lucide-react';
+import { EmailComponentMetadata } from '../types/component-metadata';
 
 interface AgentData {
   id?: string;
@@ -25,6 +25,8 @@ interface AgentProfileProps {
   agentData?: AgentData;
   style?: 'modern' | 'classic' | 'minimal';
   alignment?: 'left' | 'center' | 'right';
+  propertyData?: any;
+  contactData?: any;
 }
 
 export function AgentProfile({
@@ -37,7 +39,9 @@ export function AgentProfile({
   overrideEmail,
   agentData,
   style = 'modern',
-  alignment = 'left'
+  alignment = 'left',
+  propertyData,
+  contactData
 }: AgentProfileProps) {
 
   // Use override values or fall back to agent data
@@ -45,8 +49,16 @@ export function AgentProfile({
   const displayEmail = overrideEmail || agentData?.email || '';
   const firstName = agentData?.firstName || '';
   const lastName = agentData?.lastName || '';
-  const fullName = `${firstName} ${lastName}`.trim();
-  const avatarUrl = agentData?.avatarUrl ? `https://api.landivo.com/${agentData.avatarUrl}` : '';
+  const fullName = `${firstName} ${lastName}`.trim() || 'Agent';
+  const profileRole = agentData?.profileRole || 'Real Estate Agent';
+  
+  // Process avatar URL
+  let avatarUrl = '';
+  if (agentData?.avatarUrl) {
+    avatarUrl = agentData.avatarUrl.startsWith('http') 
+      ? agentData.avatarUrl 
+      : `https://api.landivo.com/${agentData.avatarUrl}`;
+  }
 
   // Style variations
   const getStyleConfig = () => {
@@ -63,7 +75,7 @@ export function AgentProfile({
           nameSize: '20px',
           roleSize: '14px',
           buttonBg: '#2563eb',
-          buttonHoverBg: '#1d4ed8'
+          avatarSize: '72'
         };
       case 'minimal':
         return {
@@ -77,7 +89,7 @@ export function AgentProfile({
           nameSize: '18px',
           roleSize: '13px',
           buttonBg: '#3b82f6',
-          buttonHoverBg: '#2563eb'
+          avatarSize: '64'
         };
       default: // modern
         return {
@@ -91,7 +103,7 @@ export function AgentProfile({
           nameSize: '19px',
           roleSize: '14px',
           buttonBg: '#2563eb',
-          buttonHoverBg: '#1d4ed8'
+          avatarSize: '80'
         };
     }
   };
@@ -100,54 +112,138 @@ export function AgentProfile({
 
   // Build mailto link with proper encoding
   const mailtoSubject = encodeURIComponent('Property Inquiry');
-  const mailtoBody = encodeURIComponent(`Hi ${firstName || 'there'},\n\nI'm interested in learning more about the property you have listed.\n\nBest regards`);
+  const mailtoBody = encodeURIComponent(
+    `Hi ${firstName || 'there'},\n\nI'm interested in learning more about the property you have listed.\n\nBest regards`
+  );
   const mailtoLink = `mailto:${displayEmail}?subject=${mailtoSubject}&body=${mailtoBody}`;
 
+  // Format phone for tel link
+  const telLink = `tel:${displayPhone.replace(/\D/g, '')}`;
+
+  const containerStyle = {
+    maxWidth: '600px',
+    margin: '0 auto',
+    backgroundColor,
+    borderRadius: `${borderRadius}px`,
+    border: showBorder ? `1px solid ${styleConfig.borderColor}` : 'none',
+    boxShadow: styleConfig.shadowStyle,
+    padding: styleConfig.containerPadding,
+    overflow: 'hidden'
+  };
+
+  const tableStyle = {
+    width: '100%',
+    borderSpacing: '0',
+    borderCollapse: 'collapse' as const
+  };
+
+  const avatarCellStyle = {
+    verticalAlign: 'middle' as const,
+    width: styleConfig.avatarSize,
+    paddingRight: '20px'
+  };
+
+  const avatarContainerStyle = {
+    width: `${styleConfig.avatarSize}px`,
+    height: `${styleConfig.avatarSize}px`,
+    borderRadius: '50%',
+    overflow: 'hidden',
+    border: `3px solid ${styleConfig.borderColor}`,
+    backgroundColor: '#f3f4f6',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+  };
+
+  const avatarPlaceholderStyle = {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
+    color: '#9ca3af',
+    fontSize: '32px',
+    fontFamily: 'Arial, sans-serif'
+  };
+
+  const detailsCellStyle = {
+    verticalAlign: 'middle' as const,
+    paddingRight: '20px',
+    width: 'auto'
+  };
+
+  const nameStyle = {
+    fontSize: styleConfig.nameSize,
+    lineHeight: '1.3',
+    margin: '0 0 2px 0',
+    fontWeight: '600',
+    color: styleConfig.nameColor,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  };
+
+  const roleStyle = {
+    margin: '0',
+    fontSize: styleConfig.roleSize,
+    color: styleConfig.roleColor,
+    fontStyle: 'italic',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  };
+
+  const phoneLinkStyle = {
+    color: styleConfig.phoneColor,
+    textDecoration: 'none',
+    fontSize: '16px',
+    fontWeight: '500',
+    display: 'inline-block',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  };
+
+  const emailLinkStyle = {
+    color: styleConfig.emailColor,
+    textDecoration: 'none',
+    fontSize: '14px',
+    display: 'inline-block',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  };
+
+  const buttonCellStyle = {
+    verticalAlign: 'middle' as const,
+    width: '140px',
+    textAlign: 'right' as const
+  };
+
+  const buttonStyle = {
+    display: 'inline-block',
+    backgroundColor: styleConfig.buttonBg,
+    color: '#ffffff',
+    padding: '14px 24px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontSize: '15px',
+    fontWeight: '600',
+    textAlign: 'center' as const,
+    border: 'none',
+    lineHeight: '1.2',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+    cursor: 'pointer'
+  };
+
   return (
-    <Section
-      className={className}
-      style={{
-        width: '100%',
-        padding: '20px 0',
-      }}
-    >
-      <div style={{
-        maxWidth: '600px',
-        margin: '0 auto',
-        backgroundColor: backgroundColor,
-        borderRadius: `${borderRadius}px`,
-        border: showBorder ? `1px solid ${styleConfig.borderColor}` : 'none',
-        boxShadow: styleConfig.shadowStyle,
-        padding: styleConfig.containerPadding,
-        overflow: 'hidden'
-      }}>
-        <table style={{
-          width: '100%',
-          borderSpacing: '0',
-          borderCollapse: 'collapse'
-        }}>
+    <Section className={className} style={{ width: '100%', padding: '20px 0' }}>
+      <div style={containerStyle}>
+        <table style={tableStyle}>
           <tbody>
             <tr>
               {/* Profile Image Column */}
               {showProfileImage && (
-                <td style={{ 
-                  verticalAlign: 'middle',
-                  width: '80px',
-                  paddingRight: '20px'
-                }}>
-                  <div style={{
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    border: '3px solid #e5e7eb',
-                    backgroundColor: '#f3f4f6',
-                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-                  }}>
+                <td style={avatarCellStyle}>
+                  <div style={avatarContainerStyle}>
                     {avatarUrl ? (
                       <Img
                         src={avatarUrl}
-                        alt={`${fullName} profile`}
+                        alt={fullName}
+                        width={styleConfig.avatarSize}
+                        height={styleConfig.avatarSize}
                         style={{
                           width: '100%',
                           height: '100%',
@@ -156,17 +252,7 @@ export function AgentProfile({
                         }}
                       />
                     ) : (
-                      <div style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: '#f9fafb',
-                        color: '#9ca3af',
-                        fontSize: '32px',
-                        fontFamily: 'Arial, sans-serif'
-                      }}>
+                      <div style={avatarPlaceholderStyle}>
                         👤
                       </div>
                     )}
@@ -174,34 +260,16 @@ export function AgentProfile({
                 </td>
               )}
 
-              {/* Agent Info Column */}
-              <td style={{ 
-                verticalAlign: 'middle',
-                paddingRight: '20px',
-                width: 'auto'
-              }}>
-                {/* Agent Name and Role */}
+              {/* Agent Details Column */}
+              <td style={detailsCellStyle}>
+                {/* Name and Role */}
                 <div style={{ marginBottom: '8px' }}>
-                  <Text style={{
-                    margin: '0 0 2px 0',
-                    fontSize: styleConfig.nameSize,
-                    fontWeight: '600',
-                    color: styleConfig.nameColor,
-                    lineHeight: '1.3',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                  }}>
-                    {fullName || 'Agent'}
+                  <Text style={nameStyle}>
+                    {fullName}
                   </Text>
-                  
-                  {agentData?.profileRole && (
-                    <Text style={{
-                      margin: '0',
-                      fontSize: styleConfig.roleSize,
-                      color: styleConfig.roleColor,
-                      fontStyle: 'italic',
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                    }}>
-                      {agentData.profileRole}
+                  {profileRole && (
+                    <Text style={roleStyle}>
+                      {profileRole}
                     </Text>
                   )}
                 </div>
@@ -210,17 +278,7 @@ export function AgentProfile({
                 <div style={{ marginTop: '8px' }}>
                   {displayPhone && (
                     <div style={{ marginBottom: '4px' }}>
-                      <Link
-                        href={`tel:${displayPhone.replace(/\D/g, '')}`}
-                        style={{
-                          color: styleConfig.phoneColor,
-                          textDecoration: 'none',
-                          fontSize: '16px',
-                          fontWeight: '500',
-                          display: 'inline-block',
-                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                        }}
-                      >
+                      <Link href={telLink} style={phoneLinkStyle}>
                         📱 {displayPhone}
                       </Link>
                     </div>
@@ -228,16 +286,7 @@ export function AgentProfile({
                   
                   {displayEmail && (
                     <div>
-                      <Link
-                        href={`mailto:${displayEmail}`}
-                        style={{
-                          color: styleConfig.emailColor,
-                          textDecoration: 'none',
-                          fontSize: '14px',
-                          display: 'inline-block',
-                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                        }}
-                      >
+                      <Link href={mailtoLink} style={emailLinkStyle}>
                         ✉️ {displayEmail}
                       </Link>
                     </div>
@@ -246,31 +295,8 @@ export function AgentProfile({
               </td>
 
               {/* Make Offer Button Column */}
-              <td style={{ 
-                verticalAlign: 'middle',
-                width: '140px',
-                textAlign: 'right'
-              }}>
-                <Button
-                  href={mailtoLink}
-                  style={{
-                    display: 'inline-block',
-                    backgroundColor: styleConfig.buttonBg,
-                    color: '#ffffff',
-                    padding: '14px 24px',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    textAlign: 'center',
-                    border: 'none',
-                    lineHeight: '1.2',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
+              <td style={buttonCellStyle}>
+                <Button href={mailtoLink} style={buttonStyle}>
                   Make an Offer
                 </Button>
               </td>
@@ -307,73 +333,54 @@ export const agentProfileMetadata: EmailComponentMetadata = {
   configFields: [
     {
       key: 'style',
-      label: 'Profile Style',
+      label: 'Style',
       type: 'select',
       options: [
         { label: 'Modern', value: 'modern' },
         { label: 'Classic', value: 'classic' },
         { label: 'Minimal', value: 'minimal' }
       ],
-      defaultValue: 'modern',
-      description: 'Choose the visual style'
-    },
-    {
-      key: 'alignment',
-      label: 'Alignment',
-      type: 'select',
-      options: [
-        { label: 'Left', value: 'left' },
-        { label: 'Center', value: 'center' },
-        { label: 'Right', value: 'right' }
-      ],
-      defaultValue: 'left',
-      description: 'Text alignment'
+      defaultValue: 'modern'
     },
     {
       key: 'showProfileImage',
       label: 'Show Profile Image',
-      type: 'boolean',
-      defaultValue: true,
-      description: 'Display agent profile picture'
-    },
-    {
-      key: 'showBorder',
-      label: 'Show Border',
-      type: 'boolean',
-      defaultValue: true,
-      description: 'Add border around profile card'
+      type: 'toggle',
+      defaultValue: true
     },
     {
       key: 'backgroundColor',
       label: 'Background Color',
       type: 'color',
-      defaultValue: '#ffffff',
-      description: 'Profile card background color'
+      defaultValue: '#ffffff'
     },
     {
       key: 'borderRadius',
-      label: 'Border Radius',
+      label: 'Border Radius (px)',
       type: 'number',
-      defaultValue: 12,
-      min: 0,
-      max: 50,
-      description: 'Corner roundness in pixels'
+      defaultValue: 12
+    },
+    {
+      key: 'showBorder',
+      label: 'Show Border',
+      type: 'toggle',
+      defaultValue: true
     },
     {
       key: 'overridePhone',
       label: 'Override Phone Number',
       type: 'text',
-      defaultValue: '',
-      placeholder: '(817) 247-1312',
-      description: 'Override the agent\'s phone number'
+      placeholder: '(555) 123-4567',
+      description: 'Override agent phone number'
     },
     {
       key: 'overrideEmail',
       label: 'Override Email',
       type: 'text',
-      defaultValue: '',
-      placeholder: 'agent@company.com',
-      description: 'Override the agent\'s email address'
+      placeholder: 'agent@example.com',
+      description: 'Override agent email'
     }
   ]
 };
+
+export default AgentProfile;
