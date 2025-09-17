@@ -141,9 +141,9 @@ class TemplateRenderingService {
   // Add method to fetch agent data
   private async fetchAgentData(agentId: string): Promise<AgentData | null> {
     try {
-      const response = await axios.get(`${this.landivoApiUrl}/user/public-profiles`);
-      const profiles = response.data.profiles || [];
-      const agent = profiles.find((p: any) => p.id === agentId);
+      // Use the correct endpoint for fetching a specific profile by ID
+      const response = await axios.get(`${this.landivoApiUrl}/user/public-profile/${agentId}`);
+      const agent = response.data;
       
       if (agent) {
         return {
