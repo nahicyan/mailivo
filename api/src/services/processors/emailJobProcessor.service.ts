@@ -1,10 +1,10 @@
 // api/src/services/processors/emailJobProcessor.service.ts
-import Redis from 'ioredis';
-import { emailService } from '../email.service';
-import { templateRenderingService } from '../templateRendering.service';
-import { EmailTracking } from '../../models/EmailTracking.model';
-import { Campaign } from '../../models/Campaign';
-import { logger } from '../../utils/logger';
+import Redis from "ioredis";
+import { emailService } from "../email.service";
+import { templateRenderingService } from "../templateRendering.service";
+import { EmailTracking } from "../../models/EmailTracking.model";
+import { Campaign } from "../../models/Campaign";
+import { logger } from "../../utils/logger";
 
 interface EmailJob {
   campaignId: string;
@@ -22,15 +22,18 @@ export class EmailJobProcessor {
   private redis: Redis;
 
   constructor() {
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    this.redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
   }
 
-  async processEmailJob(job: EmailJob): Promise<{ success: boolean; messageId?: string }> {
-    const { campaignId, contactId, email, personalizedContent, trackingId } = job;
-    
+  async processEmailJob(
+    job: EmailJob
+  ): Promise<{ success: boolean; messageId?: string }> {
+    const { campaignId, contactId, email, personalizedContent, trackingId } =
+      job;
+
     try {
       await this.checkRateLimit();
 
@@ -48,12 +51,12 @@ export class EmailJobProcessor {
 
       if (result.success) {
         await EmailTracking.findByIdAndUpdate(trackingId, {
-          status: 'sent',
+          status: "sent",
           sentAt: new Date(),
           messageId: result.messageId,
         });
 
-        await this.updateCampaignMetrics(campaignId, 'sent');
+        await this.updateCampaignMetrics(campaignId, "sent");
 
         logger.info(`Email sent successfully`, {
           campaignId,
@@ -65,10 +68,11 @@ export class EmailJobProcessor {
 
         return { success: true, messageId: result.messageId };
       } else {
-        throw new Error(result.error || 'Email sending failed');
+        throw new Error(result.error || "Email sending failed");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(`Email sending failed`, {
         campaignId,
         contactId,
@@ -77,32 +81,46 @@ export class EmailJobProcessor {
       });
 
       await EmailTracking.findByIdAndUpdate(trackingId, {
-        status: 'failed',
+        status: "failed",
         error: errorMessage,
       });
 
-      await this.updateCampaignMetrics(campaignId, 'bounced');
+      await this.updateCampaignMetrics(campaignId, "bounced");
       throw error;
     }
   }
 
-  async personalizeContent(campaign: any, contact: any): Promise<{
+  // api/src/services/processors/emailJobProcessor.service.ts (relevant section)
+
+  async personalizeContent(
+    campaign: any,
+    contact: any
+  ): Promise<{
     subject: string;
     htmlContent: string;
     textContent: string;
   }> {
     try {
-      if (campaign.source === 'landivo' && campaign.emailTemplate && campaign.property) {
-        logger.info(`Rendering template ${campaign.emailTemplate} for property ${campaign.property}`, {
-          campaignId: campaign._id,
-          selectedPlan: campaign.selectedPlan?.planNumber,
-          imageSelections: Object.keys(campaign.imageSelections || {}).length
-        });
-        
-        // Prepare campaign data for template rendering
+      if (
+        campaign.source === "landivo" &&
+        campaign.emailTemplate &&
+        campaign.property
+      ) {
+        logger.info(
+          `Rendering template ${campaign.emailTemplate} for property ${campaign.property}`,
+          {
+            campaignId: campaign._id,
+            selectedPlan: campaign.selectedPlan?.planNumber,
+            imageSelections: Object.keys(campaign.imageSelections || {}).length,
+            selectedAgent: campaign.selectedAgent, // Log the agent ID
+          }
+        );
+
+        // Prepare campaign data for template rendering - INCLUDE selectedAgent!
         const campaignData = {
+          selectedAgent: campaign.selectedAgent, // ADD THIS LINE
           selectedPlan: campaign.selectedPlan,
-          imageSelections: campaign.imageSelections || {}
+          imageSelections: campaign.imageSelections || {},
         };
 
         const renderedContent = await templateRenderingService.renderTemplate(
@@ -110,7 +128,7 @@ export class EmailJobProcessor {
           campaign.property,
           contact,
           campaign.subject,
-          campaignData // Pass campaign data with selected plan and image selections
+          campaignData // Now includes selectedAgent
         );
 
         return this.applyPersonalization(renderedContent, contact);
@@ -118,25 +136,28 @@ export class EmailJobProcessor {
         return this.applyBasicPersonalization(campaign, contact);
       }
     } catch (error) {
-      logger.error('Template personalization failed, using fallback:', error);
+      logger.error("Template personalization failed, using fallback:", error);
       return this.applyBasicPersonalization(campaign, contact);
     }
   }
 
-  async createTrackingRecord(campaignId: string, contactId: string): Promise<string> {
+  async createTrackingRecord(
+    campaignId: string,
+    contactId: string
+  ): Promise<string> {
     const tracking = new EmailTracking({
       campaignId,
       contactId,
-      status: 'queued',
+      status: "queued",
       createdAt: new Date(),
     });
-    
+
     await tracking.save();
     return (tracking as any)._id.toString();
   }
 
   private async checkRateLimit(): Promise<void> {
-    const key = 'email_rate_limit';
+    const key = "email_rate_limit";
     const limit = 60; // 60 emails per hour for SMTP
     const window = 3600; // 1 hour
 
@@ -147,24 +168,32 @@ export class EmailJobProcessor {
       }
 
       if (current > limit) {
-        throw new Error('Rate limit exceeded');
+        throw new Error("Rate limit exceeded");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Rate limit check failed:', errorMessage);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      logger.error("Rate limit check failed:", errorMessage);
       // Don't throw - let email proceed if rate limit check fails
     }
   }
 
-  private async updateCampaignMetrics(campaignId: string, type: 'sent' | 'bounced'): Promise<void> {
+  private async updateCampaignMetrics(
+    campaignId: string,
+    type: "sent" | "bounced"
+  ): Promise<void> {
     try {
-      const update = type === 'sent' 
-        ? { $inc: { 'metrics.sent': 1 } }
-        : { $inc: { 'metrics.bounced': 1 } };
+      const update =
+        type === "sent"
+          ? { $inc: { "metrics.sent": 1 } }
+          : { $inc: { "metrics.bounced": 1 } };
 
       await Campaign.findByIdAndUpdate(campaignId, update);
     } catch (error) {
-      logger.error(`Failed to update campaign metrics for ${campaignId}:`, error);
+      logger.error(
+        `Failed to update campaign metrics for ${campaignId}:`,
+        error
+      );
       // Don't throw - this is not critical
     }
   }
@@ -173,36 +202,60 @@ export class EmailJobProcessor {
     const { subject, htmlContent, textContent } = content;
 
     // Apply personalization tokens
-    const personalizedSubject = this.replacePersonalizationTokens(subject, contact);
-    const personalizedHtml = this.replacePersonalizationTokens(htmlContent, contact);
-    const personalizedText = this.replacePersonalizationTokens(textContent, contact);
+    const personalizedSubject = this.replacePersonalizationTokens(
+      subject,
+      contact
+    );
+    const personalizedHtml = this.replacePersonalizationTokens(
+      htmlContent,
+      contact
+    );
+    const personalizedText = this.replacePersonalizationTokens(
+      textContent,
+      contact
+    );
 
     return {
       subject: personalizedSubject,
       htmlContent: personalizedHtml,
-      textContent: personalizedText
+      textContent: personalizedText,
     };
   }
 
   private applyBasicPersonalization(campaign: any, contact: any) {
-    const subject = this.replacePersonalizationTokens(campaign.subject || campaign.name, contact);
-    const htmlContent = this.replacePersonalizationTokens(campaign.htmlContent || '<p>No content</p>', contact);
-    const textContent = this.replacePersonalizationTokens(campaign.textContent || campaign.description || '', contact);
+    const subject = this.replacePersonalizationTokens(
+      campaign.subject || campaign.name,
+      contact
+    );
+    const htmlContent = this.replacePersonalizationTokens(
+      campaign.htmlContent || "<p>No content</p>",
+      contact
+    );
+    const textContent = this.replacePersonalizationTokens(
+      campaign.textContent || campaign.description || "",
+      contact
+    );
 
     return {
       subject,
       htmlContent,
-      textContent
+      textContent,
     };
   }
 
   private replacePersonalizationTokens(content: string, contact: any): string {
-    if (!content) return '';
+    if (!content) return "";
 
     return content
-      .replace(/\{\{firstName\}\}/g, contact.firstName || contact.first_name || '')
-      .replace(/\{\{lastName\}\}/g, contact.lastName || contact.last_name || '')
-      .replace(/\{\{email\}\}/g, contact.email || '')
-      .replace(/\{\{name\}\}/g, `${contact.firstName || contact.first_name || ''} ${contact.lastName || contact.last_name || ''}`.trim());
+      .replace(
+        /\{\{firstName\}\}/g,
+        contact.firstName || contact.first_name || ""
+      )
+      .replace(/\{\{lastName\}\}/g, contact.lastName || contact.last_name || "")
+      .replace(/\{\{email\}\}/g, contact.email || "")
+      .replace(
+        /\{\{name\}\}/g,
+        `${contact.firstName || contact.first_name || ""} ${contact.lastName || contact.last_name || ""}`.trim()
+      );
   }
 }

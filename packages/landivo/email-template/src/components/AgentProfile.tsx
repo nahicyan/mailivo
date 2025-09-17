@@ -70,11 +70,11 @@ export function AgentProfile({
           shadowStyle: 'none',
           nameColor: '#1f2937',
           roleColor: '#6b7280',
-          phoneColor: '#2563eb',
-          emailColor: '#6b7280',
+          phoneColor: '#2a5e56',
+          emailColor: '#6f7788ff',
           nameSize: '20px',
           roleSize: '14px',
-          buttonBg: '#2563eb',
+          buttonBg: '#059669',
           avatarSize: '72'
         };
       case 'minimal':
@@ -84,11 +84,11 @@ export function AgentProfile({
           shadowStyle: 'none',
           nameColor: '#374151',
           roleColor: '#9ca3af',
-          phoneColor: '#2563eb',
-          emailColor: '#9ca3af',
+          phoneColor: '#2a5e56',
+          emailColor: '#6f7788ff',
           nameSize: '18px',
           roleSize: '13px',
-          buttonBg: '#3b82f6',
+          buttonBg: '#059669',
           avatarSize: '64'
         };
       default: // modern
@@ -98,11 +98,11 @@ export function AgentProfile({
           shadowStyle: '0 2px 8px rgba(0, 0, 0, 0.08)',
           nameColor: '#111827',
           roleColor: '#6b7280',
-          phoneColor: '#2563eb',
-          emailColor: '#6b7280',
+          phoneColor: '#2a5e56',
+          emailColor: '#6f7788ff',
           nameSize: '19px',
           roleSize: '14px',
-          buttonBg: '#2563eb',
+          buttonBg: '#059669',
           avatarSize: '80'
         };
     }
@@ -200,14 +200,15 @@ export function AgentProfile({
   const emailLinkStyle = {
     color: styleConfig.emailColor,
     textDecoration: 'none',
-    fontSize: '14px',
+    fontSize: '15px',
+    fontWeight: '500',
     display: 'inline-block',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   };
 
   const buttonCellStyle = {
     verticalAlign: 'middle' as const,
-    width: '140px',
+    width: '160px',
     textAlign: 'right' as const
   };
 
@@ -215,10 +216,10 @@ export function AgentProfile({
     display: 'inline-block',
     backgroundColor: styleConfig.buttonBg,
     color: '#ffffff',
-    padding: '14px 24px',
+    padding: '10px 20px',
     borderRadius: '8px',
     textDecoration: 'none',
-    fontSize: '15px',
+    fontSize: '16px',
     fontWeight: '600',
     textAlign: 'center' as const,
     border: 'none',
@@ -267,11 +268,11 @@ export function AgentProfile({
                   <Text style={nameStyle}>
                     {fullName}
                   </Text>
-                  {profileRole && (
+                  {/* {profileRole && (
                     <Text style={roleStyle}>
                       {profileRole}
                     </Text>
-                  )}
+                  )} */}
                 </div>
 
                 {/* Contact Information */}
@@ -279,7 +280,7 @@ export function AgentProfile({
                   {displayPhone && (
                     <div style={{ marginBottom: '4px' }}>
                       <Link href={telLink} style={phoneLinkStyle}>
-                        📱 {displayPhone}
+                        📞 {displayPhone}
                       </Link>
                     </div>
                   )}
@@ -287,7 +288,7 @@ export function AgentProfile({
                   {displayEmail && (
                     <div>
                       <Link href={mailtoLink} style={emailLinkStyle}>
-                        ✉️ {displayEmail}
+                        🖂 {displayEmail}
                       </Link>
                     </div>
                   )}
@@ -297,7 +298,7 @@ export function AgentProfile({
               {/* Make Offer Button Column */}
               <td style={buttonCellStyle}>
                 <Button href={mailtoLink} style={buttonStyle}>
-                  Make an Offer
+                  Make An Offer
                 </Button>
               </td>
             </tr>
