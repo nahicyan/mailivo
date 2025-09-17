@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mail, Loader2, AlertTriangle, RefreshCcw, Settings } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { RichTextEditor, RichTextEditorRef } from '@/components/RichText/rich-text-editor';
+import { EmojiTextEditor, EmojiTextEditorRef } from '@/components/EmojiText/emoji-text-editor';
 import { useSubjectTemplates } from '@/hooks/useSubjectTemplates';
 import { TemplateManagementModal } from '@/components/subject-templates/TemplateManagementModal';
 
@@ -57,7 +57,7 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
     const [generatedSubject, setGeneratedSubject] = useState('');
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [templateRequiresAddress, setTemplateRequiresAddress] = useState(false);
-    const richTextEditorRef = useRef<RichTextEditorRef>(null);
+    const EmojiTextEditorRef = useRef<EmojiTextEditorRef>(null);
 
     // Get enabled subject templates
     const { data: templatesData, isLoading: templatesLoading } = useSubjectTemplates(true);
@@ -81,7 +81,7 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
     useEffect(() => {
         if (formData.subject && generatedSubject !== formData.subject) {
             setGeneratedSubject(formData.subject);
-            richTextEditorRef.current?.setContent(formData.subject);
+            EmojiTextEditorRef.current?.setContent(formData.subject);
         }
     }, [formData.subject, generatedSubject]);
 
@@ -154,7 +154,7 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
         }
 
         setGeneratedSubject(generated);
-        richTextEditorRef.current?.setContent(generated);
+        EmojiTextEditorRef.current?.setContent(generated);
         
         setFormData(prev => ({
             ...prev,
@@ -177,7 +177,7 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
                     if (propertyData) {
                         const generated = replaceVariables(template.content, propertyData);
                         setGeneratedSubject(generated);
-                        richTextEditorRef.current?.setContent(generated);
+                        EmojiTextEditorRef.current?.setContent(generated);
                         setFormData(prev => ({
                             ...prev,
                             subject: generated
@@ -330,8 +330,8 @@ export function Step6Subject({ formData, setFormData, errors, properties }: Prop
                 {/* Rich Text Subject Line Editor */}
                 <div className="space-y-2">
                     <Label>Customize Subject Line</Label>
-                    <RichTextEditor
-                        ref={richTextEditorRef}
+                    <EmojiTextEditor
+                        ref={EmojiTextEditorRef}
                         value={generatedSubject}
                         onChange={handleSubjectEdit}
                         placeholder="Enter your custom subject line or select templates above to auto-generate..."

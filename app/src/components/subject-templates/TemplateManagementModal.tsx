@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RichTextEditor, RichTextEditorRef } from '@/components/RichText/rich-text-editor';
+import { EmojiTextEditor, EmojiTextEditorRef } from '@/components/EmojiText/emoji-text-editor';
 import { useSubjectTemplates, useCreateSubjectTemplate, useUpdateSubjectTemplate, useDeleteSubjectTemplate, useToggleSubjectTemplate } from '@/hooks/useSubjectTemplates';
 import { PROPERTY_VARIABLES, SubjectLineTemplate } from '@/types/subject-template';
 import { Settings, Plus, Edit, Power, Trash2, Save, X, AlertCircle } from 'lucide-react';
@@ -26,7 +26,7 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
   const [isCreating, setIsCreating] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateContent, setTemplateContent] = useState('');
-  const richTextRef = useRef<RichTextEditorRef>(null);
+  const richTextRef = useRef<EmojiTextEditorRef>(null);
 
   const { data, isLoading } = useSubjectTemplates();
   const createMutation = useCreateSubjectTemplate();
@@ -217,7 +217,7 @@ export function TemplateManagementModal({ open, onOpenChange }: Props) {
                 {/* Right Side - Rich Text Editor */}
                 <div className="space-y-2">
                   <Label>Template Content *</Label>
-                  <RichTextEditor
+                  <EmojiTextEditor
                     ref={richTextRef}
                     value={templateContent}
                     onChange={setTemplateContent}

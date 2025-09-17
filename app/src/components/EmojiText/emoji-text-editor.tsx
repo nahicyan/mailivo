@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Smile } from 'lucide-react';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
-export interface RichTextEditorRef {
+export interface EmojiTextEditorRef {
   clear: () => void;
   focus: () => void;
   getContent: () => string;
@@ -16,7 +16,7 @@ export interface RichTextEditorRef {
   insertAtCursor: (text: string) => void;
 }
 
-interface RichTextEditorProps {
+interface EmojiTextEditorProps {
   value: string;
   onChange?: (value: string) => void;
   placeholder?: string;
@@ -27,7 +27,7 @@ interface RichTextEditorProps {
   showEmojiPicker?: boolean;
 }
 
-export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
+export const EmojiTextEditor = forwardRef<EmojiTextEditorRef, EmojiTextEditorProps>(({
   value,
   onChange,
   placeholder = 'Type your message...',
@@ -345,4 +345,4 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
   );
 });
 
-RichTextEditor.displayName = 'RichTextEditor';
+EmojiTextEditor.displayName = 'EmojiTextEditor';
