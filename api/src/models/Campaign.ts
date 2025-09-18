@@ -186,6 +186,7 @@ const CampaignSchema: Schema = new Schema(
         "sent",
         "completed",
         "failed",
+        "scheduled",
       ],
       default: "draft",
     },
