@@ -129,9 +129,10 @@ export function prepareMultiPropertyCampaignData(
     }
   };
 
-  return {campaignData,
-    scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
-    scheduledHour: formData.scheduledHour,
-    scheduledMinute: formData.scheduledMinute,
-  };
+return {
+  ...campaignData,
+  scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
+  scheduledHour: formData.scheduledHour,
+  scheduledMinute: formData.scheduledMinute,
+};
 }
