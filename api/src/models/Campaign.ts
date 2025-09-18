@@ -70,6 +70,7 @@ export interface ICampaign extends Document {
   source: "landivo" | "manual" | "api";
   status:
     | "draft"
+    | "scheduled"
     | "active"
     | "paused"
     | "sending"
