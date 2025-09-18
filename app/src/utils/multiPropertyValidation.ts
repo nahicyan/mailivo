@@ -129,5 +129,9 @@ export function prepareMultiPropertyCampaignData(
     }
   };
 
-  return campaignData;
+  return {campaignData,
+    scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
+    scheduledHour: formData.scheduledHour,
+    scheduledMinute: formData.scheduledMinute,
+  };
 }

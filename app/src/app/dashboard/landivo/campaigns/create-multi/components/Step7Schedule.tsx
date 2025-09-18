@@ -1,4 +1,5 @@
 // app/src/app/dashboard/landivo/campaigns/create-multi/components/Step7Schedule.tsx
+import React from 'react'; // Add React import
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { TimePicker } from '@/components/ui/time-picker'; // Add TimePicker import
 import { CalendarIcon, Clock, Target, Building, CreditCard, Image, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
@@ -50,6 +52,48 @@ export function Step7Schedule({
   templates 
 }: Props) {
   
+  // Add combined date and time state
+  const [scheduledDateTime, setScheduledDateTime] = React.useState<Date | undefined>(
+    selectedDate || undefined
+  );
+
+  // Update parent state when datetime changes
+  React.useEffect(() => {
+    if (scheduledDateTime) {
+      setSelectedDate(scheduledDateTime);
+      setFormData(prev => ({
+        ...prev,
+        scheduledHour: scheduledDateTime.getHours().toString().padStart(2, '0'),
+        scheduledMinute: scheduledDateTime.getMinutes().toString().padStart(2, '0')
+      }));
+    }
+  }, [scheduledDateTime, setSelectedDate, setFormData]);
+
+  // Add date and time handlers
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      const newDateTime = new Date(date);
+      if (scheduledDateTime) {
+        newDateTime.setHours(scheduledDateTime.getHours());
+        newDateTime.setMinutes(scheduledDateTime.getMinutes());
+      } else {
+        newDateTime.setHours(9, 0, 0, 0);
+      }
+      setScheduledDateTime(newDateTime);
+    } else {
+      setScheduledDateTime(undefined);
+    }
+  };
+
+  const handleTimeChange = (time: Date | undefined) => {
+    if (time && scheduledDateTime) {
+      const newDateTime = new Date(scheduledDateTime);
+      newDateTime.setHours(time.getHours());
+      newDateTime.setMinutes(time.getMinutes());
+      setScheduledDateTime(newDateTime);
+    }
+  };
+
   // Get selected properties in proper order
   const selectedPropertiesData = useMemo(() => {
     if (!properties || !formData.selectedProperties?.length) return [];
@@ -142,31 +186,55 @@ export function Step7Schedule({
           </div>
 
           {formData.emailSchedule === 'scheduled' && (
-            <div className="space-y-2">
-              <Label>Schedule Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !selectedDate ? 'text-muted-foreground' : ''
-                    } ${errors.scheduledDate ? 'border-red-500' : ''}`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, 'PPP') : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              {errors.scheduledDate && <p className="text-sm text-red-600">{errors.scheduledDate}</p>}
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label className="mb-2 block">Select Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${
+                        !scheduledDateTime ? 'text-muted-foreground' : ''
+                      } ${errors.scheduledDate ? 'border-red-500' : ''}`}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {scheduledDateTime ? format(scheduledDateTime, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={scheduledDateTime}
+                      onSelect={handleDateSelect}
+                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Select Time</Label>
+                <TimePicker
+                  value={scheduledDateTime}
+                  onChange={handleTimeChange}
+                  hourCycle={24}
+                  placeholder="Select time"
+                  disabled={!scheduledDateTime}
+                />
+              </div>
+
+              {scheduledDateTime && (
+                <div className="rounded-lg bg-muted p-3">
+                  <p className="text-sm font-medium">
+                    Scheduled for: {format(scheduledDateTime, "PPP 'at' HH:mm")}
+                  </p>
+                </div>
+              )}
+
+              {errors.scheduledDate && (
+                <p className="text-sm text-red-600">{errors.scheduledDate}</p>
+              )}
             </div>
           )}
 
@@ -220,8 +288,11 @@ export function Step7Schedule({
               <div>
                 <Label className="text-xs text-gray-500">Schedule</Label>
                 <p className="font-medium">
-                  {formData.emailSchedule === 'immediate' ? 'Send Immediately' :
-                    selectedDate ? format(selectedDate, 'PPP') : 'Not scheduled'}
+                  {formData.emailSchedule === 'immediate' 
+                    ? 'Send Immediately' 
+                    : scheduledDateTime 
+                      ? format(scheduledDateTime, "PPP 'at' HH:mm")
+                      : 'Not scheduled'}
                 </p>
               </div>
             </div>
