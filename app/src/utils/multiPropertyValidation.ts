@@ -4,34 +4,42 @@
  * Validates multi-property campaign step 7 (schedule)
  */
 export function validateMultiPropertySchedule(
-  formData: any, 
+  formData: any,
   selectedDate: Date | undefined
 ): { isValid: boolean; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
 
   if (!formData.emailSchedule) {
-    errors.emailSchedule = 'Please select when to send the campaign';
+    errors.emailSchedule = "Please select when to send the campaign";
   }
 
-  if (formData.emailSchedule === 'scheduled') {
+  if (formData.emailSchedule === "scheduled") {
     if (!selectedDate) {
-      errors.scheduledDate = 'Please select a date for scheduling';
-    } else if (selectedDate <= new Date()) {
-      errors.scheduledDate = 'Scheduled date must be in the future';
+      errors.scheduledDate = "Please select a date for scheduling";
+    } else {
+      const now = new Date();
+      const oneMinuteFromNow = new Date(now.getTime() + 60000);
+      if (selectedDate < oneMinuteFromNow) {
+        errors.scheduledDate =
+          "Scheduled date must be at least 1 minute in the future";
+      }
     }
   }
 
   if (!formData.emailVolume || formData.emailVolume < 1) {
-    errors.emailVolume = 'Email volume must be at least 1';
+    errors.emailVolume = "Email volume must be at least 1";
   }
 
-  if (!formData.selectedProperties || formData.selectedProperties.length === 0) {
-    errors.properties = 'At least one property must be selected';
+  if (
+    !formData.selectedProperties ||
+    formData.selectedProperties.length === 0
+  ) {
+    errors.properties = "At least one property must be selected";
   }
 
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
   };
 }
 
@@ -46,21 +54,26 @@ export function prepareMultiPropertyCampaignData(
   properties: any[] = [],
   template: any = null
 ) {
-  const finalPropertyOrder = formData.sortedPropertyOrder?.length > 0
-    ? formData.sortedPropertyOrder
-    : formData.selectedProperties;
+  const finalPropertyOrder =
+    formData.sortedPropertyOrder?.length > 0
+      ? formData.sortedPropertyOrder
+      : formData.selectedProperties;
 
-  const campaignStatus = formData.emailSchedule === 'immediate' ? 'active' : 'draft';
+  const campaignStatus =
+    formData.emailSchedule === "immediate" ? "active" : "draft";
 
   // Remove duplicates from image selections
-  const uniqueImageSelections = formData.multiPropertyImageSelections 
-    ? formData.multiPropertyImageSelections.filter((selection: any, index: number, array: any[]) => 
-        array.findIndex(s => s.propertyId === selection.propertyId) === index
+  const uniqueImageSelections = formData.multiPropertyImageSelections
+    ? formData.multiPropertyImageSelections.filter(
+        (selection: any, index: number, array: any[]) =>
+          array.findIndex((s) => s.propertyId === selection.propertyId) ===
+          index
       )
     : [];
 
   // Simple placeholder htmlContent like single property
-  const htmlContent = "<p>Multi-property email content will be generated from template</p>";
+  const htmlContent =
+    "<p>Multi-property email content will be generated from template</p>";
 
   // Convert image selections to format similar to single property
   const multiPropertyImageSelections: Record<string, any> = {};
@@ -69,7 +82,7 @@ export function prepareMultiPropertyCampaignData(
       propertyId: selection.propertyId,
       imageIndex: selection.imageIndex,
       imageUrl: selection.imageUrl,
-      order: index + 1
+      order: index + 1,
     };
   });
 
@@ -81,7 +94,7 @@ export function prepareMultiPropertyCampaignData(
       if (plan) {
         multiPropertyPaymentPlans.push({
           propertyId,
-          ...plan
+          ...plan,
         });
       }
     });
@@ -93,46 +106,48 @@ export function prepareMultiPropertyCampaignData(
     name: formData.name,
     subject: formData.subject,
     htmlContent: htmlContent,
-    
+
     // CHANGED: property is now array instead of string
     property: finalPropertyOrder, // Array of property IDs
-    
+
     // Standard fields (same as single property)
     emailList: formData.emailList,
     emailTemplate: formData.emailTemplate,
     emailVolume: formData.emailVolume,
-    emailAddressGroup: formData.emailAddressGroup || '',
+    emailAddressGroup: formData.emailAddressGroup || "",
     emailSchedule: formData.emailSchedule,
     description: formData.description,
     status: campaignStatus,
-    source: 'landivo',
-    scheduledDate: formData.emailSchedule === 'scheduled' 
-      ? selectedDate?.toISOString() 
-      : null,
-    
+    source: "landivo",
+    scheduledDate:
+      formData.emailSchedule === "scheduled"
+        ? selectedDate?.toISOString()
+        : null,
+
     // CHANGED: Multiple payment plans instead of single selectedPlan
     selectedPlan: multiPropertyPaymentPlans, // Array of payment plans
-    
+
     // Include selectedAgent if present (moved here for proper ordering)
     selectedAgent: formData.selectedAgent || null,
-    
+
     // CHANGED: Multiple image selections (similar structure to single property)
     imageSelections: multiPropertyImageSelections,
-    
+
     // Multi-property specific metadata (minimal)
     multiPropertyMeta: {
-      type: 'multi-property',
+      type: "multi-property",
       totalProperties: finalPropertyOrder.length,
       financingEnabled: formData.financingEnabled,
       planStrategy: formData.planStrategy,
-      propertiesWithFinancing: multiPropertyPaymentPlans.length
-    }
+      propertiesWithFinancing: multiPropertyPaymentPlans.length,
+    },
   };
 
-return {
-  ...campaignData,
-  scheduledDate: formData.emailSchedule === 'scheduled' ? selectedDate : undefined,
-  scheduledHour: formData.scheduledHour,
-  scheduledMinute: formData.scheduledMinute,
-};
+  return {
+    ...campaignData,
+    scheduledDate:
+      formData.emailSchedule === "scheduled" ? selectedDate : undefined,
+    scheduledHour: formData.scheduledHour,
+    scheduledMinute: formData.scheduledMinute,
+  };
 }
