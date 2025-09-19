@@ -67,6 +67,7 @@ export interface ICampaign extends Document {
   estimatedRecipients?: number;
   spamScore?: number;
   sentAt?: Date;
+  completedAt?: Date;
   source: "landivo" | "manual" | "api";
   status:
     | "draft"
