@@ -191,6 +191,12 @@ const CampaignSchema: Schema = new Schema(
       default: "draft",
     },
 
+  // Add to the campaign schema
+    completedAt: {
+      type: Date,
+      default: null
+    },
+
     metrics: {
       sent: { type: Number, default: 0 },
       delivered: { type: Number, default: 0 },

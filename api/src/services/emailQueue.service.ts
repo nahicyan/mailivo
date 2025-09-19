@@ -1,9 +1,9 @@
 // api/src/services/emailQueue.service.ts
-import Bull from 'bull';
-import { EmailJobProcessor } from './processors/emailJobProcessor.service';
-import { CampaignProcessor } from './processors/campaignProcessor.service';
-import { Campaign } from '../models/Campaign';
-import { logger } from '../utils/logger';
+import Bull from "bull";
+import { EmailJobProcessor } from "./processors/emailJobProcessor.service";
+import { CampaignProcessor } from "./processors/campaignProcessor.service";
+import { Campaign } from "../models/Campaign";
+import { logger } from "../utils/logger";
 
 interface EmailJob {
   campaignId: string;
@@ -31,7 +31,7 @@ class EmailQueueService {
   constructor() {
     this.emailJobProcessor = new EmailJobProcessor();
     this.campaignProcessor = new CampaignProcessor();
-    
+
     this.initializeQueues();
     this.setupProcessors();
     this.setupEventHandlers();
@@ -39,21 +39,21 @@ class EmailQueueService {
 
   private initializeQueues() {
     const redisConfig = {
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || "6379"),
+      host: process.env.REDIS_HOST || "localhost",
     };
 
-    this.emailQueue = new Bull<EmailJob>('email-sending', {
+    this.emailQueue = new Bull<EmailJob>("email-sending", {
       redis: redisConfig,
       defaultJobOptions: {
         removeOnComplete: 100,
         removeOnFail: 50,
         attempts: 3,
-        backoff: { type: 'exponential', delay: 30000 },
+        backoff: { type: "exponential", delay: 30000 },
       },
     });
 
-    this.campaignQueue = new Bull<CampaignJob>('campaign-processing', {
+    this.campaignQueue = new Bull<CampaignJob>("campaign-processing", {
       redis: redisConfig,
       defaultJobOptions: {
         removeOnComplete: 10,
@@ -64,63 +64,100 @@ class EmailQueueService {
   }
 
   private setupProcessors() {
-    this.emailQueue.process('send-email', 3, async (job) => {
+    this.emailQueue.process("send-email", 3, async (job) => {
       return await this.emailJobProcessor.processEmailJob(job.data);
     });
 
-    this.campaignQueue.process('process-campaign', 1, async (job) => {
+    this.campaignQueue.process("process-campaign", 1, async (job) => {
       const result = await this.campaignProcessor.processCampaign(job.data);
-      
+
       // Add individual email jobs to the email queue
       if (result.success && (result as any).emailJobs) {
         const emailJobs = (result as any).emailJobs;
-        
+
         for (let i = 0; i < emailJobs.length; i++) {
-          await this.emailQueue.add('send-email', emailJobs[i], {
+          await this.emailQueue.add("send-email", emailJobs[i], {
             delay: i * 2000, // 2 second delay between emails
           });
         }
       }
-      
+
       return result;
     });
   }
 
+  private async checkCampaignCompletion(campaignId: string): Promise<void> {
+    try {
+      const campaign = await Campaign.findById(campaignId);
+      if (!campaign || campaign.status !== "sending") {
+        return;
+      }
+
+      // Check if all emails are processed (sent + bounced = total)
+      const totalProcessed =
+        (campaign.metrics?.sent || 0) + (campaign.metrics?.bounced || 0);
+      const totalRecipients = campaign.metrics?.totalRecipients || 0;
+
+      if (totalProcessed >= totalRecipients && totalRecipients > 0) {
+        // All emails processed - mark as sent
+        campaign.status = "sent";
+        campaign.completedAt = new Date();
+        await campaign.save();
+
+        logger.info(`Campaign completed: ${campaignId}`, {
+          totalRecipients,
+          sent: campaign.metrics?.sent || 0,
+          bounced: campaign.metrics?.bounced || 0,
+        });
+      }
+    } catch (error) {
+      logger.error(
+        `Error checking campaign completion for ${campaignId}:`,
+        error
+      );
+    }
+  }
+
   private setupEventHandlers() {
-    this.emailQueue.on('completed', (job, result) => {
+    this.emailQueue.on("completed", async (job, result) => {
       logger.info(`Email job completed: ${job.id}`, result);
+      // Add campaign completion check
+      await this.checkCampaignCompletion(job.data.campaignId);
     });
 
-    this.emailQueue.on('failed', (job, err) => {
+    this.emailQueue.on("failed", async (job, err) => {
       logger.error(`Email job failed: ${job.id}`, err.message);
+      // Add campaign completion check
+      await this.checkCampaignCompletion(job.data.campaignId);
     });
 
-    this.campaignQueue.on('completed', (job, result) => {
+    this.campaignQueue.on("completed", (job, result) => {
       logger.info(`Campaign job completed: ${job.id}`, result);
     });
 
-    this.campaignQueue.on('failed', (job, err) => {
+    this.campaignQueue.on("failed", (job, err) => {
       logger.error(`Campaign job failed: ${job.id}`, err.message);
     });
   }
-
   // Public API methods
   async sendCampaign(campaignId: string, userId: string): Promise<void> {
-    await this.campaignQueue.add('process-campaign', {
+    await this.campaignQueue.add("process-campaign", {
       campaignId,
       userId,
     });
   }
 
   async pauseCampaign(campaignId: string): Promise<void> {
-    const jobs = await this.emailQueue.getJobs(['waiting', 'delayed']);
-    const campaignJobs = jobs.filter(job => job.data.campaignId === campaignId);
-    
+    const jobs = await this.emailQueue.getJobs(["waiting", "delayed"]);
+    const campaignJobs = jobs.filter(
+      (job) => job.data.campaignId === campaignId
+    );
+
     for (const job of campaignJobs) {
       await job.remove();
     }
 
-    await Campaign.findByIdAndUpdate(campaignId, { status: 'paused' });
+    await Campaign.findByIdAndUpdate(campaignId, { status: "paused" });
     logger.info(`Campaign ${campaignId} paused`);
   }
 
