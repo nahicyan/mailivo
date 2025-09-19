@@ -1,8 +1,7 @@
-// app/src/components/ui/time-picker.tsx
 "use client";
 
 import * as React from "react";
-import { Clock } from "lucide-react";
+import { Clock, ChevronUp, ChevronDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,7 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 interface TimePickerProps {
@@ -27,86 +26,136 @@ export function TimePicker({
   value,
   onChange,
   disabled = false,
-  hourCycle = 24,
+  hourCycle: initialHourCycle = 24,
   className,
   placeholder = "Select time",
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [hours, setHours] = React.useState<string>(
-    value ? value.getHours().toString().padStart(2, "0") : "00"
+  const [hourCycle, setHourCycle] = React.useState(initialHourCycle);
+  
+  const getDisplayHour = (date: Date) => {
+    const h = date.getHours();
+    if (hourCycle === 12) {
+      return h === 0 ? 12 : h > 12 ? h - 12 : h;
+    }
+    return h;
+  };
+
+  const [hours, setHours] = React.useState<number>(() => {
+    if (value) return getDisplayHour(value);
+    return hourCycle === 12 ? 12 : 9;
+  });
+
+  const [minutes, setMinutes] = React.useState<number>(
+    value ? value.getMinutes() : 0
   );
-  const [minutes, setMinutes] = React.useState<string>(
-    value ? value.getMinutes().toString().padStart(2, "0") : "00"
-  );
-  const [period, setPeriod] = React.useState<"AM" | "PM">(
-    value && value.getHours() >= 12 ? "PM" : "AM"
-  );
+
+  const [period, setPeriod] = React.useState<"AM" | "PM">(() => {
+    if (!value) return "AM";
+    return value.getHours() >= 12 ? "PM" : "AM";
+  });
 
   React.useEffect(() => {
     if (value) {
-      const h = value.getHours();
-      const m = value.getMinutes();
-      
-      if (hourCycle === 12) {
-        const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
-        setHours(displayHour.toString().padStart(2, "0"));
-        setPeriod(h >= 12 ? "PM" : "AM");
-      } else {
-        setHours(h.toString().padStart(2, "0"));
-      }
-      setMinutes(m.toString().padStart(2, "0"));
+      setHours(getDisplayHour(value));
+      setMinutes(value.getMinutes());
+      setPeriod(value.getHours() >= 12 ? "PM" : "AM");
     }
   }, [value, hourCycle]);
 
-  const handleTimeChange = (newHours: string, newMinutes: string, newPeriod?: "AM" | "PM") => {
-    let hour = parseInt(newHours);
-    const minute = parseInt(newMinutes);
-
-    if (hourCycle === 12 && newPeriod) {
-      if (newPeriod === "PM" && hour !== 12) hour += 12;
-      if (newPeriod === "AM" && hour === 12) hour = 0;
+  const handleTimeChange = React.useCallback(() => {
+    let actualHour = hours;
+    
+    if (hourCycle === 12) {
+      if (period === "PM" && hours !== 12) actualHour += 12;
+      if (period === "AM" && hours === 12) actualHour = 0;
     }
 
     const newDate = value ? new Date(value) : new Date();
-    newDate.setHours(hour, minute, 0, 0);
+    newDate.setHours(actualHour, minutes, 0, 0);
     onChange?.(newDate);
+  }, [hours, minutes, period, hourCycle, value, onChange]);
+
+  React.useEffect(() => {
+    handleTimeChange();
+  }, [hours, minutes, period]);
+
+  const incrementHour = () => {
+    const max = hourCycle === 12 ? 12 : 23;
+    const min = hourCycle === 12 ? 1 : 0;
+    setHours(h => h >= max ? min : h + 1);
   };
 
-  const handleHourChange = (hour: string) => {
-    setHours(hour);
-    handleTimeChange(hour, minutes, period);
+  const decrementHour = () => {
+    const max = hourCycle === 12 ? 12 : 23;
+    const min = hourCycle === 12 ? 1 : 0;
+    setHours(h => h <= min ? max : h - 1);
   };
 
-  const handleMinuteChange = (minute: string) => {
-    setMinutes(minute);
-    handleTimeChange(hours, minute, period);
+  const incrementMinute = () => {
+    setMinutes(m => m >= 59 ? 0 : m + 1);
   };
 
-  const handlePeriodChange = (newPeriod: "AM" | "PM") => {
-    setPeriod(newPeriod);
-    handleTimeChange(hours, minutes, newPeriod);
+  const decrementMinute = () => {
+    setMinutes(m => m <= 0 ? 59 : m - 1);
   };
 
   const formatDisplayTime = () => {
     if (!value) return placeholder;
     
+    const h = getDisplayHour(value);
+    const m = value.getMinutes();
+    const timeStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+    
     if (hourCycle === 12) {
-      return `${hours}:${minutes} ${period}`;
+      return `${timeStr} ${period}`;
     }
-    return `${hours}:${minutes}`;
+    return timeStr;
   };
 
-  const hourOptions = Array.from(
-    { length: hourCycle === 12 ? 12 : 24 },
-    (_, i) => {
-      if (hourCycle === 12) {
-        return i === 0 ? 12 : i;
-      }
-      return i;
+  const handleHourInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value) || 0;
+    const max = hourCycle === 12 ? 12 : 23;
+    const min = hourCycle === 12 ? 1 : 0;
+    if (val >= min && val <= max) {
+      setHours(val);
     }
-  );
+  };
 
-  const minuteOptions = Array.from({ length: 60 }, (_, i) => i);
+  const handleMinuteInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value) || 0;
+    if (val >= 0 && val <= 59) {
+      setMinutes(val);
+    }
+  };
+
+  const toggleHourCycle = () => {
+    const newCycle = hourCycle === 12 ? 24 : 12;
+    setHourCycle(newCycle);
+    
+    if (newCycle === 12) {
+      // Converting from 24 to 12 hour
+      const h = hours;
+      if (h === 0) {
+        setHours(12);
+        setPeriod("AM");
+      } else if (h > 12) {
+        setHours(h - 12);
+        setPeriod("PM");
+      } else if (h === 12) {
+        setPeriod("PM");
+      } else {
+        setPeriod("AM");
+      }
+    } else {
+      // Converting from 12 to 24 hour
+      if (period === "PM" && hours !== 12) {
+        setHours(hours + 12);
+      } else if (period === "AM" && hours === 12) {
+        setHours(0);
+      }
+    }
+  };
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -127,116 +176,136 @@ export function TimePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <div className="flex">
-          {/* Hours */}
-          <div className="flex flex-col">
-            <div className="px-3 py-2 border-b">
-              <Label className="text-xs font-semibold">Hour</Label>
+        <div className="p-4">
+          {/* Header with format toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <Label className="text-sm font-medium">Select time</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="hour-format" className="text-xs text-muted-foreground">
+                {hourCycle === 12 ? "12h" : "24h"}
+              </Label>
+              <Switch
+                id="hour-format"
+                checked={hourCycle === 12}
+                onCheckedChange={(checked: boolean) => toggleHourCycle()}
+                className="h-5 w-9"
+              />
             </div>
-            <ScrollArea className="h-[200px]">
-              <div className="p-1">
-                {hourOptions.map((hour) => {
-                  const hourStr = hour.toString().padStart(2, "0");
-                  return (
-                    <Button
-                      key={hour}
-                      size="sm"
-                      variant={hours === hourStr ? "secondary" : "ghost"}
-                      className="w-full justify-center font-mono"
-                      onClick={() => handleHourChange(hourStr)}
-                    >
-                      {hourStr}
-                    </Button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
           </div>
 
-          {/* Minutes */}
-          <div className="flex flex-col border-l">
-            <div className="px-3 py-2 border-b">
-              <Label className="text-xs font-semibold">Minute</Label>
+          {/* Time selector */}
+          <div className="flex items-center justify-center space-x-2">
+            {/* Hours */}
+            <div className="flex flex-col items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={incrementHour}
+              >
+                <ChevronUp className="h-3 w-3" />
+              </Button>
+              <Input
+                type="text"
+                value={hours.toString().padStart(2, "0")}
+                onChange={handleHourInput}
+                className="w-14 h-10 text-center font-mono text-lg"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={decrementHour}
+              >
+                <ChevronDown className="h-3 w-3" />
+              </Button>
             </div>
-            <ScrollArea className="h-[200px]">
-              <div className="p-1">
-                {minuteOptions
-                  .filter((_, i) => i % 5 === 0) // Show only 5-minute intervals
-                  .map((minute) => {
-                    const minStr = minute.toString().padStart(2, "0");
-                    return (
-                      <Button
-                        key={minute}
-                        size="sm"
-                        variant={minutes === minStr ? "secondary" : "ghost"}
-                        className="w-full justify-center font-mono"
-                        onClick={() => handleMinuteChange(minStr)}
-                      >
-                        {minStr}
-                      </Button>
-                    );
-                  })}
-              </div>
-            </ScrollArea>
-          </div>
 
-          {/* AM/PM for 12-hour format */}
-          {hourCycle === 12 && (
-            <div className="flex flex-col border-l">
-              <div className="px-3 py-2 border-b">
-                <Label className="text-xs font-semibold">Period</Label>
-              </div>
-              <div className="p-1">
+            <div className="text-lg font-semibold pb-5">:</div>
+
+            {/* Minutes */}
+            <div className="flex flex-col items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={incrementMinute}
+              >
+                <ChevronUp className="h-3 w-3" />
+              </Button>
+              <Input
+                type="text"
+                value={minutes.toString().padStart(2, "0")}
+                onChange={handleMinuteInput}
+                className="w-14 h-10 text-center font-mono text-lg"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={decrementMinute}
+              >
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* AM/PM selector for 12-hour format */}
+            {hourCycle === 12 && (
+              <div className="flex flex-col space-y-1 ml-2">
                 <Button
+                  variant={period === "AM" ? "default" : "outline"}
                   size="sm"
-                  variant={period === "AM" ? "secondary" : "ghost"}
-                  className="w-full"
-                  onClick={() => handlePeriodChange("AM")}
+                  className="h-[18px] w-12 text-xs"
+                  onClick={() => setPeriod("AM")}
                 >
                   AM
                 </Button>
                 <Button
+                  variant={period === "PM" ? "default" : "outline"}
                   size="sm"
-                  variant={period === "PM" ? "secondary" : "ghost"}
-                  className="w-full"
-                  onClick={() => handlePeriodChange("PM")}
+                  className="h-[18px] w-12 text-xs"
+                  onClick={() => setPeriod("PM")}
                 >
                   PM
                 </Button>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Direct input option */}
-        <div className="border-t p-3">
-          <div className="flex items-center space-x-2">
-            <Input
-              type="number"
-              min="0"
-              max={hourCycle === 12 ? "12" : "23"}
-              value={hours}
-              onChange={(e) => handleHourChange(e.target.value.padStart(2, "0"))}
-              className="w-14 text-center font-mono"
-            />
-            <span className="text-lg">:</span>
-            <Input
-              type="number"
-              min="0"
-              max="59"
-              value={minutes}
-              onChange={(e) => handleMinuteChange(e.target.value.padStart(2, "0"))}
-              className="w-14 text-center font-mono"
-            />
-            {hourCycle === 12 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handlePeriodChange(period === "AM" ? "PM" : "AM")}
-              >
-                {period}
-              </Button>
             )}
+          </div>
+
+          {/* Quick select buttons */}
+          <div className="mt-4 pt-4 border-t">
+            <div className="grid grid-cols-4 gap-1">
+              {[
+                { label: "12:00 AM", h: 0, m: 0 },
+                { label: "6:00 AM", h: 6, m: 0 },
+                { label: "9:00 AM", h: 9, m: 0 },
+                { label: "12:00 PM", h: 12, m: 0 },
+                { label: "3:00 PM", h: 15, m: 0 },
+                { label: "6:00 PM", h: 18, m: 0 },
+                { label: "9:00 PM", h: 21, m: 0 },
+                { label: "11:59 PM", h: 23, m: 59 },
+              ].map((time) => {
+                const display = hourCycle === 12 ? time.label : `${time.h.toString().padStart(2, "0")}:${time.m.toString().padStart(2, "0")}`;
+                return (
+                  <Button
+                    key={time.label}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const newDate = value ? new Date(value) : new Date();
+                      newDate.setHours(time.h, time.m, 0, 0);
+                      onChange?.(newDate);
+                      setIsOpen(false);
+                    }}
+                  >
+                    {display}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </PopoverContent>
@@ -244,38 +313,65 @@ export function TimePicker({
   );
 }
 
-// Simple inline time picker variant
+// Simple inline time picker variant (for forms without popover)
 export function SimpleTimePicker({
   value,
   onChange,
   disabled = false,
-  hourCycle = 24,
+  hourCycle: initialHourCycle = 24,
   className,
 }: TimePickerProps) {
-  const [hours, setHours] = React.useState<string>(
-    value ? value.getHours().toString().padStart(2, "0") : "09"
-  );
+  const [hourCycle, setHourCycle] = React.useState(initialHourCycle);
+
+  const getDisplayHour = (date: Date) => {
+    const h = date.getHours();
+    if (hourCycle === 12) {
+      return h === 0 ? 12 : h > 12 ? h - 12 : h;
+    }
+    return h;
+  };
+
+  const [hours, setHours] = React.useState<string>(() => {
+    if (value) return getDisplayHour(value).toString().padStart(2, "0");
+    return hourCycle === 12 ? "12" : "09";
+  });
+
   const [minutes, setMinutes] = React.useState<string>(
     value ? value.getMinutes().toString().padStart(2, "0") : "00"
   );
 
-  const handleChange = (newHours: string, newMinutes: string) => {
+  const [period, setPeriod] = React.useState<"AM" | "PM">(() => {
+    if (!value) return "AM";
+    return value.getHours() >= 12 ? "PM" : "AM";
+  });
+
+  const handleChange = () => {
+    let actualHour = parseInt(hours);
+    
+    if (hourCycle === 12) {
+      if (period === "PM" && actualHour !== 12) actualHour += 12;
+      if (period === "AM" && actualHour === 12) actualHour = 0;
+    }
+
     const newDate = value ? new Date(value) : new Date();
-    newDate.setHours(parseInt(newHours), parseInt(newMinutes), 0, 0);
+    newDate.setHours(actualHour, parseInt(minutes), 0, 0);
     onChange?.(newDate);
   };
+
+  React.useEffect(() => {
+    handleChange();
+  }, [hours, minutes, period]);
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>
       <Input
         type="number"
-        min="0"
-        max="23"
+        min={hourCycle === 12 ? "1" : "0"}
+        max={hourCycle === 12 ? "12" : "23"}
         value={hours}
         onChange={(e) => {
           const val = e.target.value.padStart(2, "0");
           setHours(val);
-          handleChange(val, minutes);
         }}
         disabled={disabled}
         className="w-16 text-center font-mono"
@@ -290,12 +386,34 @@ export function SimpleTimePicker({
         onChange={(e) => {
           const val = e.target.value.padStart(2, "0");
           setMinutes(val);
-          handleChange(hours, val);
         }}
         disabled={disabled}
         className="w-16 text-center font-mono"
         placeholder="MM"
       />
+      {hourCycle === 12 && (
+        <Button
+          variant={period === "PM" ? "default" : "outline"}
+          onClick={() => setPeriod(period === "AM" ? "PM" : "AM")}
+          disabled={disabled}
+          className="w-14"
+          size="sm"
+        >
+          {period}
+        </Button>
+      )}
+      <div className="flex items-center gap-2 ml-2">
+        <Label htmlFor="inline-hour-format" className="text-xs text-muted-foreground">
+          {hourCycle}h
+        </Label>
+        <Switch
+          id="inline-hour-format"
+          checked={hourCycle === 12}
+          onCheckedChange={(checked: boolean) => setHourCycle(checked ? 12 : 24)}
+          disabled={disabled}
+          className="h-4 w-8"
+        />
+      </div>
     </div>
   );
 }
