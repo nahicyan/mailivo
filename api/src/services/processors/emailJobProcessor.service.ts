@@ -5,7 +5,7 @@ import { templateRenderingService } from "../templateRendering.service";
 import { EmailTracking } from "../../models/EmailTracking.model";
 import { Campaign } from "../../models/Campaign";
 import { logger } from "../../utils/logger";
-import { nanoid } from 'nanoid';
+import { nanoid } from "nanoid";
 
 interface EmailJob {
   campaignId: string;
@@ -51,11 +51,14 @@ export class EmailJobProcessor {
       });
 
       if (result.success) {
-        await EmailTracking.findByIdAndUpdate(trackingId, {
-          status: "sent",
-          sentAt: new Date(),
-          messageId: result.messageId,
-        });
+        await EmailTracking.findOneAndUpdate(
+          { trackingId: trackingId }, // Find by trackingId field, not _id
+          {
+            status: "sent",
+            sentAt: new Date(),
+            messageId: result.messageId,
+          }
+        );
 
         await this.updateCampaignMetrics(campaignId, "sent");
 
@@ -81,10 +84,13 @@ export class EmailJobProcessor {
         error: errorMessage,
       });
 
-      await EmailTracking.findByIdAndUpdate(trackingId, {
-        status: "failed",
-        error: errorMessage,
-      });
+      await EmailTracking.findOneAndUpdate(
+        { trackingId: trackingId }, // Find by trackingId field
+        {
+          status: "failed",
+          error: errorMessage,
+        }
+      );
 
       await this.updateCampaignMetrics(campaignId, "bounced");
       throw error;
@@ -149,7 +155,7 @@ export class EmailJobProcessor {
     campaignId: string,
     contactId: string
   ): Promise<string> {
-    const trackingId = nanoid(12); // Generate unique tracking ID
+    const trackingId = nanoid(12);
 
     const tracking = new EmailTracking({
       campaignId,
@@ -163,7 +169,7 @@ export class EmailJobProcessor {
     });
 
     await tracking.save();
-    return trackingId;
+    return trackingId; // Return the nanoid string
   }
 
   private async checkRateLimit(): Promise<void> {
