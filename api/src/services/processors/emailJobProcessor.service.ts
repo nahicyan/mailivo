@@ -94,7 +94,8 @@ export class EmailJobProcessor {
 
   async personalizeContent(
     campaign: any,
-    contact: any
+    contact: any,
+    trackingId: string // Add parameter
   ): Promise<{
     subject: string;
     htmlContent: string;
@@ -118,9 +119,11 @@ export class EmailJobProcessor {
 
         // Prepare campaign data for template rendering - INCLUDE selectedAgent!
         const campaignData = {
-          selectedAgent: campaign.selectedAgent, // ADD THIS LINE
+          selectedAgent: campaign.selectedAgent,
           selectedPlan: campaign.selectedPlan,
           imageSelections: campaign.imageSelections || {},
+          trackingId, // Pass tracking ID
+          campaignId: campaign._id,
         };
 
         const renderedContent = await templateRenderingService.renderTemplate(
@@ -145,15 +148,21 @@ export class EmailJobProcessor {
     campaignId: string,
     contactId: string
   ): Promise<string> {
+    const trackingId = nanoid(12); // Generate unique tracking ID
+
     const tracking = new EmailTracking({
       campaignId,
       contactId,
+      trackingId,
       status: "queued",
+      links: [],
+      linkClicks: [],
+      linkStats: new Map(),
       createdAt: new Date(),
     });
 
     await tracking.save();
-    return (tracking as any)._id.toString();
+    return trackingId;
   }
 
   private async checkRateLimit(): Promise<void> {

@@ -5,6 +5,9 @@ import { logger } from '../utils/logger';
 import { getComponent, componentRegistry } from '@landivo/email-template';
 import { render } from '@react-email/render';
 import { emailImageService } from './emailImageService';
+import { linkTrackingService } from './linkTracking.service';
+import { EmailTracking } from '../models/EmailTracking.model';
+import { nanoid } from 'nanoid';
 import React from 'react';
 
 // Add AgentData interface
@@ -397,18 +400,49 @@ class TemplateRenderingService {
         ...renderedComponents
       );
 
-      // Render to HTML using React Email
-      const htmlContent = await render(emailElement, {
-        pretty: false,
-      });
+    // Render to HTML using React Email
+    let htmlContent = await render(emailElement, {
+      pretty: false,
+    });
 
-      return htmlContent;
+    // Apply link tracking if tracking ID is provided
+    if (campaignData?.trackingId) {
+      const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(
+        htmlContent,
+        {
+          trackingId: campaignData.trackingId,
+          campaignId: campaignData.campaignId || '',
+          contactId: contactData.id || '',
+          baseUrl: process.env.API_URL || 'https://api.mailivo.com',
+        }
+      );
 
-    } catch (error: any) {
-      logger.error('Failed to generate HTML content:', error);
-      throw new Error(`Template rendering failed: ${error.message}`);
+      // Store extracted links in tracking record
+      if (extractedLinks.length > 0) {
+        await EmailTracking.findOneAndUpdate(
+          { trackingId: campaignData.trackingId },
+          {
+            $set: { links: extractedLinks },
+            $setOnInsert: {
+              campaignId: campaignData.campaignId,
+              contactId: contactData.id,
+              status: 'queued',
+            }
+          },
+          { upsert: true }
+        );
+      }
+
+      htmlContent = transformedHtml;
     }
+
+    return htmlContent;
+
+  } catch (error: any) {
+    logger.error('Failed to generate HTML content:', error);
+    throw new Error(`Template rendering failed: ${error.message}`);
   }
+}
 
   private async generateMultiPropertyEmailHTML(
     template: any,

@@ -4,6 +4,7 @@ import { EmailTracking } from '../models/EmailTracking.model';
 import { Campaign } from '../models/Campaign';
 import { Contact } from '../models/Contact.model';
 import { logger } from '../utils/logger';
+import { linkTrackingService } from '../services/linkTracking.service';
 
 const router = Router();
 
@@ -322,5 +323,84 @@ async function processWebhookEvent(event: any): Promise<void> {
     logger.error('Error processing webhook event:', error);
   }
 }
+
+// Enhanced click tracking with link-specific analytics
+router.get('/click/:trackingId/:linkId?', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { trackingId, linkId } = req.params;
+    const { url } = req.query;
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.get('User-Agent') || '';
+    const referer = req.get('Referer') || '';
+
+    if (!url || typeof url !== 'string') {
+      res.status(400).json({ error: 'URL parameter required' });
+      return;
+    }
+
+    // Find tracking record
+    const tracking = await EmailTracking.findOne({ trackingId });
+    
+    if (tracking) {
+      // Update general click status if first click
+      if (!tracking.clickedAt) {
+        tracking.status = 'clicked';
+        tracking.clickedAt = new Date();
+
+        await Campaign.findByIdAndUpdate(tracking.campaignId, {
+          $inc: { 'metrics.clicked': 1 }
+        });
+      }
+
+      // Track link-specific click if linkId provided
+      if (linkId) {
+        // Add to link clicks array
+        tracking.linkClicks.push({
+          linkId,
+          clickedAt: new Date(),
+          ipAddress,
+          userAgent,
+          referer,
+        });
+
+        // Update link stats
+        const linkStat = tracking.linkStats.get(linkId) || {
+          clickCount: 0,
+          uniqueIPs: new Set<string>(),
+        };
+
+        linkStat.clickCount++;
+        linkStat.lastClick = new Date();
+        if (!linkStat.firstClick) {
+          linkStat.firstClick = new Date();
+        }
+        linkStat.uniqueIPs.add(ipAddress);
+
+        tracking.linkStats.set(linkId, linkStat);
+      }
+
+      await tracking.save();
+
+      logger.info(`Email link clicked: ${trackingId}/${linkId}`, {
+        campaignId: tracking.campaignId,
+        contactId: tracking.contactId,
+        linkId,
+        url,
+        ipAddress,
+      });
+    }
+
+    // Always redirect to URL
+    res.redirect(url);
+  } catch (error) {
+    logger.error('Error tracking click:', error);
+    
+    if (req.query.url && typeof req.query.url === 'string') {
+      res.redirect(req.query.url);
+    } else {
+      res.status(500).json({ error: 'Tracking error' });
+    }
+  }
+});
 
 export default router;
