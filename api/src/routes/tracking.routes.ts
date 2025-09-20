@@ -93,8 +93,13 @@ router.get('/click/:trackingId', async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Find tracking record
-    const tracking = await EmailTracking.findById(trackingId);
+    // Find tracking record - try both trackingId and _id for backwards compatibility
+    const tracking = await EmailTracking.findOne({ 
+      $or: [
+        { trackingId: trackingId },
+        { _id: trackingId }
+      ]
+    });
     
     if (tracking) {
       // Update tracking record only if not already clicked
@@ -325,7 +330,7 @@ async function processWebhookEvent(event: any): Promise<void> {
 }
 
 // Enhanced click tracking with link-specific analytics
-router.get('/click/:trackingId/:linkId?', async (req: Request, res: Response): Promise<void> => {
+router.get('/click/:trackingId/:linkId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { trackingId, linkId } = req.params;
     const { url } = req.query;
@@ -352,33 +357,30 @@ router.get('/click/:trackingId/:linkId?', async (req: Request, res: Response): P
         });
       }
 
-      // Track link-specific click if linkId provided
-      if (linkId) {
-        // Add to link clicks array
-        tracking.linkClicks.push({
-          linkId,
-          clickedAt: new Date(),
-          ipAddress,
-          userAgent,
-          referer,
-        });
+      // Track link-specific click
+      tracking.linkClicks.push({
+        linkId,
+        clickedAt: new Date(),
+        ipAddress,
+        userAgent,
+        referer,
+      });
 
-        // Update link stats
-        const linkStat = tracking.linkStats.get(linkId) || {
-          clickCount: 0,
-          uniqueIPs: new Set<string>(),
-        };
+      // Update link stats
+      const linkStat = tracking.linkStats.get(linkId) || {
+        clickCount: 0,
+        uniqueIPs: new Set<string>(),
+      };
 
-        linkStat.clickCount++;
-        linkStat.lastClick = new Date();
-        if (!linkStat.firstClick) {
-          linkStat.firstClick = new Date();
-        }
-        linkStat.uniqueIPs.add(ipAddress);
-
-        tracking.linkStats.set(linkId, linkStat);
+      linkStat.clickCount++;
+      linkStat.lastClick = new Date();
+      if (!linkStat.firstClick) {
+        linkStat.firstClick = new Date();
       }
+      linkStat.uniqueIPs.add(ipAddress);
 
+      tracking.linkStats.set(linkId, linkStat);
+      
       await tracking.save();
 
       logger.info(`Email link clicked: ${trackingId}/${linkId}`, {
