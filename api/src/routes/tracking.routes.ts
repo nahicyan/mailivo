@@ -4,7 +4,7 @@ import { EmailTracking } from '../models/EmailTracking.model';
 import { Campaign } from '../models/Campaign';
 import { Contact } from '../models/Contact.model';
 import { logger } from '../utils/logger';
-import { linkTrackingService } from '../services/linkTracking.service';
+//import { linkTrackingService } from '../services/linkTracking.service';
 
 const router = Router();
 

@@ -80,7 +80,7 @@ export class CampaignProcessor {
       const contactId = (contact as any)._id.toString();
       const trackingId = await this.emailJobProcessor.createTrackingRecord(campaign._id, contactId);
       
-      const personalizedContent = await this.emailJobProcessor.personalizeContent(campaign, contact);
+      const personalizedContent = await this.emailJobProcessor.personalizeContent(campaign,trackingId, contact);
 
       emailJobs.push({
         campaignId: campaign._id,
