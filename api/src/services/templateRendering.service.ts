@@ -7,7 +7,6 @@ import { render } from '@react-email/render';
 import { emailImageService } from './emailImageService';
 import { linkTrackingService } from './linkTracking.service';
 import { EmailTracking } from '../models/EmailTracking.model';
-import { nanoid } from 'nanoid';
 import React from 'react';
 
 // Add AgentData interface

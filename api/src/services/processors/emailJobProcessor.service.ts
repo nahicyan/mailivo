@@ -5,6 +5,7 @@ import { templateRenderingService } from "../templateRendering.service";
 import { EmailTracking } from "../../models/EmailTracking.model";
 import { Campaign } from "../../models/Campaign";
 import { logger } from "../../utils/logger";
+import { nanoid } from 'nanoid';
 
 interface EmailJob {
   campaignId: string;
