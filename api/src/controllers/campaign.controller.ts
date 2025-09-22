@@ -89,28 +89,34 @@ class CampaignController {
       const campaign = new Campaign(campaignData);
 
        // SCHEDULING LOGIC:
-  const { emailSchedule, scheduledDate } = req.body;
-  
-  if (emailSchedule === 'scheduled' && scheduledDate) {
-    // Combine date with time
-    const scheduledDateTime = new Date(scheduledDate);
-    if (req.body.scheduledHour && req.body.scheduledMinute) {
-      scheduledDateTime.setHours(
-        parseInt(req.body.scheduledHour), 
-        parseInt(req.body.scheduledMinute), 
-        0, 
-        0
-      );
-    }
-    
-    campaign.scheduledDate = scheduledDateTime;
-    campaign.status = 'scheduled';
-  } else if (emailSchedule === 'immediate') {
-    campaign.status = 'sending';
-    campaign.sentAt = new Date();
+const { emailSchedule, scheduledDate } = req.body;
+
+if (emailSchedule === 'scheduled' && scheduledDate) {
+  // Combine date with time
+  const scheduledDateTime = new Date(scheduledDate);
+  if (req.body.scheduledHour && req.body.scheduledMinute) {
+    scheduledDateTime.setHours(
+      parseInt(req.body.scheduledHour), 
+      parseInt(req.body.scheduledMinute), 
+      0, 
+      0
+    );
   }
   
-      await campaign.save();
+  campaign.scheduledDate = scheduledDateTime;
+  campaign.status = 'scheduled';
+} else if (emailSchedule === 'immediate') {
+  campaign.status = 'sending';
+  campaign.sentAt = new Date();
+}
+
+await campaign.save();
+
+// ADD THIS: Queue emails immediately for immediate campaigns
+if (emailSchedule === 'immediate') {
+  await emailQueueService.sendCampaign(campaign._id!.toString(), userId);
+  logger.info(`Immediate campaign queued: ${campaign._id}`, { userId });
+}
 
       logger.info(`Campaign created: ${campaign._id}`, { userId, spamScore });
       res.status(201).json(campaign);

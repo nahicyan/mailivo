@@ -291,24 +291,7 @@ export default function CreateCampaignPage() {
       }
 
       const newCampaign = await response.json();
-
-      if (
-        formData.emailSchedule === "immediate" &&
-        newCampaign.status === "active"
-      ) {
-        try {
-          await fetch(`${API_URL}/campaigns/${newCampaign._id}/send`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
-            },
-            credentials: "include",
-          });
-        } catch (sendError) {
-          console.warn("Auto-send failed:", sendError);
-        }
-      }
-
+      
       router.push("/dashboard/landivo/campaigns/manage");
     } catch (error: any) {
       setErrors({
