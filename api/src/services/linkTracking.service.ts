@@ -24,7 +24,7 @@ export class LinkTrackingService {
   private readonly baseTrackingUrl: string;
 
   constructor() {
-    this.baseTrackingUrl = process.env.API_URL || 'https://api.mailivo.com';
+    this.baseTrackingUrl = process.env.API_URL || 'https://api.mailivo.landivo.com';
   }
 
   /**
@@ -160,19 +160,19 @@ export class LinkTrackingService {
   /**
    * Create tracking URL
    */
-  private createTrackingUrl(params: {
-    trackingId: string;
-    linkId: string;
-    originalUrl: string;
-  }): string {
-    const { trackingId, linkId, originalUrl } = params;
-    
-    // Encode the original URL
-    const encodedUrl = encodeURIComponent(originalUrl);
-    
-    // Build tracking URL
-    return `${this.baseTrackingUrl}/track/click/${trackingId}/${linkId}?url=${encodedUrl}`;
-  }
+private createTrackingUrl(params: {
+  trackingId: string;
+  linkId: string;
+  originalUrl: string;
+}): string {
+  const { trackingId, linkId, originalUrl } = params;
+  
+  // Encode the original URL
+  const encodedUrl = encodeURIComponent(originalUrl);
+  
+  // FIX: Use /track/click to match your routes (not /tracking/click)
+  return `${this.baseTrackingUrl}/track/click/${trackingId}/${linkId}?url=${encodedUrl}`;
+}
 
   /**
    * Decode tracking URL to get original URL

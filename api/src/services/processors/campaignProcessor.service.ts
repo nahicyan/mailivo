@@ -73,26 +73,39 @@ export class CampaignProcessor {
     }
   }
 
-  private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[]> {
-    const emailJobs = [];
-    
-    for (const contact of contacts) {
-      const contactId = (contact as any)._id.toString();
-      const trackingId = await this.emailJobProcessor.createTrackingRecord(campaign._id, contactId);
+// api/src/services/processors/campaignProcessor.service.ts
+
+private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[]> {
+  const emailJobs = [];
+  
+  for (const contact of contacts) {
+    // FIX: Ensure contactId is a string
+    const contactId = typeof contact === 'string' 
+      ? contact 
+      : ((contact as any)._id?.toString() || contact.id?.toString() || '');
       
-      const personalizedContent = await this.emailJobProcessor.personalizeContent(campaign,trackingId, contact);
+    const trackingId = await this.emailJobProcessor.createTrackingRecord(
+      campaign._id.toString(), 
+      contactId
+    );
+    
+    const personalizedContent = await this.emailJobProcessor.personalizeContent(
+      campaign, 
+      contact, 
+      trackingId
+    );
 
-      emailJobs.push({
-        campaignId: campaign._id,
-        contactId,
-        email: contact.email,
-        personalizedContent,
-        trackingId,
-      });
-    }
-
-    return emailJobs;
+    emailJobs.push({
+      campaignId: campaign._id.toString(),
+      contactId,
+      email: contact.email,
+      personalizedContent,
+      trackingId,
+    });
   }
+
+  return emailJobs;
+}
 
   private async getContactsForCampaign(campaign: any, userId: string) {
     let contacts = [];

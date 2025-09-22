@@ -406,30 +406,31 @@ class TemplateRenderingService {
 
     // Apply link tracking if tracking ID is provided
     if (campaignData?.trackingId) {
+      // FIX: Extract the contact ID properly
+      const contactId = typeof contactData === 'string' 
+        ? contactData 
+        : (contactData.id || contactData._id || '');
+
       const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(
         htmlContent,
         {
           trackingId: campaignData.trackingId,
           campaignId: campaignData.campaignId || '',
-          contactId: contactData.id || '',
-          baseUrl: process.env.API_URL || 'https://api.mailivo.com',
+          contactId: contactId, // Use the extracted ID
+          baseUrl: process.env.API_URL || 'https://api.mailivo.landivo.com', // Match actual URL
         }
       );
 
-      // Store extracted links in tracking record
+      // FIX: Updating existing record, doesn't create new one
       if (extractedLinks.length > 0) {
         await EmailTracking.findOneAndUpdate(
           { trackingId: campaignData.trackingId },
           {
-            $set: { links: extractedLinks },
-            $setOnInsert: {
-              campaignId: campaignData.campaignId,
-              contactId: contactData.id,
-              status: 'queued',
-            }
-          },
-          { upsert: true }
+            $set: { links: extractedLinks }
+          }
         );
+        
+        logger.info(`Stored ${extractedLinks.length} links for tracking ${campaignData.trackingId}`);
       }
 
       htmlContent = transformedHtml;
