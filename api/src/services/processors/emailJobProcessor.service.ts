@@ -39,6 +39,7 @@ export class EmailJobProcessor {
     try {
       await this.checkRateLimit();
 
+      // FIX: Add tracking pixel to HTML content before sending
       const htmlWithTracking = await emailService.addTrackingPixel(
         personalizedContent.htmlContent,
         trackingId
@@ -47,8 +48,8 @@ export class EmailJobProcessor {
       const result = await emailService.sendEmail({
         to: email,
         subject: personalizedContent.subject,
-        html: htmlWithTracking,
-        text: personalizedContent.textContent,
+        htmlContent: htmlWithTracking, // Use the tracked HTML
+        textContent: personalizedContent.textContent,
       });
 
       if (result.success) {
@@ -103,27 +104,26 @@ export class EmailJobProcessor {
       throw error;
     }
   }
-  private isBounceError(error: any): boolean {
-  const errorMessage = error?.message || '';
-  const bouncePatterns = [
-    /550/,
-    /mailbox/i,
-    /user unknown/i,
-    /no such user/i,
-    /recipient rejected/i,
-    /blocked/i,
-    /quota/i
-  ];
-  
-  return bouncePatterns.some(pattern => pattern.test(errorMessage));
-}
 
-  // api/src/services/processors/emailJobProcessor.service.ts (relevant section)
+  private isBounceError(error: any): boolean {
+    const errorMessage = error?.message || '';
+    const bouncePatterns = [
+      /550/,
+      /mailbox/i,
+      /user unknown/i,
+      /no such user/i,
+      /recipient rejected/i,
+      /blocked/i,
+      /quota/i
+    ];
+    
+    return bouncePatterns.some(pattern => pattern.test(errorMessage));
+  }
 
   async personalizeContent(
     campaign: any,
     contact: any,
-    trackingId: string // Add parameter
+    trackingId: string
   ): Promise<{
     subject: string;
     htmlContent: string;
@@ -141,11 +141,10 @@ export class EmailJobProcessor {
             campaignId: campaign._id,
             selectedPlan: campaign.selectedPlan?.planNumber,
             imageSelections: Object.keys(campaign.imageSelections || {}).length,
-            selectedAgent: campaign.selectedAgent, // Log the agent ID
+            selectedAgent: campaign.selectedAgent,
           }
         );
 
-        // Prepare campaign data for template rendering - INCLUDE selectedAgent!
         const campaignData = {
           selectedAgent: campaign.selectedAgent,
           selectedPlan: campaign.selectedPlan,
@@ -159,7 +158,7 @@ export class EmailJobProcessor {
           campaign.property,
           contact,
           campaign.subject,
-          campaignData // Now includes selectedAgent
+          campaignData
         );
 
         return this.applyPersonalization(renderedContent, contact);
@@ -190,7 +189,7 @@ export class EmailJobProcessor {
     });
 
     await tracking.save();
-    return trackingId; // Return the nanoid string
+    return trackingId;
   }
 
   private async checkRateLimit(): Promise<void> {
