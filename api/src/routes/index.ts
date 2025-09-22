@@ -19,7 +19,7 @@ router.use('/templates', templatesRoutes);
 router.use('/landivo-email-lists', landivoEmailListsRoutes);
 router.use('/landivo', landivoRoutes);
 router.use('/workflows', workflowRoutes);
-router.use('/track', trackingRoutes);
+router.use('/public', trackingRoutes);
 router.use("/subject-templates", subjectTemplateRoute);
 router.use('/template-images', templateImageRoutes);
 router.use('/api/user', userProfileRoute);

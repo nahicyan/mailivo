@@ -95,7 +95,7 @@ class EmailService {
 
     const headers = {
       // FIX: Also fix the unsubscribe URL
-      "List-Unsubscribe": `<${baseUrl}/track/unsubscribe>`,
+      "List-Unsubscribe": `<${baseUrl}/public/unsubscribe>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       "X-Mailer": "Mailivo-Platform",
       ...options.headers,
@@ -104,25 +104,37 @@ class EmailService {
     return { ...options, headers };
   }
 
-  async addTrackingPixel(
-    htmlContent: string,
-    trackingId: string
-  ): Promise<string> {
-    const baseUrl = process.env.API_URL || "http://localhost:8000";
-    // Use a table cell with bgcolor instead of img
-    const trackingPixel = `
-    <table border="0" cellpadding="0" cellspacing="0" width="1" height="1">
-      <tr><td>
-        <img src="${baseUrl}/track/open/${trackingId}" 
-             width="1" height="1" border="0" alt="">
-      </td></tr>
-    </table>`;
+// api/src/services/email.service.ts
+// Update the addTrackingPixel method to place the pixel INSIDE the main content
 
-    if (htmlContent.includes("</body>")) {
-      return htmlContent.replace("</body>", `${trackingPixel}</body>`);
-    }
-    return htmlContent + trackingPixel;
+async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
+  const baseUrl = process.env.API_URL || 'http://localhost:8000';
+  
+  // Use a more disguised approach - embed as a regular image, not in a suspicious table
+  const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" alt="" style="display:block!important;width:1px!important;height:1px!important;border:0!important;margin:0!important;padding:0!important" width="1" height="1" />`;
+  
+  // Trying to insert INSIDE the last div before </body> or </div>
+  // This keeps it within the main content structure
+  
+  // First try to find the last closing div before </body>
+  if (htmlContent.includes('</div></body>')) {
+    return htmlContent.replace('</div></body>', `${trackingPixel}</div></body>`);
   }
+  
+  // If that doesn't work, try before </body>
+  if (htmlContent.includes('</body>')) {
+    return htmlContent.replace('</body>', `${trackingPixel}</body>`);
+  }
+  
+  // Otherwise try to find the last </div> in the content
+  const lastDivIndex = htmlContent.lastIndexOf('</div>');
+  if (lastDivIndex !== -1) {
+    return htmlContent.slice(0, lastDivIndex) + trackingPixel + htmlContent.slice(lastDivIndex);
+  }
+  
+  // Fallback: add at the end
+  return htmlContent + trackingPixel;
+}
 
   async checkSpamScore(content: string, subject: string): Promise<number> {
     let score = 0;
@@ -178,7 +190,7 @@ class EmailService {
   generateUnsubscribeLink(contactId: string, campaignId: string): string {
     const baseUrl = process.env.API_URL || "http://localhost:8000";
     const token = Buffer.from(`${contactId}:${campaignId}`).toString("base64");
-    return `${baseUrl}/api/track/unsubscribe?token=${token}`;
+    return `${baseUrl}/api/public/unsubscribe?token=${token}`;
   }
 
   // Configuration methods
