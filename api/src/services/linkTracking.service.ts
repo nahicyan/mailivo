@@ -171,7 +171,7 @@ export class LinkTrackingService {
     const encodedUrl = encodeURIComponent(originalUrl);
     
     // Build tracking URL
-    return `${this.baseTrackingUrl}/tracking/click/${trackingId}/${linkId}?url=${encodedUrl}`;
+    return `${this.baseTrackingUrl}/track/click/${trackingId}/${linkId}?url=${encodedUrl}`;
   }
 
   /**

@@ -170,7 +170,6 @@ export default function CreateCampaignPage() {
           newErrors.subject = "Subject line is required";
         break;
       case 7:
-      case 7:
         // Schedule validation with 1-minute buffer
         if (!formData.emailSchedule) {
           newErrors.emailSchedule = "Please select when to send the campaign";
