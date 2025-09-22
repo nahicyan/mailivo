@@ -86,7 +86,7 @@ class EmailService {
     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
     
     const headers = {
-      'List-Unsubscribe': `<${baseUrl}/api/track/unsubscribe>`,
+      'List-Unsubscribe': `<${baseUrl}/api/via/unsubscribe>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       'X-Mailer': 'Mailivo-Platform',
       ...options.headers,
@@ -98,7 +98,7 @@ class EmailService {
  
 /*  async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
      const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
-    const trackingPixel = `<img src="${baseUrl}/api/track/open/${trackingId}" width="1" height="1" style="display:none;" />`;
+    const trackingPixel = `<img src="${baseUrl}/api/via/open/${trackingId}" width="1" height="1" style="display:none;" />`;
     
     // Add tracking pixel before closing body tag
     if (htmlContent.includes('</body>')) {
@@ -156,7 +156,7 @@ class EmailService {
   generateUnsubscribeLink(contactId: string, campaignId: string): string {
     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
     const token = Buffer.from(`${contactId}:${campaignId}`).toString('base64');
-    return `${baseUrl}/api/track/unsubscribe?token=${token}`;
+    return `${baseUrl}/api/via/unsubscribe?token=${token}`;
   }
 
   // Configuration methods

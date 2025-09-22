@@ -117,7 +117,7 @@ class SMTPService {
     const returnPath = process.env.SMTP_USER || 'noreply@mailivo.com';
     
     const headers = {
-      'List-Unsubscribe': `<${baseUrl}/api/track/unsubscribe>`,
+      'List-Unsubscribe': `<${baseUrl}/api/via/unsubscribe>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       'X-Mailer': 'Mailivo-Platform',
       'X-Priority': '3',

@@ -114,7 +114,7 @@ export class LinkTrackingService {
       /^tel:/i,
       /^#$/,
       /\/unsubscribe/i,
-      /\/track\/click\//i,
+      /\/via\/click\//i,
     ];
     
     return skipPatterns.some(pattern => pattern.test(url));
@@ -170,8 +170,8 @@ private createTrackingUrl(params: {
   // Encode the original URL
   const encodedUrl = encodeURIComponent(originalUrl);
   
-  // FIX: Use /track/click to match your routes (not /tracking/click)
-  return `${this.baseTrackingUrl}/track/click/${trackingId}/${linkId}?url=${encodedUrl}`;
+  // FIX: Use /via/click to match routes
+  return `${this.baseTrackingUrl}/via/click/${trackingId}/${linkId}?url=${encodedUrl}`;
 }
 
   /**
