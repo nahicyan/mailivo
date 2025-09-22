@@ -19,6 +19,20 @@ export interface ILinkClick {
   referer?: string;
 }
 
+export interface IOpenEvent {
+  openedAt: Date;
+  ipAddress?: string;
+  userAgent?: string;
+  deviceType?: 'desktop' | 'mobile' | 'tablet' | 'unknown';
+  browser?: string;
+  os?: string;
+  emailClient?: string;
+  location?: {
+    country?: string;
+    city?: string;
+  };
+}
+
 export interface IEmailTracking extends Document {
   campaignId: string;
   contactId: string;
@@ -69,7 +83,30 @@ export interface IEmailTracking extends Document {
     openedAt: Date;
     ipAddress?: string;
     userAgent?: string;
+
+    // NEW optional fields for enhanced tracking
+    deviceType?: 'desktop' | 'mobile' | 'tablet' | 'unknown';
+    browser?: string;
+    os?: string;
+    emailClient?: string;
   }>;
+
+  // NEW enhanced tracking fields
+  deviceInfo?: {
+    firstOpenDevice?: 'desktop' | 'mobile' | 'tablet' | 'unknown';
+    browser?: string;
+    os?: string;
+    emailClient?: string;
+  };
+  
+  bounceType?: 'hard' | 'soft' | 'blocked';
+  bounceCategory?: string;
+  
+  // NEW aggregate counters
+  totalOpens?: number;
+  uniqueOpens?: number;
+  mobileOpens?: number;
+  desktopOpens?: number;
 }
 
 const emailTrackingSchema = new Schema<IEmailTracking>(
@@ -158,13 +195,41 @@ const emailTrackingSchema = new Schema<IEmailTracking>(
         ipAddress: String,
       },
     ],
-    opens: [
-      {
-        openedAt: { type: Date, required: true },
-        ipAddress: String,
-        userAgent: String,
-      },
-    ],
+  opens: [{
+    openedAt: { type: Date, required: true },
+    ipAddress: String,
+    userAgent: String,
+    // NEW optional fields
+    deviceType: {
+      type: String,
+      enum: ['desktop', 'mobile', 'tablet', 'unknown']
+    },
+    browser: String,
+    os: String,
+    emailClient: String
+  }],
+  
+  // NEW fields
+  deviceInfo: {
+    firstOpenDevice: {
+      type: String,
+      enum: ['desktop', 'mobile', 'tablet', 'unknown']
+    },
+    browser: String,
+    os: String,
+    emailClient: String
+  },
+  
+  bounceType: {
+    type: String,
+    enum: ['hard', 'soft', 'blocked']
+  },
+  bounceCategory: String,
+  
+  totalOpens: { type: Number, default: 0 },
+  uniqueOpens: { type: Number, default: 0 },
+  mobileOpens: { type: Number, default: 0 },
+  desktopOpens: { type: Number, default: 0 },
   },
   {
     timestamps: true,

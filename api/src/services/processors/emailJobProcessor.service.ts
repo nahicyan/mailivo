@@ -3,6 +3,7 @@ import Redis from "ioredis";
 import { emailService } from "../email.service";
 import { templateRenderingService } from "../templateRendering.service";
 import { EmailTracking } from "../../models/EmailTracking.model";
+import { bounceHandlerService } from "../bounceHandler.service";
 import { Campaign } from "../../models/Campaign";
 import { logger } from "../../utils/logger";
 import { nanoid } from "nanoid";
@@ -77,6 +78,7 @@ export class EmailJobProcessor {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
+
       logger.error(`Email sending failed`, {
         campaignId,
         contactId,
@@ -84,18 +86,37 @@ export class EmailJobProcessor {
         error: errorMessage,
       });
 
-      await EmailTracking.findOneAndUpdate(
-        { trackingId: trackingId }, // Find by trackingId field
-        {
-          status: "failed",
-          error: errorMessage,
-        }
-      );
+      // Check if it's a bounce
+      if (this.isBounceError(error)) {
+        await bounceHandlerService.handleSmtpBounce(trackingId, error);
+      } else {
+        await EmailTracking.findOneAndUpdate(
+          { trackingId: trackingId },
+          {
+            status: "failed",
+            error: errorMessage,
+          }
+        );
+      }
 
       await this.updateCampaignMetrics(campaignId, "bounced");
       throw error;
     }
   }
+  private isBounceError(error: any): boolean {
+  const errorMessage = error?.message || '';
+  const bouncePatterns = [
+    /550/,
+    /mailbox/i,
+    /user unknown/i,
+    /no such user/i,
+    /recipient rejected/i,
+    /blocked/i,
+    /quota/i
+  ];
+  
+  return bouncePatterns.some(pattern => pattern.test(errorMessage));
+}
 
   // api/src/services/processors/emailJobProcessor.service.ts (relevant section)
 

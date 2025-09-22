@@ -4,6 +4,7 @@ import { EmailTracking } from '../models/EmailTracking.model';
 import { Campaign } from '../models/Campaign';
 import { Contact } from '../models/Contact.model';
 import { logger } from '../utils/logger';
+import { parseUserAgent } from '../utils/userAgentParser';
 //import { linkTrackingService } from '../services/linkTracking.service';
 
 const router = Router();
@@ -14,11 +15,7 @@ router.get('/open/:trackingId', async (req: Request, res: Response): Promise<voi
     const { trackingId } = req.params;
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || '';
-
-    // Find tracking record
-    const tracking = await EmailTracking.findById(trackingId);
     
-    // Always return tracking pixel regardless of tracking record status
     const pixel = Buffer.from(
       'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
       'base64'
@@ -28,54 +25,83 @@ router.get('/open/:trackingId', async (req: Request, res: Response): Promise<voi
       'Content-Type': 'image/gif',
       'Content-Length': pixel.length.toString(),
       'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Expires': '0',
+      'Pragma': 'no-cache'
     });
 
+    const tracking = await EmailTracking.findOne({ trackingId });
+    
     if (!tracking) {
       res.end(pixel);
       return;
     }
 
-    // Update tracking record only if not already opened
+    // Parse user agent for device info
+    const deviceInfo = parseUserAgent(userAgent);
+    const openTime = new Date();
+    
+    // First open - set primary tracking data
     if (!tracking.openedAt) {
       tracking.status = 'opened';
-      tracking.openedAt = new Date();
+      tracking.openedAt = openTime;
       tracking.ipAddress = ipAddress;
       tracking.userAgent = userAgent;
+      tracking.uniqueOpens = 1;
+      
+      // Set device info from first open
+      tracking.deviceInfo = {
+        firstOpenDevice: deviceInfo.deviceType,
+        browser: deviceInfo.browser,
+        os: deviceInfo.os,
+        emailClient: deviceInfo.emailClient
+      };
 
       // Update campaign metrics
       await Campaign.findByIdAndUpdate(tracking.campaignId, {
         $inc: { 
           'metrics.opened': 1,
-          'metrics.open': 1 // Legacy support
+          'metrics.open': 1,
+          [`metrics.${deviceInfo.deviceType}Open`]: 1
         }
       });
     }
 
-    // Add to opens array for multiple opens tracking
+    // Track all opens
     tracking.opens.push({
-      openedAt: new Date(),
+      openedAt: openTime,
       ipAddress,
       userAgent,
+      deviceType: deviceInfo.deviceType,
+      browser: deviceInfo.browser,
+      os: deviceInfo.os,
+      emailClient: deviceInfo.emailClient
     });
+
+    // Update counters
+    tracking.totalOpens = (tracking.totalOpens || 0) + 1;
+    if (deviceInfo.deviceType === 'mobile') {
+      tracking.mobileOpens = (tracking.mobileOpens || 0) + 1;
+    } else if (deviceInfo.deviceType === 'desktop') {
+      tracking.desktopOpens = (tracking.desktopOpens || 0) + 1;
+    }
 
     await tracking.save();
 
-    logger.info(`Email opened: ${trackingId}`, {
+    logger.info(`Email opened`, {
+      trackingId,
       campaignId: tracking.campaignId,
-      contactId: tracking.contactId,
-      ipAddress,
+      deviceType: deviceInfo.deviceType,
+      emailClient: deviceInfo.emailClient,
+      totalOpens: tracking.totalOpens
     });
 
     res.end(pixel);
   } catch (error) {
-    logger.error('Error tracking email open:', error);
-    
-    // Return pixel even on error
+    logger.error('Error tracking open:', error);
     const pixel = Buffer.from(
       'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
       'base64'
     );
-    
     res.set('Content-Type', 'image/gif');
     res.end(pixel);
   }
