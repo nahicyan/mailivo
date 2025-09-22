@@ -41,7 +41,7 @@ export interface IEmailTracking extends Document {
       clickCount: number;
       firstClick?: Date;
       lastClick?: Date;
-      uniqueIPs: Set<string>;
+      uniqueIPs: string[];
     }
   >;
 

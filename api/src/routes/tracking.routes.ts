@@ -330,6 +330,7 @@ async function processWebhookEvent(event: any): Promise<void> {
 }
 
 // Enhanced click tracking with link-specific analytics
+
 router.get('/click/:trackingId/:linkId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { trackingId, linkId } = req.params;
@@ -343,7 +344,6 @@ router.get('/click/:trackingId/:linkId', async (req: Request, res: Response): Pr
       return;
     }
 
-    // Find tracking record
     const tracking = await EmailTracking.findOne({ trackingId });
     
     if (tracking) {
@@ -366,10 +366,12 @@ router.get('/click/:trackingId/:linkId', async (req: Request, res: Response): Pr
         referer,
       });
 
-      // Update link stats
+      // FIX: Handle uniqueIPs as an array, not a Set
       const linkStat = tracking.linkStats.get(linkId) || {
         clickCount: 0,
-        uniqueIPs: new Set<string>(),
+        uniqueIPs: [], // Array, not Set
+        firstClick: undefined,
+        lastClick: undefined
       };
 
       linkStat.clickCount++;
@@ -377,7 +379,11 @@ router.get('/click/:trackingId/:linkId', async (req: Request, res: Response): Pr
       if (!linkStat.firstClick) {
         linkStat.firstClick = new Date();
       }
-      linkStat.uniqueIPs.add(ipAddress);
+      
+      // FIX: Add IP to array if not already present
+      if (!linkStat.uniqueIPs.includes(ipAddress)) {
+        linkStat.uniqueIPs.push(ipAddress);
+      }
 
       tracking.linkStats.set(linkId, linkStat);
       
@@ -392,7 +398,6 @@ router.get('/click/:trackingId/:linkId', async (req: Request, res: Response): Pr
       });
     }
 
-    // Always redirect to URL
     res.redirect(url);
   } catch (error) {
     logger.error('Error tracking click:', error);
