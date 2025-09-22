@@ -95,8 +95,9 @@ class EmailService {
     return { ...options, headers };
   }
 
-  async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+ 
+/*  async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
+     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
     const trackingPixel = `<img src="${baseUrl}/api/track/open/${trackingId}" width="1" height="1" style="display:none;" />`;
     
     // Add tracking pixel before closing body tag
@@ -104,8 +105,10 @@ class EmailService {
       return htmlContent.replace('</body>', `${trackingPixel}</body>`);
     } else {
       return htmlContent + trackingPixel;
-    }
-  }
+    } 
+      // Return original content without tracking pixel
+       return htmlContent;
+  } */
 
   async checkSpamScore(content: string, subject: string): Promise<number> {
     let score = 0;

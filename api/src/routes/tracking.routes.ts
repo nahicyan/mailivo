@@ -9,7 +9,7 @@ import { logger } from '../utils/logger';
 const router = Router();
 
 // Track email opens
-router.get('/open/:trackingId', async (req: Request, res: Response): Promise<void> => {
+/* router.get('/open/:trackingId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { trackingId } = req.params;
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
@@ -79,7 +79,7 @@ router.get('/open/:trackingId', async (req: Request, res: Response): Promise<voi
     res.set('Content-Type', 'image/gif');
     res.end(pixel);
   }
-});
+}); */
 
 // Track email clicks
 router.get('/click/:trackingId', async (req: Request, res: Response): Promise<void> => {
