@@ -11,7 +11,7 @@ export interface DeviceInfo {
 }
 
 export function parseUserAgent(userAgent: string): DeviceInfo {
-  const parser = new UAParser(userAgent);
+   const parser = new (UAParser as any)(userAgent);
   const result = parser.getResult();
   
   // Determine device type

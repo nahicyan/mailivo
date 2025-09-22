@@ -71,7 +71,7 @@ export class BounceHandlerService {
 
   private parseSmtpError(error: any): BounceInfo {
     const errorMessage = error.message || error.toString();
-    const responseCode = error.responseCode || '';
+    // const responseCode = error.responseCode || '';
     
     // Common bounce patterns
     if (/550|User unknown|No such user/i.test(errorMessage)) {
