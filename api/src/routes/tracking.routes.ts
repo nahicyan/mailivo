@@ -16,18 +16,26 @@ router.get('/open/:trackingId', async (req: Request, res: Response): Promise<voi
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || '';
     
-    const pixel = Buffer.from(
-      'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-      'base64'
-    );
-    
-    res.set({
-      'Content-Type': 'image/gif',
-      'Content-Length': pixel.length.toString(),
-      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-      'Expires': '0',
-      'Pragma': 'no-cache'
-    });
+  const pixel = Buffer.from(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    'base64'
+  );
+  
+  res.set({
+    'Content-Type': 'image/gif',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'X-Robots-Tag': 'noindex',
+    'Access-Control-Allow-Origin': '*'  // Add CORS
+  });
+  
+  // Log EVERY request for debugging
+  console.log('TRACKING ATTEMPT:', {
+    trackingId: req.params.trackingId,
+    userAgent: req.get('User-Agent'),
+    ip: req.ip
+  });
 
     const tracking = await EmailTracking.findOne({ trackingId });
     

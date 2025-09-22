@@ -109,13 +109,19 @@ class EmailService {
     trackingId: string
   ): Promise<string> {
     const baseUrl = process.env.API_URL || "http://localhost:8000";
-    // Gmail blocks display:none pixels - using alternative hiding methods
-    const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" width="1" height="1" style="opacity:0;position:absolute;left:-9999px;" alt="" />`;
+    // Use a table cell with bgcolor instead of img
+    const trackingPixel = `
+    <table border="0" cellpadding="0" cellspacing="0" width="1" height="1">
+      <tr><td>
+        <img src="${baseUrl}/track/open/${trackingId}" 
+             width="1" height="1" border="0" alt="">
+      </td></tr>
+    </table>`;
+
     if (htmlContent.includes("</body>")) {
       return htmlContent.replace("</body>", `${trackingPixel}</body>`);
-    } else {
-      return htmlContent + trackingPixel;
     }
+    return htmlContent + trackingPixel;
   }
 
   async checkSpamScore(content: string, subject: string): Promise<number> {
