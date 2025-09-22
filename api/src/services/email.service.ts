@@ -104,37 +104,27 @@ class EmailService {
     return { ...options, headers };
   }
 
-// api/src/services/email.service.ts
-// Update the addTrackingPixel method to place the pixel INSIDE the main content
+  async addTrackingPixel(
+    htmlContent: string,
+    trackingId: string
+  ): Promise<string> {
+    const baseUrl = process.env.API_URL || "http://localhost:8000";
 
-async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
-  const baseUrl = process.env.API_URL || 'http://localhost:8000';
-  
-  // Use a more disguised approach - embed as a regular image, not in a suspicious table
-  const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" alt="" style="display:block!important;width:1px!important;height:1px!important;border:0!important;margin:0!important;padding:0!important" width="1" height="1" />`;
-  
-  // Trying to insert INSIDE the last div before </body> or </div>
-  // This keeps it within the main content structure
-  
-  // First try to find the last closing div before </body>
-  if (htmlContent.includes('</div></body>')) {
-    return htmlContent.replace('</div></body>', `${trackingPixel}</div></body>`);
+    // Use .gif extension and /img path (less suspicious)
+    const trackingUrl = `${baseUrl}/public/p/${trackingId}.gif`;
+
+    // Embed as a normal spacer image
+    const trackingPixel = `<img src="${trackingUrl}" alt=" " width="1" height="1" style="display:block;max-height:1px!important;width:1px!important;border:0!important;margin:0!important;padding:0!important" />`;
+
+    // Insert before first closing </td> or </div> to keep it inside content
+    if (htmlContent.includes("</td>")) {
+      return htmlContent.replace("</td>", `${trackingPixel}</td>`);
+    } else if (htmlContent.includes("</div>")) {
+      return htmlContent.replace("</div>", `${trackingPixel}</div>`);
+    }
+
+    return htmlContent + trackingPixel;
   }
-  
-  // If that doesn't work, try before </body>
-  if (htmlContent.includes('</body>')) {
-    return htmlContent.replace('</body>', `${trackingPixel}</body>`);
-  }
-  
-  // Otherwise try to find the last </div> in the content
-  const lastDivIndex = htmlContent.lastIndexOf('</div>');
-  if (lastDivIndex !== -1) {
-    return htmlContent.slice(0, lastDivIndex) + trackingPixel + htmlContent.slice(lastDivIndex);
-  }
-  
-  // Fallback: add at the end
-  return htmlContent + trackingPixel;
-}
 
   async checkSpamScore(content: string, subject: string): Promise<number> {
     let score = 0;
