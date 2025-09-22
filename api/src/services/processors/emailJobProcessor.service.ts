@@ -48,8 +48,8 @@ export class EmailJobProcessor {
       const result = await emailService.sendEmail({
         to: email,
         subject: personalizedContent.subject,
-        htmlContent: htmlWithTracking, // Use the tracked HTML
-        textContent: personalizedContent.textContent,
+        html: htmlWithTracking, // Use the correct property name
+        text: personalizedContent.textContent,
       });
 
       if (result.success) {

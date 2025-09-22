@@ -97,7 +97,7 @@ class EmailService {
 
   async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
     const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
-    const trackingPixel = `<img src="${baseUrl}/api/track/open/${trackingId}" width="1" height="1" style="display:none;border:0;outline:none;text-decoration:none;" alt="" />`;
+    const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" width="1" height="1" style="display:none;border:0;outline:none;text-decoration:none;" alt="" />`;
     
     // Add tracking pixel before closing body tag
     if (htmlContent.includes('</body>')) {
