@@ -83,7 +83,7 @@ class EmailService {
   }
 
   private enhanceEmailContent(options: EmailOptions): EmailOptions {
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+    const baseUrl = process.env.API_URL || 'http://localhost:8000';
     
     const headers = {
       'List-Unsubscribe': `<${baseUrl}/api/track/unsubscribe>`,
@@ -96,8 +96,8 @@ class EmailService {
   }
 
   async addTrackingPixel(htmlContent: string, trackingId: string): Promise<string> {
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
-    const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" width="1" height="1" style="display:none;border:0;outline:none;text-decoration:none;" alt="" />`;
+    const baseUrl = process.env.API_URL || 'http://localhost:8000';
+     const trackingPixel = `<img src="${baseUrl}/api/track/open/${trackingId}" width="1" height="1" style="display:none;" />`;
     
     // Add tracking pixel before closing body tag
     if (htmlContent.includes('</body>')) {
@@ -152,7 +152,7 @@ class EmailService {
   }
 
   generateUnsubscribeLink(contactId: string, campaignId: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
+    const baseUrl = process.env.API_URL || 'http://localhost:8000';
     const token = Buffer.from(`${contactId}:${campaignId}`).toString('base64');
     return `${baseUrl}/api/track/unsubscribe?token=${token}`;
   }
