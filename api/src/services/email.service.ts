@@ -109,10 +109,8 @@ class EmailService {
     trackingId: string
   ): Promise<string> {
     const baseUrl = process.env.API_URL || "http://localhost:8000";
-    // FIX: Remove /api prefix - routes are at /track not /api/track
-    const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" width="1" height="1" style="display:none;" alt="" />`;
-
-    // Add tracking pixel before closing body tag
+    // Gmail blocks display:none pixels - using alternative hiding methods
+    const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" width="1" height="1" style="opacity:0;position:absolute;left:-9999px;" alt="" />`;
     if (htmlContent.includes("</body>")) {
       return htmlContent.replace("</body>", `${trackingPixel}</body>`);
     } else {
