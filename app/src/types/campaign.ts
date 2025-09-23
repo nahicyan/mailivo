@@ -19,14 +19,17 @@ export interface Campaign {
   emailAddressGroup: string;
   emailSchedule: string;
   emailVolume: number;
-  status: 'draft' | 'active' | 'paused' | 'completed';
-  
+  status: "draft" | "active" | "paused" | "completed";
+
   // Image selections
-  imageSelections?: Record<string, {
-    name: string;
-    imageIndex: number;
-    order: number;
-  }>;
+  imageSelections?: Record<
+    string,
+    {
+      name: string;
+      imageIndex: number;
+      order: number;
+    }
+  >;
 
   // Payment plan selection
   selectedPlan?: {
@@ -63,12 +66,15 @@ export interface CreateCampaignRequest {
   emailVolume: number;
   description?: string;
   scheduledDate?: string;
-  
-  imageSelections?: Record<string, {
-    name: string;
-    imageIndex: number;
-    order: number;
-  }>;
+
+  imageSelections?: Record<
+    string,
+    {
+      name: string;
+      imageIndex: number;
+      order: number;
+    }
+  >;
 
   selectedPlan?: {
     planNumber: number;
@@ -86,6 +92,11 @@ export interface CampaignMetrics {
   totalSent: number;
   averageOpenRate: number;
   averageClickRate: number;
+  clicked?: number;
+  totalClicks?: number;
+  avgClicksPerLink?: number;
+  clickThroughRate?: number;
+  topLink?: string;
 }
 
 // Property payment data interface

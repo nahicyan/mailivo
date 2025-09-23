@@ -308,10 +308,12 @@ export default function ManageCampaignsPage() {
 
 
   // Calculate stats
-  const totalSent = campaigns.reduce((sum, c) => sum + (c.metrics?.sent || 0), 0);
-  const totalOpens = campaigns.reduce((sum, c) => sum + (c.metrics?.open || 0), 0);
-  const avgOpenRate = totalSent > 0 ? (totalOpens / totalSent * 100).toFixed(1) : '0';
-  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+// Calculate stats
+const totalSent = campaigns.reduce((sum, c) => sum + (c.metrics?.sent || 0), 0);
+const totalClicks = campaigns.reduce((sum, c) => sum + (c.metrics?.totalClicks || 0), 0);
+const uniqueClickers = campaigns.reduce((sum, c) => sum + (c.metrics?.clicked || 0), 0);
+const avgClickRate = totalSent > 0 ? (uniqueClickers / totalSent * 100).toFixed(1) : '0';
+const clicksPerCampaign = campaigns.length > 0 ? (totalClicks / campaigns.length).toFixed(1) : '0';
 
   return (
     <div className="space-y-6">
@@ -381,17 +383,28 @@ export default function ManageCampaignsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg. Open Rate</p>
-                <p className="text-2xl font-bold text-blue-600">{avgOpenRate}%</p>
-              </div>
-              <Eye className="h-8 w-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
+<Card>
+  <CardContent className="p-4">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-muted-foreground">Click Metrics</p>
+        <p className="text-2xl font-bold text-purple-600">{avgClickRate}%</p>
+        <div className="mt-2 space-y-1">
+          <p className="text-xs text-muted-foreground">
+            Total Clicks: {formatNumber(totalClicks)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Unique Clickers: {formatNumber(uniqueClickers)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Avg per Campaign: {clicksPerCampaign}
+          </p>
+        </div>
+      </div>
+      <MousePointer className="h-8 w-8 text-purple-600" />
+    </div>
+  </CardContent>
+</Card>
       </div>
 
       {/* Campaigns List */}
