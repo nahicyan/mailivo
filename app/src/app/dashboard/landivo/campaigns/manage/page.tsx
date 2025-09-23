@@ -185,7 +185,7 @@ export default function ManageCampaignsPage() {
   };
 
   const handleDuplicateCampaign = async (campaign: Campaign) => {
-    const campaignId = campaign.id || campaign.id; // Use consistent ID resolution
+    const campaignId = (campaign as any)._id || campaign.id;
     setDuplicating(campaignId);
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}/duplicate`, {
@@ -221,7 +221,7 @@ toast.error('Failed to duplicate campaign', {
   const confirmDelete = async () => {
     if (!campaignToDelete) return;
 
-    const campaignId = campaignToDelete.id || campaignToDelete.id; // Use consistent ID resolution
+    const campaignId = (campaignToDelete as any)._id || campaignToDelete.id;
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}`, {
         method: 'DELETE',
@@ -444,7 +444,7 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
         ) : (
           filteredCampaigns.map((campaign) => (
             <CampaignCard
-              key={campaign.id || campaign.id}
+              key={(campaign as any)._id || campaign.id}
               campaign={campaign}
               onViewDetails={handleViewDetails}
               onEdit={handleEditCampaign}
@@ -453,7 +453,7 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
               onViewAnalytics={handleViewAnalytics}
               onSend={handleSendCampaign}
               onPause={handlePauseCampaign}
-              duplicating={duplicating === (campaign.id || campaign.id)}
+              duplicating={duplicating === ((campaign as any)._id || campaign.id)}
               getPropertyAddress={getPropertyAddress}
               getEmailListDetails={getEmailListDetails}
               getTemplateName={getTemplateName}
@@ -522,7 +522,7 @@ function CampaignCard({
   getEmailListDetails,
   getTemplateName
 }: CampaignCardProps) {
-const campaignId = campaign.id || campaign.id;
+const campaignId = (campaign as any)._id || campaign.id;
 const openRate = campaign.metrics?.sent ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
 const clickRate = campaign.metrics?.sent && campaign.metrics?.clicked 
   ? (campaign.metrics.clicked / campaign.metrics.sent * 100) 
