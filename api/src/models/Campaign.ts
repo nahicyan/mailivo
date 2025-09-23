@@ -203,6 +203,7 @@ const CampaignSchema: Schema = new Schema(
       delivered: { type: Number, default: 0 },
       opened: { type: Number, default: 0 },
       clicked: { type: Number, default: 0 },
+      totalClicks: { type: Number, default: 0 }, 
       bounced: { type: Number, default: 0 },
       complained: { type: Number, default: 0 },
       totalRecipients: { type: Number, default: 0 },
