@@ -185,7 +185,7 @@ export default function ManageCampaignsPage() {
   };
 
   const handleDuplicateCampaign = async (campaign: Campaign) => {
-    const campaignId = campaign._id || campaign.id; // Use consistent ID resolution
+    const campaignId = campaign.id || campaign.id; // Use consistent ID resolution
     setDuplicating(campaignId);
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}/duplicate`, {
@@ -205,7 +205,9 @@ export default function ManageCampaignsPage() {
       fetchCampaigns();
     } catch (error) {
       console.error('Error duplicating campaign:', error);
-      toast.error(`Failed to duplicate campaign: ${error.message}`);
+toast.error('Failed to duplicate campaign', {
+  description: error instanceof Error ? error.message : 'Unknown error',
+});
     } finally {
       setDuplicating(null);
     }
@@ -219,7 +221,7 @@ export default function ManageCampaignsPage() {
   const confirmDelete = async () => {
     if (!campaignToDelete) return;
 
-    const campaignId = campaignToDelete._id || campaignToDelete.id; // Use consistent ID resolution
+    const campaignId = campaignToDelete.id || campaignToDelete.id; // Use consistent ID resolution
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}`, {
         method: 'DELETE',
@@ -238,7 +240,9 @@ export default function ManageCampaignsPage() {
       fetchCampaigns();
     } catch (error) {
       console.error('Error deleting campaign:', error);
-      toast.error(`Failed to delete campaign: ${error.message}`);
+toast.error('Failed to duplicate campaign', {
+  description: error instanceof Error ? error.message : 'Unknown error',
+});
     } finally {
       setDeleteDialogOpen(false);
       setCampaignToDelete(null);
@@ -307,13 +311,13 @@ export default function ManageCampaignsPage() {
   };
 
 
-  // Calculate stats
 // Calculate stats
 const totalSent = campaigns.reduce((sum, c) => sum + (c.metrics?.sent || 0), 0);
-const totalClicks = campaigns.reduce((sum, c) => sum + (c.metrics?.totalClicks || 0), 0);
-const uniqueClickers = campaigns.reduce((sum, c) => sum + (c.metrics?.clicked || 0), 0);
+const totalClicks = campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
+const uniqueClickers = campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
 const avgClickRate = totalSent > 0 ? (uniqueClickers / totalSent * 100).toFixed(1) : '0';
 const clicksPerCampaign = campaigns.length > 0 ? (totalClicks / campaigns.length).toFixed(1) : '0';
+const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
   return (
     <div className="space-y-6">
@@ -440,7 +444,7 @@ const clicksPerCampaign = campaigns.length > 0 ? (totalClicks / campaigns.length
         ) : (
           filteredCampaigns.map((campaign) => (
             <CampaignCard
-              key={campaign._id || campaign.id}
+              key={campaign.id || campaign.id}
               campaign={campaign}
               onViewDetails={handleViewDetails}
               onEdit={handleEditCampaign}
@@ -449,7 +453,7 @@ const clicksPerCampaign = campaigns.length > 0 ? (totalClicks / campaigns.length
               onViewAnalytics={handleViewAnalytics}
               onSend={handleSendCampaign}
               onPause={handlePauseCampaign}
-              duplicating={duplicating === (campaign._id || campaign.id)}
+              duplicating={duplicating === (campaign.id || campaign.id)}
               getPropertyAddress={getPropertyAddress}
               getEmailListDetails={getEmailListDetails}
               getTemplateName={getTemplateName}
@@ -518,12 +522,12 @@ function CampaignCard({
   getEmailListDetails,
   getTemplateName
 }: CampaignCardProps) {
-  const campaignId = campaign._id || campaign.id;
+  const campaignId = campaign.id || campaign.id;
   const openRate = campaign.metrics?.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
   const clickRate = campaign.metrics?.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
-  const linkClickRate = campaign.links?.length > 0 
-  ? (Object.keys(campaign.linkStats || {}).length / campaign.links.length * 100).toFixed(1)
-  : 0;
+ const uniqueClickRate = campaign.metrics?.sent > 0 && campaign.metrics?.clicks > 0
+  ? ((campaign.metrics.clicks / campaign.metrics.sent) * 100).toFixed(1)
+  : '0';
   const emailListDetails = getEmailListDetails(campaign.emailList);
 
   const getStatusColor = (status: string) => {
@@ -539,7 +543,7 @@ function CampaignCard({
   };
 
   const canSend = campaign.status === 'draft' || campaign.status === 'paused';
-  const canPause = campaign.status === 'active' || campaign.status === 'sending';
+  const canPause = campaign.status === 'active'  // || campaign.status === 'sending';
 
   return (
     <Card className="hover:shadow-md transition-shadow">
