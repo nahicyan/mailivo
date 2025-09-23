@@ -60,16 +60,16 @@ export interface IEmailTracking extends Document {
     country?: string;
     city?: string;
   };
-  clicks: Array<{
-    url: string;
-    clickedAt: Date;
-    ipAddress?: string;
-  }>;
-  opens: Array<{
-    openedAt: Date;
-    ipAddress?: string;
-    userAgent?: string;
-  }>;
+  // clicks: Array<{
+  //   url: string;
+  //   clickedAt: Date;
+  //   ipAddress?: string;
+  // }>;
+  // opens: Array<{
+  //   openedAt: Date;
+  //   ipAddress?: string;
+  //   userAgent?: string;
+  // }>;
 }
 
 const emailTrackingSchema = new Schema<IEmailTracking>(
@@ -151,20 +151,20 @@ const emailTrackingSchema = new Schema<IEmailTracking>(
       country: String,
       city: String,
     },
-    clicks: [
-      {
-        url: { type: String, required: true },
-        clickedAt: { type: Date, required: true },
-        ipAddress: String,
-      },
-    ],
-    opens: [
-      {
-        openedAt: { type: Date, required: true },
-        ipAddress: String,
-        userAgent: String,
-      },
-    ],
+    // clicks: [
+    //   {
+    //     url: { type: String, required: true },
+    //     clickedAt: { type: Date, required: true },
+    //     ipAddress: String,
+    //   },
+    // ],
+    // opens: [
+    //   {
+    //     openedAt: { type: Date, required: true },
+    //     ipAddress: String,
+    //     userAgent: String,
+    //   },
+    // ],
   },
   {
     timestamps: true,
