@@ -313,8 +313,8 @@ toast.error('Failed to duplicate campaign', {
 
 // Calculate stats
 const totalSent = campaigns.reduce((sum, c) => sum + (c.metrics?.sent || 0), 0);
-const totalClicks = campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
-const uniqueClickers = campaigns.reduce((sum, c) => sum + (c.metrics?.clicks || 0), 0);
+const totalClicks = campaigns.reduce((sum, c) => sum + (c.metrics?.totalClicks || 0), 0);
+const uniqueClickers = campaigns.reduce((sum, c) => sum + (c.metrics?.clicked || 0), 0);
 const avgClickRate = totalSent > 0 ? (uniqueClickers / totalSent * 100).toFixed(1) : '0';
 const clicksPerCampaign = campaigns.length > 0 ? (totalClicks / campaigns.length).toFixed(1) : '0';
 const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
@@ -522,13 +522,15 @@ function CampaignCard({
   getEmailListDetails,
   getTemplateName
 }: CampaignCardProps) {
-  const campaignId = campaign.id || campaign.id;
-  const openRate = campaign.metrics?.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
-  const clickRate = campaign.metrics?.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
- const uniqueClickRate = campaign.metrics?.sent > 0 && campaign.metrics?.clicks > 0
+const campaignId = campaign.id || campaign.id;
+const openRate = campaign.metrics?.sent ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
+const clickRate = campaign.metrics?.sent && campaign.metrics?.clicked 
+  ? (campaign.metrics.clicked / campaign.metrics.sent * 100) 
+  : 0;
+const uniqueClickRate = campaign.metrics?.sent && campaign.metrics?.clicks 
   ? ((campaign.metrics.clicks / campaign.metrics.sent) * 100).toFixed(1)
   : '0';
-  const emailListDetails = getEmailListDetails(campaign.emailList);
+const emailListDetails = getEmailListDetails(campaign.emailList);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -602,7 +604,7 @@ function CampaignCard({
               <div>
                 <p className="text-muted-foreground">Clicks</p>
                 <p className="font-medium text-purple-600">
-                  {formatNumber(campaign.metrics?.clicks || 0)} ({clickRate.toFixed(1)}%)
+                  {formatNumber(campaign.metrics?.totalClicks || 0)} ({clickRate.toFixed(1)}%)
                 </p>
               </div>
               <div>

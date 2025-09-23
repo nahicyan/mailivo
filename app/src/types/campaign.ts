@@ -41,15 +41,17 @@ export interface Campaign {
     monthlyPayment: number;
   } | null;
 
-  metrics: {
-    open: number;
-    sent: number;
-    bounces: number;
-    successfulDeliveries: number;
-    clicks: number;
-    didNotOpen: number;
-    mobileOpen: number;
-  };
+metrics?: {
+  open: number;
+  sent: number;
+  bounces: number;
+  successfulDeliveries: number;
+  clicks: number;
+  clicked?: number;        
+  totalClicks?: number;    
+  didNotOpen: number;
+  mobileOpen: number;
+}
   createdAt: string;
   updatedAt: string;
   scheduledDate?: string;
