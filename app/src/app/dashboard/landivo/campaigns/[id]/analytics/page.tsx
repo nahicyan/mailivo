@@ -135,7 +135,7 @@ export default function CampaignAnalytics() {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/campaigns/${id}/analytics/detailed`);
+      const response = await fetch(`/api/analytics/campaigns/${id}/analytics/detailed`);
       if (!response.ok) throw new Error('Failed to fetch analytics');
       const analyticsData = await response.json();
       setData(analyticsData);
@@ -149,7 +149,7 @@ export default function CampaignAnalytics() {
   const fetchContactDetails = async (contactId: string) => {
     try {
       setDetailsLoading(true);
-      const response = await fetch(`/api/campaigns/${id}/analytics/contact/${contactId}/clicks`);
+      const response = await fetch(`/api/analytics/campaigns/${id}/analytics/contact/${contactId}/clicks`);
       if (!response.ok) throw new Error('Failed to fetch contact details');
       const details = await response.json();
       setContactDetails(details);
