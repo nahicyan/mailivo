@@ -1,3 +1,4 @@
+
 // app/src/components/analytics/AnalyticsCard.tsx
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';

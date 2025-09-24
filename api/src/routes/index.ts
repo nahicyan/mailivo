@@ -14,6 +14,7 @@ import analyticsRoutes from './analytics.routes';
 
 const router = Router();
 
+
 router.use('/auth', authRoutes);
 router.use('/campaigns', campaignRoutes);
 router.use('/templates', templatesRoutes);

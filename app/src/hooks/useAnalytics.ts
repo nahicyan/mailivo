@@ -10,7 +10,7 @@ export function useAnalytics(campaignId: string) {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/campaigns/${campaignId}/analytics/detailed`);
+      const response = await fetch(`/api/analytics/campaigns/${campaignId}/analytics/detailed`);
       if (!response.ok) throw new Error('Failed to fetch analytics');
       const analyticsData = await response.json();
       setData(analyticsData);
@@ -25,7 +25,7 @@ export function useAnalytics(campaignId: string) {
 
   const fetchContactDetails = async (contactId: string): Promise<ClickDetail[]> => {
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/analytics/contact/${contactId}/clicks`);
+      const response = await fetch(`/api/analytics/campaigns/${campaignId}/analytics/contact/${contactId}/clicks`);
       if (!response.ok) throw new Error('Failed to fetch contact details');
       return await response.json();
     } catch (err) {
