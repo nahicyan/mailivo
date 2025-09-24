@@ -2,6 +2,7 @@
 import { Imap } from 'imap';
 import { simpleParser } from 'mailparser';
 import { EmailTracking } from '../models/EmailTracking.model';
+import { Campaign } from '../models/Campaign'
 
 class BounceDetectionService {
   private imapConfig = {
@@ -16,7 +17,7 @@ class BounceDetectionService {
     const imap = new Imap(this.imapConfig);
     
     imap.once('ready', () => {
-      imap.openBox('INBOX', false, (err, box) => {
+      imap.openBox('INBOX', false, (err: Error | null, box: any) => { // Add types
         if (err) throw err;
         
         const fetch = imap.seq.fetch('1:*', {
@@ -24,8 +25,8 @@ class BounceDetectionService {
           markSeen: true
         });
         
-        fetch.on('message', (msg) => {
-          msg.on('body', async (stream) => {
+        fetch.on('message', (msg: any) => { // Add type
+          msg.on('body', async (stream: any) => { // Add type
             const parsed = await simpleParser(stream);
             await this.processBounceEmail(parsed);
           });

@@ -2,6 +2,7 @@
 import { EmailTracking } from '../models/EmailTracking.model';
 import { Campaign } from '../models/Campaign';
 import { logger } from '../utils/logger';
+import { Contact } from '../models/Contact.model'; 
 
 interface WebhookEvent {
   messageId?: string;
@@ -45,6 +46,51 @@ class WebhookService {
     });
   }
 
+  
+  private async handleDropped(tracking: any, event: WebhookEvent) {
+    tracking.status = 'failed';
+    tracking.error = event.reason || 'Email dropped';
+    await tracking.save();
+
+    await Campaign.findByIdAndUpdate(tracking.campaignId, {
+      $inc: { 'metrics.bounced': 1 }
+    });
+
+    logger.warn('Email dropped', {
+      trackingId: tracking.trackingId,
+      reason: event.reason
+    });
+  }
+
+  private async handleDeferred(tracking: any, event: WebhookEvent) {
+    tracking.status = 'deferred';
+    tracking.deferredAt = event.timestamp;
+    tracking.deferredReason = event.reason;
+    await tracking.save();
+
+    logger.info('Email deferred', {
+      trackingId: tracking.trackingId,
+      reason: event.reason
+    });
+  }
+
+  private async handleComplaint(tracking: any, event: WebhookEvent) {
+    await Campaign.findByIdAndUpdate(tracking.campaignId, {
+      $inc: { 'metrics.complained': 1 }
+    });
+
+    await Contact.findByIdAndUpdate(tracking.contactId, {
+      $set: { 
+        'deliverability.complained': true,
+        'deliverability.complaintDate': event.timestamp
+      }
+    });
+
+    logger.warn('Spam complaint received', {
+      trackingId: tracking.trackingId,
+      contactId: tracking.contactId
+    });
+  }
   private async processEvent(event: WebhookEvent): Promise<void> {
     try {
       // Find tracking record by messageId or trackingId
