@@ -1,5 +1,6 @@
 // api/src/routes/tracking.routes.ts
 import { Router, Request, Response } from "express";
+import { webhookService } from '../services/webhook.service';
 import { Campaign } from "../models/Campaign";
 import { Contact } from "../models/Contact.model";
 import { logger } from "../utils/logger";
@@ -148,6 +149,63 @@ const router = Router();
     }
   }
 }); */
+
+// SendGrid webhook
+/* router.post('/webhooks/sendgrid', 
+  express.raw({ type: 'application/json' }), // Important for signature verification
+  async (req: Request, res: Response) => {
+    try {
+      // Verify webhook signature
+      const signature = req.get('X-Twilio-Email-Event-Webhook-Signature');
+      const timestamp = req.get('X-Twilio-Email-Event-Webhook-Timestamp');
+      
+      if (process.env.SENDGRID_WEBHOOK_KEY) {
+        const isValid = verifyWebhookSignature(
+          req.body, 
+          signature, 
+          timestamp,
+          process.env.SENDGRID_WEBHOOK_KEY
+        );
+        
+        if (!isValid) {
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+      }
+
+      const events = JSON.parse(req.body.toString());
+      await webhookService.processSendGridWebhook(events);
+      
+      res.status(200).send('OK');
+    } catch (error) {
+      logger.error('SendGrid webhook error:', error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  }
+); */
+
+// Generic SMTP webhook (AWS SES, Postmark, etc.)
+router.post('/webhooks/smtp/:provider', async (req: Request, res: Response) => {
+  try {
+    const { provider } = req.params;
+    
+    // Process based on provider
+    switch (provider) {
+      case 'ses':
+        await webhookService.processSMTPWebhook(JSON.parse(req.body.Message));
+        break;
+      case 'postmark':
+        await webhookService.processSMTPWebhook(req.body);
+        break;
+      default:
+        await webhookService.processSMTPWebhook(req.body);
+    }
+    
+    res.status(200).send('OK');
+  } catch (error) {
+    logger.error('SMTP webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
 
 function calculateClickMetrics(tracking: IEmailTracking) {
   const totalClicks = tracking.linkClicks.length;
@@ -491,5 +549,22 @@ router.get(
     }
   }
 );
+
+router.post('/webhooks/smtp/mailcow', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    
+    if (apiKey !== process.env.WEBHOOK_SECRET_KEY) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return; // Add explicit return
+    }
+    
+    await webhookService.processMailcowWebhook(req.body);
+    res.status(200).send('OK');
+  } catch (error) {
+    logger.error('Mailcow webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
 
 export default router;

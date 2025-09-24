@@ -93,6 +93,19 @@ export interface ICampaign extends Document {
     clicks: number;
     didNotOpen: number;
     mobileOpen: number;
+    hardBounces: { type: Number; default: 0 };
+    softBounces: { type: Number; default: 0 };
+    unsubscribed: { type: Number; default: 0 };
+
+    // Rates
+    deliveryRate: { type: Number; default: 0 };
+    bounceRate: { type: Number; default: 0 };
+    openRate: { type: Number; default: 0 };
+    clickRate: { type: Number; default: 0 };
+
+    // Time-based metrics
+    lastDeliveryAt: Date;
+    lastBounceAt: Date;
   };
 
   description?: string;
@@ -192,10 +205,10 @@ const CampaignSchema: Schema = new Schema(
       default: "draft",
     },
 
-  // Add to the campaign schema
+    // Add to the campaign schema
     completedAt: {
       type: Date,
-      default: null
+      default: null,
     },
 
     metrics: {
@@ -203,7 +216,7 @@ const CampaignSchema: Schema = new Schema(
       delivered: { type: Number, default: 0 },
       opened: { type: Number, default: 0 },
       clicked: { type: Number, default: 0 },
-      totalClicks: { type: Number, default: 0 }, 
+      totalClicks: { type: Number, default: 0 },
       bounced: { type: Number, default: 0 },
       complained: { type: Number, default: 0 },
       totalRecipients: { type: Number, default: 0 },

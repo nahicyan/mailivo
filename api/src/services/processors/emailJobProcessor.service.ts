@@ -44,24 +44,29 @@ export class EmailJobProcessor {
       ); */
       
       // Using original content without tracking pixel
-    const htmlWithTracking = personalizedContent.htmlContent;
 
-      const result = await emailService.sendEmail({
-        to: email,
-        subject: personalizedContent.subject,
-        html: htmlWithTracking,
-        text: personalizedContent.textContent,
-      });
+    const result = await emailService.sendEmail({
+      to: email,
+      subject: personalizedContent.subject,
+      html: personalizedContent.htmlContent,
+      text: personalizedContent.textContent,
+      headers: {
+        'X-Tracking-Id': trackingId, // Add custom header for tracking
+        'X-Campaign-Id': campaignId,
+        'X-Contact-Id': contactId,
+      }
+    });
 
       if (result.success) {
-        await EmailTracking.findOneAndUpdate(
-          { trackingId: trackingId }, // Find by trackingId field, not _id
-          {
-            status: "sent",
-            sentAt: new Date(),
-            messageId: result.messageId,
-          }
-        );
+      await EmailTracking.findOneAndUpdate(
+        { trackingId },
+        {
+          status: "sent",
+          sentAt: new Date(),
+          messageId: result.messageId, // Critical: Store the message ID
+          provider: result.provider,
+        }
+      );
 
         await this.updateCampaignMetrics(campaignId, "sent");
 
@@ -72,7 +77,7 @@ export class EmailJobProcessor {
           messageId: result.messageId,
           provider: result.provider,
         });
-
+        
         return { success: true, messageId: result.messageId };
       } else {
         throw new Error(result.error || "Email sending failed");
