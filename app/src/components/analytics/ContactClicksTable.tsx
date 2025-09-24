@@ -1,4 +1,3 @@
-
 // app/src/components/analytics/ContactClicksTable.tsx
 import React, { useState } from 'react';
 import {

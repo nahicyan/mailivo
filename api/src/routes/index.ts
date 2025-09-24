@@ -24,7 +24,7 @@ router.use('/via', trackingRoutes); // More inviting route instead of /track
 router.use("/subject-templates", subjectTemplateRoute);
 router.use('/template-images', templateImageRoutes);
 router.use('/api/user', userProfileRoute);
-router.use('/api', analyticsRoutes);
+router.use('/analytics', analyticsRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

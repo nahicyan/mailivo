@@ -1,11 +1,37 @@
 // api/src/routes/analytics.routes.ts
 import { Router, Request, Response } from 'express';
 import { EmailTracking, IEmailTracking } from '../models/EmailTracking.model';
-import { Contact } from '../models/Contact.model';
+import { Contact, IContact } from '../models/Contact.model';
 import { Campaign } from '../models/Campaign';
-import UAParser from 'ua-parser-js';
 
 const router = Router();
+
+// Simple user agent parsing without external dependency
+function parseUserAgent(userAgent?: string) {
+  if (!userAgent) return { device: 'Unknown', browser: 'Unknown', os: 'Unknown' };
+  
+  const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+  const isTablet = /iPad|Android.*Tablet|Windows.*Touch/i.test(userAgent);
+  
+  let deviceType = 'Desktop';
+  if (isTablet) deviceType = 'Tablet';
+  else if (isMobile) deviceType = 'Mobile';
+  
+  let browser = 'Unknown';
+  if (/Chrome/i.test(userAgent)) browser = 'Chrome';
+  else if (/Firefox/i.test(userAgent)) browser = 'Firefox';
+  else if (/Safari/i.test(userAgent)) browser = 'Safari';
+  else if (/Edge/i.test(userAgent)) browser = 'Edge';
+  
+  let os = 'Unknown';
+  if (/Windows/i.test(userAgent)) os = 'Windows';
+  else if (/Mac/i.test(userAgent)) os = 'macOS';
+  else if (/Linux/i.test(userAgent)) os = 'Linux';
+  else if (/Android/i.test(userAgent)) os = 'Android';
+  else if (/iOS|iPhone|iPad/i.test(userAgent)) os = 'iOS';
+  
+  return { device: deviceType, browser, os };
+}
 
 // Get detailed analytics for a campaign
 router.get('/campaigns/:campaignId/analytics/detailed', async (req: Request, res: Response): Promise<void> => {
@@ -28,7 +54,9 @@ router.get('/campaigns/:campaignId/analytics/detailed', async (req: Request, res
       .map(record => record.contactId);
 
     const contacts = await Contact.find({ _id: { $in: contactIds } });
-    const contactMap = new Map(contacts.map(c => [c._id.toString(), c]));
+    const contactMap = new Map<string, IContact>(
+      contacts.map(c => [String(c._id), c])
+    );
 
     // Process clicked contacts data
     const clickedContacts = await processClickedContacts(trackingRecords, contactMap);
@@ -80,8 +108,8 @@ router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (
       const linkMeta = tracking.links?.find(link => link.linkId === click.linkId);
       
       // Parse user agent for device info
-      const parser = new UAParser(click.userAgent || '');
-      const device = `${parser.getDevice().model || parser.getBrowser().name || 'Unknown'} (${parser.getOS().name || 'Unknown OS'})`;
+      const parsed = parseUserAgent(click.userAgent);
+      const device = `${parsed.browser} on ${parsed.os}`;
 
       return {
         linkId: click.linkId,
@@ -104,7 +132,7 @@ router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (
 });
 
 // Helper function to process clicked contacts
-async function processClickedContacts(trackingRecords: IEmailTracking[], contactMap: Map<string, any>) {
+async function processClickedContacts(trackingRecords: IEmailTracking[], contactMap: Map<string, IContact>) {
   const contactClickData = new Map();
 
   trackingRecords.forEach(record => {
@@ -133,9 +161,8 @@ async function processClickedContacts(trackingRecords: IEmailTracking[], contact
       existing.clickTimes.push(click.clickedAt);
       
       // Parse user agent for device
-      const parser = new UAParser(click.userAgent || '');
-      const device = parser.getDevice().type || parser.getBrowser().name || 'Desktop';
-      existing.devices.add(device);
+      const parsed = parseUserAgent(click.userAgent);
+      existing.devices.add(parsed.device);
 
       // Add location
       if (click.ipAddress) {
@@ -253,14 +280,8 @@ function generateDeviceData(trackingRecords: IEmailTracking[]) {
     if (!record.linkClicks) return;
 
     record.linkClicks.forEach((click: any) => {
-      const parser = new UAParser(click.userAgent || '');
-      let deviceType = parser.getDevice().type;
-      
-      if (!deviceType) {
-        deviceType = parser.getBrowser().name ? 'Desktop' : 'Unknown';
-      }
-      
-      deviceType = deviceType.charAt(0).toUpperCase() + deviceType.slice(1);
+      const parsed = parseUserAgent(click.userAgent);
+      const deviceType = parsed.device;
 
       deviceStats.set(deviceType, (deviceStats.get(deviceType) || 0) + 1);
       totalClicks++;
