@@ -1,14 +1,14 @@
-// api/src/services/bounceDetection.service.ts
-import { Imap } from 'imap';
-import { simpleParser } from 'mailparser';
+// Fix imports
+import Imap from 'imap'; // Default import, not named
+import { simpleParser, ParsedMail } from 'mailparser'; // ParsedMail type exists
 import { EmailTracking } from '../models/EmailTracking.model';
-import { Campaign } from '../models/Campaign'
+import { Campaign } from '../models/Campaign';
 
 class BounceDetectionService {
   private imapConfig = {
-    user: process.env.BOUNCE_EMAIL,
-    password: process.env.BOUNCE_PASSWORD,
-    host: process.env.BOUNCE_HOST,
+    user: process.env.BOUNCE_EMAIL || '',
+    password: process.env.BOUNCE_PASSWORD || '',
+    host: process.env.BOUNCE_HOST || '',
     port: 993,
     tls: true,
   };
@@ -17,7 +17,7 @@ class BounceDetectionService {
     const imap = new Imap(this.imapConfig);
     
     imap.once('ready', () => {
-      imap.openBox('INBOX', false, (err: Error | null, box: any) => { // Add types
+      imap.openBox('INBOX', false, (err: Error | null, _box: any) => { // Prefix with underscore
         if (err) throw err;
         
         const fetch = imap.seq.fetch('1:*', {
@@ -25,9 +25,9 @@ class BounceDetectionService {
           markSeen: true
         });
         
-        fetch.on('message', (msg: any) => { // Add type
-          msg.on('body', async (stream: any) => { // Add type
-            const parsed = await simpleParser(stream);
+        fetch.on('message', (msg: any) => {
+          msg.on('body', async (stream: any) => {
+            const parsed: ParsedMail = await simpleParser(stream);
             await this.processBounceEmail(parsed);
           });
         });
@@ -37,8 +37,7 @@ class BounceDetectionService {
     imap.connect();
   }
 
-  private async processBounceEmail(email: any): Promise<void> {
-    // Extract original message ID from bounce email
+  private async processBounceEmail(email: ParsedMail): Promise<void> { // Use ParsedMail type
     const originalMessageId = this.extractMessageId(email);
     
     if (originalMessageId) {
@@ -50,7 +49,6 @@ class BounceDetectionService {
         tracking.bounceReason = this.extractBounceReason(email);
         await tracking.save();
         
-        // Update campaign metrics
         await Campaign.findByIdAndUpdate(tracking.campaignId, {
           $inc: { 'metrics.bounced': 1 }
         });
@@ -58,14 +56,12 @@ class BounceDetectionService {
     }
   }
 
-  private extractMessageId(email: any): string | null {
-    // Parse bounce email headers and body for original message ID
+  private extractMessageId(email: ParsedMail): string | null {
     const messageIdMatch = email.text?.match(/Message-ID:\s*<([^>]+)>/i);
     return messageIdMatch?.[1] || null;
   }
 
-  private extractBounceReason(email: any): string {
-    // Common bounce patterns
+  private extractBounceReason(email: ParsedMail): string {
     const patterns = [
       /mailbox.*(?:full|quota)/i,
       /user.*(?:unknown|not found)/i,
@@ -73,18 +69,14 @@ class BounceDetectionService {
       /message.*(?:rejected|blocked)/i,
     ];
     
+    const text = email.text || '';
     for (const pattern of patterns) {
-      if (pattern.test(email.text)) {
-        return email.text.match(pattern)[0];
-      }
+      const match = text.match(pattern);
+      if (match) return match[0];
     }
     
     return 'Unknown bounce reason';
   }
 }
 
-// Run bounce check every 5 minutes
-setInterval(() => {
-  const bounceService = new BounceDetectionService();
-  bounceService.checkBounces().catch(console.error);
-}, 5 * 60 * 1000);
+export const bounceDetectionService = new BounceDetectionService();
