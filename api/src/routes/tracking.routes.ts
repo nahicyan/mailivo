@@ -430,7 +430,7 @@ router.get(
           tracking.clickedAt = new Date();
 
           await Campaign.findByIdAndUpdate(tracking.campaignId, {
-            $inc: { "metrics.clicked": 1, "metrics.totalClicks": 1 },
+            $inc: { "metrics.clicked": 1,},
           });
         }
 
