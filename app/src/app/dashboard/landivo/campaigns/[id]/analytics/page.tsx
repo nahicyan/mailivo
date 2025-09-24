@@ -2,202 +2,223 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { use } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ArrowLeft,
-  Mail,
-  Eye,
-  MousePointer,
   Users,
-  Smartphone,
-  AlertTriangle,
+  MousePointer,
+  Mail,
   TrendingUp,
-  TrendingDown,
-  CheckCircle,
-  XCircle,
-  Download
+  Eye,
+  BarChart3,
+  Clock,
+  MapPin,
+  ExternalLink,
+  Search,
+  Calendar,
+  Smartphone,
+  Monitor,
+  Globe,
 } from 'lucide-react';
-import { formatDate, formatNumber } from '@/lib/utils';
-import Link from 'next/link';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { toast } from 'sonner';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
-interface Props {
-  params: Promise<{ id: string }>;
+interface Campaign {
+  _id: string;
+  name: string;
+  subject: string;
+  status: string;
+  createdAt: string;
+  sentAt?: string;
+  metrics: {
+    sent: number;
+    delivered: number;
+    open: number;
+    clicks: number;
+    totalClicks: number;
+    bounces: number;
+    uniqueClickers: number;
+    mobileOpen?: number;
+    avgClicksPerLink?: number;
+    clickThroughRate?: number;
+    topLink?: string;
+  };
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+interface ContactClick {
+  contactId: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  totalClicks: number;
+  uniqueLinks: number;
+  firstClick: string;
+  lastClick: string;
+  devices: string[];
+  locations: string[];
+  engagementScore: number;
+}
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+interface ClickDetail {
+  linkId: string;
+  linkText: string;
+  originalUrl: string;
+  clickedAt: string;
+  ipAddress: string;
+  userAgent: string;
+  referer: string;
+  device: string;
+  location?: string;
+}
 
-export default function CampaignAnalyticsPage({ params }: Props) {
-  const { id } = use(params);
-  const [campaign, setCampaign] = useState<any>(null);
-  const [analytics, setAnalytics] = useState<any>(null);
+interface LinkPerformance {
+  linkId: string;
+  linkText: string;
+  originalUrl: string;
+  clickCount: number;
+  uniqueClickers: number;
+  clickRate: number;
+  avgTimeToClick: number;
+}
+
+interface AnalyticsData {
+  campaign: Campaign;
+  clickedContacts: ContactClick[];
+  linkPerformance: LinkPerformance[];
+  timelineData: { hour: string; clicks: number; opens: number }[];
+  deviceData: { device: string; clicks: number; percentage: number }[];
+  locationData: { location: string; clicks: number; percentage: number }[];
+}
+
+export default function CampaignAnalytics() {
+  const { id } = useParams();
+  const router = useRouter();
+  const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [properties, setProperties] = useState<any[]>([]);
-  const [emailLists, setEmailLists] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedContact, setSelectedContact] = useState<ContactClick | null>(null);
+  const [contactDetails, setContactDetails] = useState<ClickDetail[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
-    fetchCampaignAnalytics();
-    fetchProperties();
-    fetchEmailLists();
-    fetchTemplates();
+    fetchAnalyticsData();
   }, [id]);
 
-  const fetchCampaignAnalytics = async () => {
+  const fetchAnalyticsData = async () => {
     try {
-      const [campaignResponse, analyticsResponse] = await Promise.all([
-        fetch(`${API_URL}/campaigns/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-          },
-          credentials: 'include'
-        }),
-        fetch(`${API_URL}/campaigns/${id}/analytics`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-          },
-          credentials: 'include'
-        })
-      ]);
-
-      if (!campaignResponse.ok || !analyticsResponse.ok) {
-        throw new Error('Failed to fetch analytics');
-      }
-
-      const campaignData = await campaignResponse.json();
-      const analyticsData = await analyticsResponse.json();
-      
-      setCampaign(campaignData);
-      setAnalytics(analyticsData);
+      setLoading(true);
+      const response = await fetch(`/api/campaigns/${id}/analytics/detailed`);
+      if (!response.ok) throw new Error('Failed to fetch analytics');
+      const analyticsData = await response.json();
+      setData(analyticsData);
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      setError('Failed to load campaign analytics');
-      toast.error('Failed to load campaign analytics');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchProperties = async () => {
+  const fetchContactDetails = async (contactId: string) => {
     try {
-      const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
-      const response = await fetch(`${serverURL}/residency/allresd/`, {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProperties(Array.isArray(data) ? data : []);
-      }
+      setDetailsLoading(true);
+      const response = await fetch(`/api/campaigns/${id}/analytics/contact/${contactId}/clicks`);
+      if (!response.ok) throw new Error('Failed to fetch contact details');
+      const details = await response.json();
+      setContactDetails(details);
     } catch (error) {
-      console.error('Error fetching properties:', error);
+      console.error('Error fetching contact details:', error);
+      setContactDetails([]);
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
-  const fetchEmailLists = async () => {
-    try {
-      const response = await fetch(`${API_URL}/landivo-email-lists`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-        },
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setEmailLists(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error('Error fetching email lists:', error);
-    }
+  const handleContactClick = (contact: ContactClick) => {
+    setSelectedContact(contact);
+    fetchContactDetails(contact.contactId);
   };
 
-  const fetchTemplates = async () => {
-    try {
-      const response = await fetch(`${API_URL}/templates`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-        },
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(Array.isArray(data) ? data : (data.templates || []));
-      }
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    }
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
   };
 
-  const getPropertyAddress = (propertyId: string) => {
-    if (!Array.isArray(properties)) {
-      return propertyId;
-    }
-    const property = properties.find(p => p.id === propertyId || p._id === propertyId);
-    if (!property) return propertyId;
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const calculateRates = (campaign: Campaign) => {
+    const sent = campaign.metrics?.sent || 0;
+    const delivered = campaign.metrics?.delivered || sent;
+    const opened = campaign.metrics?.open || 0;
+    const clicked = campaign.metrics?.uniqueClickers || 0;
     
-    return `${property.streetAddress || ''}, ${property.city || ''}, ${property.zip || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
-  };
-
-  const getEmailListDetails = (listId: string) => {
-    if (!Array.isArray(emailLists)) {
-      return {
-        name: listId,
-        recipientCount: 0
-      };
-    }
-    const list = emailLists.find(l => l.id === listId || l._id === listId);
     return {
-      name: list?.name || listId,
-      recipientCount: list?.buyerCount || list?.contactCount || list?.recipients?.length || 0
+      deliveryRate: sent > 0 ? (delivered / sent) * 100 : 0,
+      openRate: delivered > 0 ? (opened / delivered) * 100 : 0,
+      clickRate: delivered > 0 ? (clicked / delivered) * 100 : 0,
+      clickToOpenRate: opened > 0 ? (clicked / opened) * 100 : 0,
     };
   };
 
-  const getTemplateName = (templateId: string) => {
-    if (!Array.isArray(templates)) {
-      return templateId;
-    }
-    const template = templates.find(t => t.id === templateId || t._id === templateId);
-    return template?.name || template?.title || templateId;
-  };
-
-  const handleExportReport = () => {
-    toast.info('Export functionality coming soon');
-  };
+  const filteredContacts = data?.clickedContacts.filter(contact =>
+    contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 bg-gray-200 rounded"></div>
+          ))}
         </div>
+        <div className="h-96 bg-gray-200 rounded"></div>
       </div>
     );
   }
 
-  if (error || !campaign || !analytics) {
+  if (!data?.campaign) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium mb-2">Analytics Not Available</h3>
-        <p className="text-muted-foreground mb-4">
-          Unable to load campaign analytics. Please try again later.
-        </p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <p className="text-muted-foreground">Campaign analytics not found</p>
         <Link href="/dashboard/landivo/campaigns/manage">
           <Button>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -208,33 +229,9 @@ export default function CampaignAnalyticsPage({ params }: Props) {
     );
   }
 
-  // Prepare chart data
-  const performanceData = [
-    { name: 'Sent', value: campaign.metrics?.sent || 0, color: '#3b82f6' },
-    { name: 'Delivered', value: campaign.metrics?.successfulDeliveries || 0, color: '#10b981' },
-    { name: 'Opens', value: campaign.metrics?.open || 0, color: '#f59e0b' },
-    { name: 'Clicks', value: campaign.metrics?.clicks || 0, color: '#8b5cf6' },
-    { name: 'Bounces', value: campaign.metrics?.bounces || 0, color: '#ef4444' }
-  ];
-
-  const engagementData = [
-    { name: 'Opened', value: campaign.metrics?.open || 0 },
-    { name: 'Did Not Open', value: (campaign.metrics?.sent || 0) - (campaign.metrics?.open || 0) }
-  ];
-
-  const deviceData = [
-    { name: 'Mobile', value: campaign.metrics?.mobileOpen || 0 },
-    { name: 'Desktop', value: (campaign.metrics?.open || 0) - (campaign.metrics?.mobileOpen || 0) }
-  ];
-
-  const timelineData = [
-    { time: '1h', opens: Math.floor((campaign.metrics?.open || 0) * 0.4) },
-    { time: '6h', opens: Math.floor((campaign.metrics?.open || 0) * 0.7) },
-    { time: '24h', opens: Math.floor((campaign.metrics?.open || 0) * 0.9) },
-    { time: '7d', opens: campaign.metrics?.open || 0 }
-  ];
-
-  const emailListDetails = getEmailListDetails(campaign.emailList);
+  const { campaign } = data;
+  const rates = calculateRates(campaign);
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
 
   return (
     <div className="space-y-6">
@@ -246,349 +243,450 @@ export default function CampaignAnalyticsPage({ params }: Props) {
               Campaigns
             </Link>
             <span>/</span>
-            <Link href={`/dashboard/landivo/campaigns/${id}`} className="hover:text-foreground">
-              {campaign.name}
-            </Link>
+            <span className="text-foreground">{campaign.name}</span>
             <span>/</span>
-            <span>Analytics</span>
+            <span className="text-foreground">Analytics</span>
           </div>
-          <h1 className="text-3xl font-bold">Campaign Analytics</h1>
-          <p className="text-muted-foreground">{campaign.name}</p>
-        </div>
-        
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Link href={`/dashboard/landivo/campaigns/${id}`}>
-            <Button variant="outline" className="flex-1 sm:flex-none">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Details
-            </Button>
-          </Link>
-          <Button onClick={handleExportReport} className="flex-1 sm:flex-none">
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
-          </Button>
-        </div>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Eye className="h-5 w-5 text-green-600" />
-            </div>
-            <div className="text-2xl font-bold text-green-600">{analytics.performance?.openRate || 0}%</div>
-            <p className="text-sm text-muted-foreground">Open Rate</p>
-            <div className="flex items-center justify-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-              <span className="text-xs text-green-600">Industry avg: 21%</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <MousePointer className="h-5 w-5 text-purple-600" />
-            </div>
-            <div className="text-2xl font-bold text-purple-600">{analytics.performance?.clickRate || 0}%</div>
-            <p className="text-sm text-muted-foreground">Click Rate</p>
-            <div className="flex items-center justify-center mt-1">
-              <TrendingUp className="h-3 w-3 text-purple-600 mr-1" />
-              <span className="text-xs text-purple-600">Industry avg: 2.5%</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Mail className="h-5 w-5 text-blue-600" />
-            </div>
-            <div className="text-2xl font-bold text-blue-600">{analytics.performance?.deliveryRate || 0}%</div>
-            <p className="text-sm text-muted-foreground">Delivery Rate</p>
-            <div className="flex items-center justify-center mt-1">
-              <TrendingUp className="h-3 w-3 text-blue-600 mr-1" />
-              <span className="text-xs text-blue-600">Industry avg: 95%</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Users className="h-5 w-5 text-orange-600" />
-            </div>
-            <div className="text-2xl font-bold text-orange-600">{formatNumber(campaign.metrics?.sent || 0)}</div>
-            <p className="text-sm text-muted-foreground">Total Sent</p>
-            <div className="flex items-center justify-center mt-1">
-              <CheckCircle className="h-3 w-3 text-orange-600 mr-1" />
-              <span className="text-xs text-orange-600">Campaign volume</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Engagement Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={engagementData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label
-                >
-                  {engagementData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Device & Timeline */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Device Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={deviceData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={60}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label
-                >
-                  {deviceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Opens Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={timelineData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="opens" stroke="#3b82f6" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed Metrics */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Delivery Metrics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Sent</span>
-              <span className="font-bold">{formatNumber(campaign.metrics?.sent || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Delivered</span>
-              <span className="font-bold text-green-600">{formatNumber(campaign.metrics?.successfulDeliveries || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Bounced</span>
-              <span className="font-bold text-red-600">{formatNumber(campaign.metrics?.bounces || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Delivery Rate</span>
-              <span className="font-bold text-blue-600">{analytics.performance?.deliveryRate || 0}%</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Bounce Rate</span>
-              <span className="font-bold text-red-600">
-                {campaign.metrics?.sent > 0 ? ((campaign.metrics.bounces / campaign.metrics.sent) * 100).toFixed(1) : 0}%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Engagement Metrics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Opens</span>
-              <span className="font-bold text-green-600">{formatNumber(campaign.metrics?.open || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Clicks</span>
-              <span className="font-bold text-purple-600">{formatNumber(campaign.metrics?.clicks || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Mobile Opens</span>
-              <span className="font-bold text-orange-600">{formatNumber(campaign.metrics?.mobileOpen || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Open Rate</span>
-              <span className="font-bold text-green-600">{analytics.performance?.openRate || 0}%</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Click Rate</span>
-              <span className="font-bold text-purple-600">{analytics.performance?.clickRate || 0}%</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Unsubscribes</span>
-              <span className="font-bold">{formatNumber(campaign.metrics?.unsubscribed || 0)}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Engagement Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Engagements</span>
-              <span className="font-bold">{analytics.engagement?.totalEngagements || 0}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Mobile Engagement</span>
-              <span className="font-bold text-blue-600">{analytics.engagement?.mobileEngagement || 0}%</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Average Time to Open</span>
-              <span className="font-bold">2.3 hours</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Peak Open Time</span>
-              <span className="font-bold">10:00 AM</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Best Performing Day</span>
-              <span className="font-bold">Tuesday</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Campaign Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Campaign Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <h4 className="font-medium mb-2">Campaign Details</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
-                  <Badge className={campaign.status === 'sent' ? 
-                    'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                    {campaign.status}
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created:</span>
-                  <span>{formatDate(campaign.createdAt)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Property:</span>
-                  <span className="truncate max-w-32">{getPropertyAddress(campaign.property)}</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">Targeting</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email List:</span>
-                  <span className="truncate max-w-32">
-                    {emailListDetails.name}
-                    {emailListDetails.recipientCount > 0 && (
-                      <span className="text-muted-foreground">
-                        ({emailListDetails.recipientCount})
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Template:</span>
-                  <span className="truncate max-w-32">{getTemplateName(campaign.emailTemplate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Volume:</span>
-                  <span>{formatNumber(campaign.emailVolume || 0)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-2">Performance Summary</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Success Rate:</span>
-                  <span className="text-green-600 font-medium">{analytics.performance?.deliveryRate || 0}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Engagement Rate:</span>
-                  <span className="text-blue-600 font-medium">
-                    {((parseFloat(analytics.performance?.openRate || 0) + parseFloat(analytics.performance?.clickRate || 0))).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ROI:</span>
-                  <span className="text-purple-600 font-medium">+24.5%</span>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">{campaign.name}</h1>
+            <Badge variant={campaign.status === 'sent' ? 'success' : 'secondary'}>
+              {campaign.status}
+            </Badge>
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-muted-foreground">{campaign.subject}</p>
+        </div>
+        <Button onClick={() => router.back()} variant="outline">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
+      {/* Key Metrics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Sent</p>
+                <p className="text-2xl font-bold">{formatNumber(campaign.metrics?.sent || 0)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Delivery Rate: {rates.deliveryRate.toFixed(1)}%
+                </p>
+              </div>
+              <Mail className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Opens</p>
+                <p className="text-2xl font-bold text-green-600">{formatNumber(campaign.metrics?.open || 0)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Open Rate: {rates.openRate.toFixed(1)}%
+                </p>
+              </div>
+              <Eye className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Unique Clickers</p>
+                <p className="text-2xl font-bold text-purple-600">{formatNumber(campaign.metrics?.uniqueClickers || 0)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Click Rate: {rates.clickRate.toFixed(1)}%
+                </p>
+              </div>
+              <MousePointer className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Clicks</p>
+                <p className="text-2xl font-bold text-orange-600">{formatNumber(campaign.metrics?.totalClicks || 0)}</p>
+                <p className="text-xs text-muted-foreground">
+                  CTOR: {rates.clickToOpenRate.toFixed(1)}%
+                </p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Analytics Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="contacts">Click Details</TabsTrigger>
+          <TabsTrigger value="links">Link Performance</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Timeline Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Activity Timeline
+                </CardTitle>
+                <CardDescription>Clicks and opens over time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={data.timelineData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="clicks" stroke="#8b5cf6" strokeWidth={2} />
+                    <Line type="monotone" dataKey="opens" stroke="#10b981" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Device Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smartphone className="h-5 w-5" />
+                  Device Distribution
+                </CardTitle>
+                <CardDescription>Click distribution by device type</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={data.deviceData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ device, percentage }) => `${device} (${percentage.toFixed(1)}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="clicks"
+                    >
+                      {data.deviceData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="contacts" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Contacts Who Clicked ({filteredContacts.length})
+                  </CardTitle>
+                  <CardDescription>Detailed click analysis for each contact</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search contacts..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-64"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Total Clicks</TableHead>
+                    <TableHead>Unique Links</TableHead>
+                    <TableHead>First Click</TableHead>
+                    <TableHead>Last Click</TableHead>
+                    <TableHead>Engagement</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredContacts.map((contact) => (
+                    <TableRow key={contact.contactId}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {contact.firstName && contact.lastName 
+                              ? `${contact.firstName} ${contact.lastName}` 
+                              : 'Unknown Name'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">{contact.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{contact.totalClicks}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{contact.uniqueLinks}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(contact.firstClick)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(contact.lastClick)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full" 
+                              style={{ width: `${Math.min(contact.engagementScore * 10, 100)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {contact.engagementScore.toFixed(1)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleContactClick(contact)}
+                            >
+                              View Details
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh]">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Click Details - {contact.firstName && contact.lastName 
+                                  ? `${contact.firstName} ${contact.lastName}` 
+                                  : contact.email}
+                              </DialogTitle>
+                              <DialogDescription>
+                                Comprehensive click history and behavior analysis
+                              </DialogDescription>
+                            </DialogHeader>
+                            <ScrollArea className="h-96">
+                              {detailsLoading ? (
+                                <div className="space-y-4 animate-pulse">
+                                  {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="space-y-4">
+                                  {contactDetails.map((detail, index) => (
+                                    <Card key={index} className="p-4">
+                                      <div className="flex items-start justify-between">
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <ExternalLink className="h-4 w-4 text-blue-600" />
+                                            <span className="font-medium">{detail.linkText || 'Untitled Link'}</span>
+                                          </div>
+                                          <p className="text-sm text-muted-foreground break-all">
+                                            {detail.originalUrl}
+                                          </p>
+                                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                            <div className="flex items-center gap-1">
+                                              <Calendar className="h-3 w-3" />
+                                              {formatDate(detail.clickedAt)}
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <Globe className="h-3 w-3" />
+                                              {detail.device}
+                                            </div>
+                                            {detail.location && (
+                                              <div className="flex items-center gap-1">
+                                                <MapPin className="h-3 w-3" />
+                                                {detail.location}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <Badge variant="outline" className="text-xs">
+                                          Click #{index + 1}
+                                        </Badge>
+                                      </div>
+                                    </Card>
+                                  ))}
+                                  {contactDetails.length === 0 && (
+                                    <p className="text-center text-muted-foreground py-8">
+                                      No click details found for this contact.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </ScrollArea>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {filteredContacts.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchTerm ? 'No contacts found matching your search.' : 'No contacts have clicked in this campaign yet.'}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="links" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ExternalLink className="h-5 w-5" />
+                Link Performance Analysis
+              </CardTitle>
+              <CardDescription>Performance metrics for each link in your campaign</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Link</TableHead>
+                    <TableHead>Total Clicks</TableHead>
+                    <TableHead>Unique Clickers</TableHead>
+                    <TableHead>Click Rate</TableHead>
+                    <TableHead>URL</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.linkPerformance.map((link, index) => (
+                    <TableRow key={link.linkId}>
+                      <TableCell>
+                        <div className="font-medium">{link.linkText || `Link ${index + 1}`}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{link.clickCount}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{link.uniqueClickers}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-purple-600 h-2 rounded-full" 
+                              style={{ width: `${Math.min(link.clickRate, 100)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm">{link.clickRate.toFixed(1)}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate text-sm text-muted-foreground" title={link.originalUrl}>
+                          {link.originalUrl}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {data.linkPerformance.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No link performance data available.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="insights" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Insights</CardTitle>
+                <CardDescription>Key takeaways from your campaign</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
+                  <div>
+                    <p className="font-medium">Strong Engagement</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your click-to-open rate of {rates.clickToOpenRate.toFixed(1)}% is 
+                      {rates.clickToOpenRate > 10 ? ' above' : ' below'} industry average
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
+                  <div>
+                    <p className="font-medium">Top Performing Link</p>
+                    <p className="text-sm text-muted-foreground">
+                      "{campaign.metrics?.topLink || 'N/A'}" received the most clicks
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-purple-500 mt-2"></div>
+                  <div>
+                    <p className="font-medium">Mobile Usage</p>
+                    <p className="text-sm text-muted-foreground">
+                      {((campaign.metrics?.mobileOpen || 0) / (campaign.metrics?.open || 1) * 100).toFixed(1)}% 
+                      of opens were on mobile devices
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Geographic Distribution</CardTitle>
+                <CardDescription>Click distribution by location</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {data.locationData.slice(0, 5).map((location, index) => (
+                    <div key={location.location} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{location.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full" 
+                            style={{ width: `${location.percentage}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-muted-foreground w-12 text-right">
+                          {location.percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
