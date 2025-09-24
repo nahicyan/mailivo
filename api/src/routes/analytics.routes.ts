@@ -1,21 +1,22 @@
 // api/src/routes/analytics.routes.ts
 import { Router, Request, Response } from 'express';
-import { EmailTracking } from '../models/EmailTracking.model';
+import { EmailTracking, IEmailTracking } from '../models/EmailTracking.model';
 import { Contact } from '../models/Contact.model';
-import { Campaign } from '../models/Campaign.model';
+import { Campaign } from '../models/Campaign';
 import UAParser from 'ua-parser-js';
 
 const router = Router();
 
 // Get detailed analytics for a campaign
-router.get('/campaigns/:campaignId/analytics/detailed', async (req: Request, res: Response) => {
+router.get('/campaigns/:campaignId/analytics/detailed', async (req: Request, res: Response): Promise<void> => {
   try {
     const { campaignId } = req.params;
 
     // Get campaign data
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
-      return res.status(404).json({ error: 'Campaign not found' });
+      res.status(404).json({ error: 'Campaign not found' });
+      return;
     }
 
     // Get all tracking records for this campaign
@@ -61,7 +62,7 @@ router.get('/campaigns/:campaignId/analytics/detailed', async (req: Request, res
 });
 
 // Get detailed click information for a specific contact
-router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (req: Request, res: Response) => {
+router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (req: Request, res: Response): Promise<void> => {
   try {
     const { campaignId, contactId } = req.params;
 
@@ -69,11 +70,9 @@ router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (
     const tracking = await EmailTracking.findOne({ campaignId, contactId });
     
     if (!tracking || !tracking.linkClicks || tracking.linkClicks.length === 0) {
-      return res.json([]);
+      res.json([]);
+      return;
     }
-
-    // Get contact info
-    const contact = await Contact.findById(contactId);
 
     // Process click details
     const clickDetails = tracking.linkClicks.map(click => {
@@ -93,7 +92,7 @@ router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (
         userAgent: click.userAgent || 'Unknown',
         referer: click.referer || 'Direct',
         device,
-        location: extractLocationFromIP(click.ipAddress), // You'll need to implement this
+        location: extractLocationFromIP(click.ipAddress),
       };
     }).sort((a, b) => new Date(a.clickedAt).getTime() - new Date(b.clickedAt).getTime());
 
@@ -105,7 +104,7 @@ router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (
 });
 
 // Helper function to process clicked contacts
-async function processClickedContacts(trackingRecords: any[], contactMap: Map<string, any>) {
+async function processClickedContacts(trackingRecords: IEmailTracking[], contactMap: Map<string, any>) {
   const contactClickData = new Map();
 
   trackingRecords.forEach(record => {
@@ -138,7 +137,7 @@ async function processClickedContacts(trackingRecords: any[], contactMap: Map<st
       const device = parser.getDevice().type || parser.getBrowser().name || 'Desktop';
       existing.devices.add(device);
 
-      // Add location (you'll need to implement IP geolocation)
+      // Add location
       if (click.ipAddress) {
         existing.locations.add(extractLocationFromIP(click.ipAddress) || 'Unknown');
       }
@@ -165,11 +164,11 @@ async function processClickedContacts(trackingRecords: any[], contactMap: Map<st
       locations: Array.from(contact.locations),
       engagementScore,
     };
-  }).sort((a, b) => b.totalClicks - a.totalClicks); // Sort by total clicks descending
+  }).sort((a, b) => b.totalClicks - a.totalClicks);
 }
 
 // Helper function to process link performance
-function processLinkPerformance(trackingRecords: any[]) {
+function processLinkPerformance(trackingRecords: IEmailTracking[]) {
   const linkStats = new Map();
 
   trackingRecords.forEach(record => {
@@ -211,7 +210,7 @@ function processLinkPerformance(trackingRecords: any[]) {
 }
 
 // Helper function to generate timeline data
-function generateTimelineData(trackingRecords: any[]) {
+function generateTimelineData(trackingRecords: IEmailTracking[]) {
   const hourlyData = new Map();
 
   // Initialize 24 hours
@@ -246,7 +245,7 @@ function generateTimelineData(trackingRecords: any[]) {
 }
 
 // Helper function to generate device data
-function generateDeviceData(trackingRecords: any[]) {
+function generateDeviceData(trackingRecords: IEmailTracking[]) {
   const deviceStats = new Map();
   let totalClicks = 0;
 
@@ -276,7 +275,7 @@ function generateDeviceData(trackingRecords: any[]) {
 }
 
 // Helper function to generate location data
-function generateLocationData(trackingRecords: any[]) {
+function generateLocationData(trackingRecords: IEmailTracking[]) {
   const locationStats = new Map();
   let totalClicks = 0;
 
@@ -301,9 +300,8 @@ function generateLocationData(trackingRecords: any[]) {
 
 // Helper function to calculate engagement score
 function calculateEngagementScore(totalClicks: number, uniqueLinks: number): number {
-  // Simple engagement score: weight total clicks and diversity of links clicked
-  const clickScore = Math.min(totalClicks * 0.5, 5); // Max 5 points for clicks
-  const diversityScore = Math.min(uniqueLinks * 1, 5); // Max 5 points for link diversity
+  const clickScore = Math.min(totalClicks * 0.5, 5);
+  const diversityScore = Math.min(uniqueLinks * 1, 5);
   return clickScore + diversityScore;
 }
 
@@ -311,7 +309,6 @@ function calculateEngagementScore(totalClicks: number, uniqueLinks: number): num
 function calculateAverageTimeToClick(clickTimes: Date[]): number {
   if (clickTimes.length === 0) return 0;
   
-  // For simplicity, return hours since first click
   const sortedTimes = clickTimes.sort((a, b) => a.getTime() - b.getTime());
   const firstClick = sortedTimes[0];
   const avgTime = sortedTimes.reduce((sum, time) => {
@@ -325,26 +322,14 @@ function calculateAverageTimeToClick(clickTimes: Date[]): number {
 function extractLocationFromIP(ipAddress: string | undefined): string | null {
   if (!ipAddress || ipAddress === 'unknown') return null;
   
-  // TODO: Implement actual IP geolocation using services like:
-  // - MaxMind GeoLite2
-  // - IP-API
-  // - IPInfo.io
-  
-  // For now, return a mock location based on IP patterns
   if (ipAddress.startsWith('192.168') || ipAddress.startsWith('10.') || ipAddress.startsWith('172.')) {
     return 'Local Network';
   }
   
-  // Mock some locations based on IP ranges (replace with real geolocation)
+  // Mock locations based on IP ranges
   const mockLocations = [
-    'New York, US',
-    'Los Angeles, US', 
-    'London, UK',
-    'Toronto, CA',
-    'Sydney, AU',
-    'Tokyo, JP',
-    'Berlin, DE',
-    'Paris, FR',
+    'New York, US', 'Los Angeles, US', 'London, UK', 'Toronto, CA',
+    'Sydney, AU', 'Tokyo, JP', 'Berlin, DE', 'Paris, FR',
   ];
   
   const hash = ipAddress.split('.').reduce((acc, part) => acc + parseInt(part, 10), 0);

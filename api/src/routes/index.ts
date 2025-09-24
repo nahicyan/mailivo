@@ -10,6 +10,7 @@ import trackingRoutes from './tracking.routes';
 import subjectTemplateRoute from './subjectTemplateRoute';
 import { templateImageRoutes } from './templateImage.route';
 import userProfileRoute from './userProfileRoute';
+import analyticsRoutes from './analytics.routes';
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.use('/via', trackingRoutes); // More inviting route instead of /track
 router.use("/subject-templates", subjectTemplateRoute);
 router.use('/template-images', templateImageRoutes);
 router.use('/api/user', userProfileRoute);
+router.use('/api', analyticsRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
