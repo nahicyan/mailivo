@@ -1,9 +1,9 @@
 // api/src/routes/analytics.routes.ts
 import { Router, Request, Response } from 'express';
 import { EmailTracking, IEmailTracking } from '../models/EmailTracking.model';
-import { Contact, IContact } from '../models/Contact.model';
 import { Campaign } from '../models/Campaign';
-import { authenticate } from '../middleware/auth.middleware';  // ADD THIS IMPORT
+import { authenticate } from '../middleware/auth.middleware';  
+import axios from 'axios';
 
 const router = Router();
 
@@ -37,6 +37,17 @@ function parseUserAgent(userAgent?: string) {
   return { device: deviceType, browser, os };
 }
 
+async function fetchLandivoBuyer(buyerId: string) {
+  try {
+    const landivoUrl = process.env.LANDIVO_API_URL || 'https://api.landivo.com';
+    const response = await axios.get(`${landivoUrl}/buyer/${buyerId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching buyer ${buyerId}:`, error);
+    return null;
+  }
+}
+
 // Get detailed analytics for a campaign
 router.get('/campaigns/:campaignId/analytics/detailed', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -52,19 +63,9 @@ router.get('/campaigns/:campaignId/analytics/detailed', async (req: Request, res
     // Get all tracking records for this campaign
     const trackingRecords = await EmailTracking.find({ campaignId });
 
-    // Get contacts who clicked
-    const contactIds = trackingRecords
-      .filter(record => record.linkClicks && record.linkClicks.length > 0)
-      .map(record => record.contactId);
-
-    const contacts = await Contact.find({ _id: { $in: contactIds } });
-    const contactMap = new Map<string, IContact>(
-      contacts.map(c => [String(c._id), c])
-    );
 
     // Process clicked contacts data
-    const clickedContacts = await processClickedContacts(trackingRecords, contactMap);
-
+    const clickedContacts = await processClickedContacts(trackingRecords);
     // Process link performance
     const linkPerformance = processLinkPerformance(trackingRecords);
 
@@ -136,22 +137,40 @@ router.get('/campaigns/:campaignId/analytics/contact/:contactId/clicks', async (
 });
 
 // Helper function to process clicked contacts
-async function processClickedContacts(trackingRecords: IEmailTracking[], contactMap: Map<string, IContact>) {
+async function processClickedContacts(trackingRecords: IEmailTracking[]) {
   const contactClickData = new Map();
 
+  // Get unique contact IDs that have clicks
+  const clickedContactIds = trackingRecords
+    .filter(record => record.linkClicks && record.linkClicks.length > 0)
+    .map(record => record.contactId);
+
+  // Fetch buyer details from Landivo
+  const buyerPromises = clickedContactIds.map(id => fetchLandivoBuyer(id));
+  const buyers = await Promise.all(buyerPromises);
+  
+  // Create a map of buyer data
+  const buyerMap = new Map();
+  buyers.forEach(buyer => {
+    if (buyer && buyer.id) {
+      buyerMap.set(buyer.id, buyer);
+    }
+  });
+
+  // Process tracking records
   trackingRecords.forEach(record => {
     if (!record.linkClicks || record.linkClicks.length === 0) return;
 
     const contactId = record.contactId;
-    const contact = contactMap.get(contactId);
+    const buyer = buyerMap.get(contactId);
     
-    if (!contact) return;
+    if (!buyer) return;
 
     const existing = contactClickData.get(contactId) || {
       contactId,
-      email: contact.email,
-      firstName: contact.profile?.first_name,
-      lastName: contact.profile?.last_name,
+      email: buyer.email,
+      firstName: buyer.firstName || '',
+      lastName: buyer.lastName || '',
       totalClicks: 0,
       uniqueLinks: new Set(),
       clickTimes: [],
@@ -164,11 +183,9 @@ async function processClickedContacts(trackingRecords: IEmailTracking[], contact
       existing.uniqueLinks.add(click.linkId);
       existing.clickTimes.push(click.clickedAt);
       
-      // Parse user agent for device
       const parsed = parseUserAgent(click.userAgent);
       existing.devices.add(parsed.device);
 
-      // Add location
       if (click.ipAddress) {
         existing.locations.add(extractLocationFromIP(click.ipAddress) || 'Unknown');
       }
@@ -180,8 +197,8 @@ async function processClickedContacts(trackingRecords: IEmailTracking[], contact
   // Convert to final format
   return Array.from(contactClickData.values()).map(contact => {
     const sortedTimes = contact.clickTimes.sort();
-    const engagementScore = calculateEngagementScore(contact.totalClicks, contact.uniqueLinks.size);
-    
+    const engagementScore = Math.min(100, (contact.totalClicks * 10) + (contact.uniqueLinks.size * 20));
+
     return {
       contactId: contact.contactId,
       email: contact.email,
@@ -189,8 +206,8 @@ async function processClickedContacts(trackingRecords: IEmailTracking[], contact
       lastName: contact.lastName,
       totalClicks: contact.totalClicks,
       uniqueLinks: contact.uniqueLinks.size,
-      firstClick: sortedTimes[0]?.toISOString(),
-      lastClick: sortedTimes[sortedTimes.length - 1]?.toISOString(),
+      firstClick: sortedTimes[0]?.toISOString() || '',
+      lastClick: sortedTimes[sortedTimes.length - 1]?.toISOString() || '',
       devices: Array.from(contact.devices),
       locations: Array.from(contact.locations),
       engagementScore,
@@ -325,11 +342,11 @@ function generateLocationData(trackingRecords: IEmailTracking[]) {
 }
 
 // Helper function to calculate engagement score
-function calculateEngagementScore(totalClicks: number, uniqueLinks: number): number {
+/* function calculateEngagementScore(totalClicks: number, uniqueLinks: number): number {
   const clickScore = Math.min(totalClicks * 0.5, 5);
   const diversityScore = Math.min(uniqueLinks * 1, 5);
   return clickScore + diversityScore;
-}
+} */
 
 // Helper function to calculate average time to click
 function calculateAverageTimeToClick(clickTimes: Date[]): number {
