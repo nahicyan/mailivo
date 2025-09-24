@@ -7,10 +7,17 @@ export function useAnalytics(campaignId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/analytics/campaigns/${campaignId}/analytics/detailed`);
+      const response = await fetch(`${API_URL}/analytics/campaigns/${campaignId}/analytics/detailed`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch analytics');
       const analyticsData = await response.json();
       setData(analyticsData);
@@ -25,7 +32,12 @@ export function useAnalytics(campaignId: string) {
 
   const fetchContactDetails = async (contactId: string): Promise<ClickDetail[]> => {
     try {
-      const response = await fetch(`/analytics/campaigns/${campaignId}/analytics/contact/${contactId}/clicks`);
+      const response = await fetch(`${API_URL}/analytics/campaigns/${campaignId}/analytics/contact/${contactId}/clicks`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+        },
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch contact details');
       return await response.json();
     } catch (err) {

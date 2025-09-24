@@ -128,6 +128,8 @@ export default function CampaignAnalytics() {
   const [contactDetails, setContactDetails] = useState<ClickDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+
   useEffect(() => {
     fetchAnalyticsData();
   }, [id]);
@@ -136,7 +138,12 @@ export default function CampaignAnalytics() {
 const fetchAnalyticsData = async () => {
   try {
     setLoading(true);
-    const response = await fetch(`/analytics/campaigns/${id}/analytics/detailed`);
+    const response = await fetch(`${API_URL}/analytics/campaigns/${id}/analytics/detailed`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+      },
+      credentials: 'include'
+    });
     if (!response.ok) throw new Error('Failed to fetch analytics');
     const analyticsData = await response.json();
     setData(analyticsData);
@@ -150,8 +157,12 @@ const fetchAnalyticsData = async () => {
 const fetchContactDetails = async (contactId: string) => {
   try {
     setDetailsLoading(true);
-    // Fixed: Removed /api prefix to match backend route
-    const response = await fetch(`/analytics/campaigns/${id}/analytics/contact/${contactId}/clicks`);
+    const response = await fetch(`${API_URL}/analytics/campaigns/${id}/analytics/contact/${contactId}/clicks`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+      },
+      credentials: 'include'
+    });
     if (!response.ok) throw new Error('Failed to fetch contact details');
     const details = await response.json();
     setContactDetails(details);
