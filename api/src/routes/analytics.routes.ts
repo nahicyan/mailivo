@@ -3,8 +3,12 @@ import { Router, Request, Response } from 'express';
 import { EmailTracking, IEmailTracking } from '../models/EmailTracking.model';
 import { Contact, IContact } from '../models/Contact.model';
 import { Campaign } from '../models/Campaign';
+import { authenticate } from '../middleware/auth.middleware';  // ADD THIS IMPORT
 
 const router = Router();
+
+// Apply authentication middleware to all routes - ADD THIS LINE
+router.use(authenticate);
 
 // Simple user agent parsing without external dependency
 function parseUserAgent(userAgent?: string) {
@@ -231,7 +235,8 @@ function processLinkPerformance(trackingRecords: IEmailTracking[]) {
     originalUrl: link.originalUrl,
     clickCount: link.clickCount,
     uniqueClickers: link.uniqueClickers.size,
-    clickRate: totalRecipients > 0 ? (link.uniqueClickers.size / totalRecipients) * 100 : 0,
+    clickRate: totalRecipients > 0 ? 
+      (link.uniqueClickers.size / totalRecipients) * 100 : 0,
     avgTimeToClick: calculateAverageTimeToClick(link.clickTimes),
   })).sort((a, b) => b.clickCount - a.clickCount);
 }
