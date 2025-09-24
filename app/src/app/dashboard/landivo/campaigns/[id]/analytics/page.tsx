@@ -132,34 +132,36 @@ export default function CampaignAnalytics() {
     fetchAnalyticsData();
   }, [id]);
 
-  const fetchAnalyticsData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/analytics/campaigns/${id}/analytics/detailed`);
-      if (!response.ok) throw new Error('Failed to fetch analytics');
-      const analyticsData = await response.json();
-      setData(analyticsData);
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const fetchContactDetails = async (contactId: string) => {
-    try {
-      setDetailsLoading(true);
-      const response = await fetch(`/api/analytics/campaigns/${id}/analytics/contact/${contactId}/clicks`);
-      if (!response.ok) throw new Error('Failed to fetch contact details');
-      const details = await response.json();
-      setContactDetails(details);
-    } catch (error) {
-      console.error('Error fetching contact details:', error);
-      setContactDetails([]);
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
+const fetchAnalyticsData = async () => {
+  try {
+    setLoading(true);
+    const response = await fetch(`/analytics/campaigns/${id}/analytics/detailed`);
+    if (!response.ok) throw new Error('Failed to fetch analytics');
+    const analyticsData = await response.json();
+    setData(analyticsData);
+  } catch (error) {
+    console.error('Error fetching analytics:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const fetchContactDetails = async (contactId: string) => {
+  try {
+    setDetailsLoading(true);
+    // Fixed: Removed /api prefix to match backend route
+    const response = await fetch(`/analytics/campaigns/${id}/analytics/contact/${contactId}/clicks`);
+    if (!response.ok) throw new Error('Failed to fetch contact details');
+    const details = await response.json();
+    setContactDetails(details);
+  } catch (error) {
+    console.error('Error fetching contact details:', error);
+    setContactDetails([]);
+  } finally {
+    setDetailsLoading(false);
+  }
+};
 
   const handleContactClick = (contact: ContactClick) => {
     setSelectedContact(contact);
