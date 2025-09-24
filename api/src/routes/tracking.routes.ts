@@ -3,7 +3,11 @@ import { Router, Request, Response } from "express";
 import { Campaign } from "../models/Campaign";
 import { Contact } from "../models/Contact.model";
 import { logger } from "../utils/logger";
-import { EmailTracking, IEmailTracking, ILinkMetadata } from "../models/EmailTracking.model";
+import {
+  EmailTracking,
+  IEmailTracking,
+  ILinkMetadata,
+} from "../models/EmailTracking.model";
 const router = Router();
 
 // Track email opens
@@ -149,15 +153,17 @@ function calculateClickMetrics(tracking: IEmailTracking) {
   const totalClicks = tracking.linkClicks.length;
   const totalLinks = tracking.links.length;
   const linksWithClicks = tracking.linkStats.size;
-  
+
   // Find most clicked link
-  let mostClickedLink = '';
+  let mostClickedLink = "";
   let maxClicks = 0;
-  
+
   for (const [linkId, stats] of tracking.linkStats) {
     if (stats.clickCount > maxClicks) {
       maxClicks = stats.clickCount;
-      const link = tracking.links.find((l: ILinkMetadata) => l.linkId === linkId);
+      const link = tracking.links.find(
+        (l: ILinkMetadata) => l.linkId === linkId
+      );
       mostClickedLink = link?.linkText || linkId;
     }
   }
@@ -167,7 +173,7 @@ function calculateClickMetrics(tracking: IEmailTracking) {
     avgClicksPerLink: totalLinks > 0 ? totalClicks / totalLinks : 0,
     clickThroughRate: totalLinks > 0 ? (linksWithClicks / totalLinks) * 100 : 0,
     mostClickedLink,
-    hasNewClicker: tracking.linkClicks.length === 1
+    hasNewClicker: tracking.linkClicks.length === 1,
   };
 }
 
@@ -424,7 +430,7 @@ router.get(
           tracking.clickedAt = new Date();
 
           await Campaign.findByIdAndUpdate(tracking.campaignId, {
-            $inc: { "metrics.clicked": 1 },
+            $inc: { "metrics.clicked": 1, "metrics.totalClicks": 1 },
           });
         }
 
@@ -457,6 +463,10 @@ router.get(
         }
 
         tracking.linkStats.set(linkId, linkStat);
+
+        await Campaign.findByIdAndUpdate(tracking.campaignId, {
+          $inc: { "metrics.totalClicks": 1 },
+        });
 
         await tracking.save();
 
