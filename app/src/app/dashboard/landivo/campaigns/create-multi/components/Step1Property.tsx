@@ -287,7 +287,7 @@ export function Step1Property({
           <CardTitle className="flex items-center space-x-2">
             <Building className="h-5 w-5" />
             <span>Select Properties for Campaign</span>
-          </CardTitle>
+          </CardTitle> 
           <div className="text-sm text-gray-600">
             Choose multiple properties to include in your campaign. The order will be preserved based on table sorting.
           </div>
