@@ -550,19 +550,21 @@ router.get(
   }
 );
 
+// api/src/routes/tracking.routes.ts
 router.post('/webhooks/smtp/mailcow', async (req: Request, res: Response): Promise<void> => {
   try {
-    const apiKey = req.headers['x-api-key'];
+    console.log('Webhook received:', JSON.stringify(req.body, null, 2));
     
+    const apiKey = req.headers['x-api-key'];
     if (apiKey !== process.env.WEBHOOK_SECRET_KEY) {
       res.status(401).json({ error: 'Unauthorized' });
-      return; // Add explicit return
+      return;
     }
     
     await webhookService.processMailcowWebhook(req.body);
     res.status(200).send('OK');
   } catch (error) {
-    logger.error('Mailcow webhook error:', error);
+    console.error('Webhook processing error:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
