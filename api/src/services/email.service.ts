@@ -145,7 +145,7 @@ class EmailService {
   }
 
   // Configuration methods
-  setPrimaryProvider(provider: EmailProvider): void {~
+  setPrimaryProvider(provider: EmailProvider): void {
     this.config.primaryProvider = provider;
     logger.info(`Email service primary provider set to: ${provider}`);
   }
