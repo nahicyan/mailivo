@@ -13,6 +13,7 @@ import { connectDatabase } from "./config/database";
 import { connectRedis } from "./config/redis";
 import { routes } from "./routes";
 import { campaignSchedulerService } from "./services/campaignScheduler.service";
+import { mailcowSyncJob } from "./jobs/mailcowSync.job";
 
 const app = express();
 
@@ -112,6 +113,9 @@ const startServer = async () => {
       // Start the campaign scheduler
       campaignSchedulerService.start();
     });
+    if (process.env.MAILCOW_SYNC_ENABLED === "true") {
+      console.log("✅ Mailcow delivery sync started");
+    }
 
     // Graceful shutdown
     process.on("SIGTERM", async () => {

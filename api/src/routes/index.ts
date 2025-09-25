@@ -11,6 +11,7 @@ import subjectTemplateRoute from './subjectTemplateRoute';
 import { templateImageRoutes } from './templateImage.route';
 import userProfileRoute from './userProfileRoute';
 import analyticsRoutes from './analytics.routes';
+import mailcowRoutes from './mailcow.routes';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use("/subject-templates", subjectTemplateRoute);
 router.use('/template-images', templateImageRoutes);
 router.use('/api/user', userProfileRoute);
 router.use('/analytics', analyticsRoutes);
+router.use('/api/mailcow', mailcowRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
