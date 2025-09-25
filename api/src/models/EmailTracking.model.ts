@@ -60,6 +60,15 @@ export interface IEmailTracking extends Document {
     country?: string;
     city?: string;
   };
+    // New fields for bounce tracking
+  bounceType?: 'hard' | 'soft' | 'unknown';
+  dsn?: string; // Delivery Status Notification code
+  contactEmail?: string; // Store email for fallback matching
+  
+  // Enhanced error tracking
+  deliveryAttempts?: number;
+  lastDeliveryAttempt?: Date;
+  
   // clicks: Array<{
   //   url: string;
   //   clickedAt: Date;
@@ -150,6 +159,27 @@ const emailTrackingSchema = new Schema<IEmailTracking>(
     location: {
       country: String,
       city: String,
+    bounceType: {
+      type: String,
+      enum: ['hard', 'soft', 'unknown'],
+      default: undefined,
+    },
+    dsn: {
+      type: String,
+      default: undefined,
+    },
+    contactEmail: {
+      type: String,
+      index: true,
+    },
+    deliveryAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lastDeliveryAttempt: {
+      type: Date,
+      default: undefined,
+    },
     },
     // clicks: [
     //   {

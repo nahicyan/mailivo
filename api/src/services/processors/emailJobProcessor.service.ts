@@ -37,9 +37,8 @@ export class EmailJobProcessor {
 
     try {
       await this.checkRateLimit();
-      
-      // Using original content without tracking pixel
-    const htmlWithTracking = personalizedContent.htmlContent;
+
+      const htmlWithTracking = personalizedContent.htmlContent;
 
       const result = await emailService.sendEmail({
         to: email,
@@ -50,11 +49,12 @@ export class EmailJobProcessor {
 
       if (result.success) {
         await EmailTracking.findOneAndUpdate(
-          { trackingId: trackingId }, // Find by trackingId field, not _id
+          { trackingId: trackingId },
           {
             status: "sent",
             sentAt: new Date(),
             messageId: result.messageId,
+            contactEmail: email, // Store email here as well
           }
         );
 
@@ -83,10 +83,11 @@ export class EmailJobProcessor {
       });
 
       await EmailTracking.findOneAndUpdate(
-        { trackingId: trackingId }, // Find by trackingId field
+        { trackingId: trackingId },
         {
           status: "failed",
           error: errorMessage,
+          contactEmail: email,
         }
       );
 
@@ -151,7 +152,8 @@ export class EmailJobProcessor {
 
   async createTrackingRecord(
     campaignId: string,
-    contactId: string
+    contactId: string,
+    contactEmail?: string
   ): Promise<string> {
     const trackingId = nanoid(12);
 
@@ -160,6 +162,7 @@ export class EmailJobProcessor {
       contactId,
       trackingId,
       status: "queued",
+      contactEmail,
       links: [],
       linkClicks: [],
       linkStats: new Map(),
