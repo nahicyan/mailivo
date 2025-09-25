@@ -37,11 +37,6 @@ export class EmailJobProcessor {
 
     try {
       await this.checkRateLimit();
-
-      /*const htmlWithTracking = await emailService.addTrackingPixel(
-        personalizedContent.htmlContent,
-        trackingId
-      ); */
       
       // Using original content without tracking pixel
     const htmlWithTracking = personalizedContent.htmlContent;
