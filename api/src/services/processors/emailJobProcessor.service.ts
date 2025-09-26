@@ -162,7 +162,7 @@ export class EmailJobProcessor {
       contactId,
       trackingId,
       status: "queued",
-      contactEmail,
+      contactEmail: contactEmail || '',
       links: [],
       linkClicks: [],
       linkStats: new Map(),

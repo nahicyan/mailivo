@@ -93,7 +93,7 @@ private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[
     const trackingId = await this.emailJobProcessor.createTrackingRecord(
       campaign._id.toString(), 
       contactId,
-      contactEmail // Pass the email address
+      contactEmail,
     );
     
     const personalizedContent = await this.emailJobProcessor.personalizeContent(
