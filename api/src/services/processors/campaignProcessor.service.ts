@@ -79,14 +79,21 @@ private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[
   const emailJobs = [];
   
   for (const contact of contacts) {
-    // FIX: Ensure contactId is a string
+    // Extract contact ID
     const contactId = typeof contact === 'string' 
       ? contact 
       : ((contact as any)._id?.toString() || contact.id?.toString() || '');
-      
+    
+    // Extract email address
+    const contactEmail = typeof contact === 'string'
+      ? '' // Will need to look up if only ID provided
+      : (contact.email || '');
+    
+    // Create tracking record with email
     const trackingId = await this.emailJobProcessor.createTrackingRecord(
       campaign._id.toString(), 
-      contactId
+      contactId,
+      contactEmail // Pass the email address
     );
     
     const personalizedContent = await this.emailJobProcessor.personalizeContent(
@@ -98,7 +105,7 @@ private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[
     emailJobs.push({
       campaignId: campaign._id.toString(),
       contactId,
-      email: contact.email,
+      email: contactEmail || contact.email, //|| personalizedContent.to,
       personalizedContent,
       trackingId,
     });

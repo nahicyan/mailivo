@@ -170,7 +170,7 @@ export class EmailJobProcessor {
     });
 
     await tracking.save();
-    return trackingId; // Return the nanoid string
+    return trackingId;
   }
 
   private async checkRateLimit(): Promise<void> {
