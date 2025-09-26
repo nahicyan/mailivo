@@ -9,7 +9,7 @@ import { authenticate } from '../middleware/auth.middleware';
 const router = Router();
 
 // Manual sync endpoint (protected)
-router.post('/sync', authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post('/sync', authenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await mailcowStatusService.syncStatuses();
     res.json(result);
@@ -20,7 +20,7 @@ router.post('/sync', authenticate, async (req: Request, res: Response): Promise<
 });
 
 // Get sync status (protected)
-router.get('/status', authenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/status', authenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const status = await mailcowStatusService.getSyncStatus();
     res.json(status);
@@ -45,13 +45,22 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
 
     const { 
       message_id, 
-      queue_id,
+      queue_id, // Keep this for potential future logging
       status, 
-      recipient, 
+      recipient, // Keep this for potential validation
       timestamp,
       reason,
       dsn 
     } = req.body;
+
+    // Log the webhook data for debugging
+    logger.debug('Webhook received', {
+      message_id,
+      queue_id,
+      status,
+      recipient,
+      timestamp
+    });
 
     if (!message_id || !status) {
       res.status(400).json({ error: 'Missing required fields' });

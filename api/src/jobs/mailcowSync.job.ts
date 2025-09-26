@@ -49,7 +49,7 @@ class MailcowSyncJob {
   }
 
   private setupProcessor() {
-    this.queue.process('sync-statuses', async (job) => {
+    this.queue.process('sync-statuses', async (_job) => {
       try {
         logger.info('Starting scheduled Mailcow sync...');
         const result = await mailcowStatusService.syncStatuses();

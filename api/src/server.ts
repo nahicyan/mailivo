@@ -113,8 +113,11 @@ const startServer = async () => {
       // Start the campaign scheduler
       campaignSchedulerService.start();
     });
+    
     if (process.env.MAILCOW_SYNC_ENABLED === "true") {
-      console.log("✅ Mailcow delivery sync started");
+      console.log("✅ Mailcow sync job initialized");
+      // The job auto-starts based on the cron schedule
+      void mailcowSyncJob; // This line prevents the unused warning
     }
 
     // Graceful shutdown

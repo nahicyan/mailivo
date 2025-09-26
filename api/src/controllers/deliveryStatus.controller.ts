@@ -74,7 +74,7 @@ export class DeliveryStatusController {
   }
 
   // Force sync with Mailcow
-  async forceSyncMailcow(req: Request, res: Response): Promise<void> {
+  async forceSyncMailcow(_req: Request, res: Response): Promise<void> {
     try {
       const result = await mailcowStatusService.syncStatuses();
       res.json(result);

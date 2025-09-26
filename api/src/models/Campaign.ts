@@ -93,6 +93,9 @@ export interface ICampaign extends Document {
     clicks: number;
     didNotOpen: number;
     mobileOpen: number;
+    failed: number;
+    hardBounces?: number;
+    softBounces?: number;
   };
 
   description?: string;
@@ -213,6 +216,9 @@ const CampaignSchema: Schema = new Schema(
       clicks: { type: Number, default: 0 },
       didNotOpen: { type: Number, default: 0 },
       mobileOpen: { type: Number, default: 0 },
+      failed: { type: Number, default: 0 }, 
+      hardBounces: { type: Number, default: 0 },
+      softBounces: { type: Number, default: 0 },
     },
 
     description: { type: String },
