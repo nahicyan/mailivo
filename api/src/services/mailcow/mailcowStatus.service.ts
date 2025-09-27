@@ -1,10 +1,10 @@
 // api/src/services/mailcow/mailcowStatus.service.ts - COMPLETE FIXED VERSION
-import axios from 'axios';
-import { EmailTracking } from '../../models/EmailTracking.model';
-import { Campaign } from '../../models/Campaign';
-import { logger } from '../../utils/logger';
-import { Redis } from 'ioredis';
-import dotenv from 'dotenv';
+import axios from "axios";
+import { EmailTracking } from "../../models/EmailTracking.model";
+import { Campaign } from "../../models/Campaign";
+import { logger } from "../../utils/logger";
+import { Redis } from "ioredis";
+import dotenv from "dotenv";
 
 // Ensure environment variables are loaded
 dotenv.config();
@@ -24,13 +24,14 @@ interface MailcowLogEntry {
 }
 
 interface ProcessedStatus {
-  messageId: string;
-  queueId: string;
-  status: 'sent' | 'delivered' | 'bounced' | 'deferred' | 'rejected';
+  messageId?: string;
+  queueId?: string;
+  status: "sent" | "delivered" | "bounced" | "deferred" | "rejected" | "queued";
   recipient?: string;
   timestamp: Date;
   reason?: string;
   dsn?: string;
+  from?: string;
 }
 
 export class MailcowStatusService {
@@ -38,59 +39,63 @@ export class MailcowStatusService {
   private redis: Redis;
   private isProcessing: boolean = false;
   private lastProcessedTime: number;
+  private queueIdToMessageId: Map<string, string> = new Map();
 
   constructor() {
     // Load environment variables
-    const apiUrl = process.env.MAILCOW_API_URL || '';
-    const apiKey = process.env.MAILCOW_API_KEY || '';
-    
+    const apiUrl = process.env.MAILCOW_API_URL || "";
+    const apiKey = process.env.MAILCOW_API_KEY || "";
+
     this.config = {
-      apiUrl: apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl,
+      apiUrl: apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl,
       apiKey: apiKey,
-      logsPerBatch: parseInt(process.env.MAILCOW_LOGS_PER_BATCH || '100'),
-      syncInterval: parseInt(process.env.MAILCOW_SYNC_INTERVAL || '60000'),
+      logsPerBatch: parseInt(process.env.MAILCOW_LOGS_PER_BATCH || "500"), // Increased for better coverage
+      syncInterval: parseInt(process.env.MAILCOW_SYNC_INTERVAL || "60000"),
     };
 
-    logger.info('Mailcow service initialized with config:', {
+    logger.info("Mailcow service initialized with config:", {
       apiUrl: this.config.apiUrl,
       hasApiKey: !!this.config.apiKey,
-      logsPerBatch: this.config.logsPerBatch
+      logsPerBatch: this.config.logsPerBatch,
     });
 
     if (!this.config.apiUrl || !this.config.apiKey) {
-      logger.error('Mailcow configuration missing!', {
+      logger.error("Mailcow configuration missing!", {
         apiUrl: this.config.apiUrl,
-        hasKey: !!this.config.apiKey
+        hasKey: !!this.config.apiKey,
       });
     }
 
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    this.redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
     this.lastProcessedTime = 0;
     this.initializeLastProcessedTime();
   }
 
   private async initializeLastProcessedTime() {
-    const stored = await this.redis.get('mailcow:last_processed_time');
+    const stored = await this.redis.get("mailcow:last_processed_time");
     if (stored) {
       this.lastProcessedTime = parseInt(stored);
     } else {
-      this.lastProcessedTime = Date.now() - (24 * 60 * 60 * 1000);
+      // Start from 24 hours ago
+      this.lastProcessedTime = Date.now() - 24 * 60 * 60 * 1000;
     }
   }
 
   async fetchLogs(): Promise<MailcowLogEntry[]> {
     try {
       if (!this.config.apiUrl || !this.config.apiKey) {
-        throw new Error(`Mailcow not configured: URL="${this.config.apiUrl}" Key="${this.config.apiKey ? 'SET' : 'MISSING'}"`);
+        throw new Error(
+          `Mailcow not configured: URL="${this.config.apiUrl}" Key="${this.config.apiKey ? "SET" : "MISSING"}"`
+        );
       }
-      
+
       const fullUrl = `${this.config.apiUrl}/api/v1/get/logs/postfix/${this.config.logsPerBatch}`;
-      
-      logger.info('Fetching from Mailcow:', { url: fullUrl });
-      
+
+      logger.info("Fetching from Mailcow:", { url: fullUrl });
+
       const response = await axios.get(fullUrl, {
         headers: {
-          'X-API-Key': this.config.apiKey,
+          "X-API-Key": this.config.apiKey,
         },
         timeout: 30000,
       });
@@ -101,11 +106,11 @@ export class MailcowStatusService {
       }
       return [];
     } catch (error: any) {
-      logger.error('Mailcow fetch failed:', {
+      logger.error("Mailcow fetch failed:", {
         message: error.message,
         config: this.config.apiUrl,
         code: error.code,
-        url: error.config?.url
+        url: error.config?.url,
       });
       throw error;
     }
@@ -114,285 +119,330 @@ export class MailcowStatusService {
   parseLogEntry(log: MailcowLogEntry): ProcessedStatus | null {
     try {
       const logTime = parseInt(log.time, 10) * 1000;
-      
+
+      // Skip old logs
       if (logTime <= this.lastProcessedTime) {
         return null;
       }
 
       const message = log.message;
-      const statusMatch = message.match(/status=([\w-]+)/);
+
+      // PATTERN 1: Queue ID with message-id mapping
+      // Example: "Sep 26 21:08:26 mail postfix/cleanup[1234]: 3F4D5E6: message-id=<1758920900603-z49c4w6g8@mailivo.com>"
+      const queueMessageMatch = message.match(
+        /([A-F0-9]{8,12}):\s+message-id=<([^>]+)>/
+      );
+      if (queueMessageMatch) {
+        const [, queueId, messageId] = queueMessageMatch;
+        this.queueIdToMessageId.set(queueId, `<${messageId}>`);
+        logger.info(`Mapped queue ${queueId} to message-id <${messageId}>`);
+        return null; // Just store mapping, don't process as status
+      }
+
+      // PATTERN 2: Status with queue ID
+      // Example: "Sep 26 21:08:26 mail postfix/smtp[1234]: 3F4D5E6: to=<recipient@example.com>, relay=mx.example.com[1.2.3.4]:25, delay=0.5, delays=0.1/0/0.2/0.2, dsn=2.0.0, status=sent (250 2.0.0 Ok: queued as ABCDEF)"
+      const queueIdMatch = message.match(/([A-F0-9]{8,12}):/);
+      const queueId = queueIdMatch?.[1];
+
+      const statusMatch = message.match(/\bstatus=([\w-]+)/);
       const status = statusMatch?.[1];
-      if (!status) return null;
 
-      const queueIdMatch = message.match(/\b[A-F0-9]{10,}\b/);
-      const queueId = queueIdMatch?.[0];
-      if (!queueId) return null;
+      if (!queueId || !status) {
+        return null;
+      }
 
-      const messageIdMatch = message.match(/message-id=<([^>]+)>/);
-      const messageId = messageIdMatch?.[1];
-      
+      // Extract recipient
       const recipientMatch = message.match(/to=<([^>]+)>/);
-      const recipient = recipientMatch?.[1];
+      const recipient = recipientMatch?.[1]?.toLowerCase();
 
+      // Extract from address
+      const fromMatch = message.match(/from=<([^>]+)>/);
+      const from = fromMatch?.[1]?.toLowerCase();
+
+      // Extract DSN code
       const dsnMatch = message.match(/dsn=([\d.]+)/);
       const dsn = dsnMatch?.[1];
 
+      // Extract reason for bounces/deferrals
       let reason: string | undefined;
-      if (status === 'bounced' || status === 'deferred') {
+      if (
+        status === "bounced" ||
+        status === "deferred" ||
+        status === "reject"
+      ) {
         const reasonMatch = message.match(/\((.+)\)$/);
         reason = reasonMatch?.[1];
       }
 
-      let mappedStatus: ProcessedStatus['status'];
+      // Map status to our internal status
+      let mappedStatus: ProcessedStatus["status"];
       switch (status) {
-        case 'sent':
-          mappedStatus = 'sent';
+        case "sent":
+          // Check if DSN indicates actual delivery
+          if (dsn && dsn.startsWith("2.")) {
+            mappedStatus = "delivered";
+          } else {
+            mappedStatus = "sent";
+          }
           break;
-        case 'delivered':
-          mappedStatus = 'delivered';
+        case "delivered":
+          mappedStatus = "delivered";
           break;
-        case 'bounced':
-          mappedStatus = 'bounced';
+        case "bounced":
+          mappedStatus = "bounced";
           break;
-        case 'deferred':
-          mappedStatus = 'deferred';
+        case "deferred":
+          mappedStatus = "deferred";
           break;
-        case 'reject':
-        case 'rejected':
-          mappedStatus = 'rejected';
+        case "reject":
+        case "rejected":
+          mappedStatus = "rejected";
           break;
         default:
           return null;
       }
 
+      // Try to get message ID from our mapping
+      const messageId = this.queueIdToMessageId.get(queueId);
+
       return {
-        messageId: messageId || '',
+        messageId,
         queueId,
         status: mappedStatus,
         recipient,
+        from,
         timestamp: new Date(logTime),
         reason,
         dsn,
       };
     } catch (error) {
-      logger.error('Error parsing log:', error);
+      logger.error("Error parsing log:", error);
       return null;
     }
   }
 
-  async processLogs(logs: MailcowLogEntry[]): Promise<{ processed: number; updated: number }> {
+  async processLogs(
+    logs: MailcowLogEntry[]
+  ): Promise<{ processed: number; updated: number; matchedByEmail: number }> {
     let processed = 0;
     let updated = 0;
-    const processedMessageIds = new Set<string>();
+    let matchedByEmail = 0;
 
+    // First pass: Build queue ID to message ID mapping
+    for (const log of logs) {
+      const message = log.message;
+      const queueMessageMatch = message.match(
+        /([A-F0-9]{8,12}):\s+message-id=<([^>]+)>/
+      );
+      if (queueMessageMatch) {
+        const [, queueId, messageId] = queueMessageMatch;
+        this.queueIdToMessageId.set(queueId, `<${messageId}>`);
+        logger.debug(`Mapped queue ${queueId} to <${messageId}>`);
+      }
+    }
+
+    // Second pass: Process status updates
     for (const log of logs) {
       const statusInfo = this.parseLogEntry(log);
-      if (!statusInfo || !statusInfo.messageId) continue;
-
-      if (processedMessageIds.has(statusInfo.messageId)) continue;
-      processedMessageIds.add(statusInfo.messageId);
+      if (!statusInfo) continue;
 
       processed++;
 
       try {
-        const tracking = await EmailTracking.findOne({ 
-          messageId: statusInfo.messageId 
-        });
+        let trackingRecord = null;
 
-        if (!tracking) {
-          if (statusInfo.recipient) {
-            const recentTracking = await EmailTracking.findOne({
-              contactEmail: statusInfo.recipient,
-              createdAt: { 
-                $gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
-              }
-            }).sort({ createdAt: -1 });
+        // Try to find by message ID first
+        if (statusInfo.messageId) {
+          trackingRecord = await EmailTracking.findOne({
+            messageId: statusInfo.messageId,
+          });
 
-            if (recentTracking && !recentTracking.messageId) {
-              recentTracking.messageId = statusInfo.messageId;
-              await recentTracking.save();
-              await this.updateTrackingStatus(recentTracking, statusInfo);
-              updated++;
+          if (trackingRecord) {
+            logger.info(`Found tracking by messageId: ${statusInfo.messageId}`);
+          }
+        }
+
+        // If not found by message ID, try by recipient email
+        if (!trackingRecord && statusInfo.recipient) {
+          trackingRecord = await EmailTracking.findOne({
+            contactEmail: statusInfo.recipient,
+            // Look for recent emails (last 24 hours)
+            createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          }).sort({ createdAt: -1 });
+
+          if (trackingRecord) {
+            matchedByEmail++;
+            logger.info(`Found tracking by email: ${statusInfo.recipient}`);
+
+            // Update the message ID if we now know it
+            if (statusInfo.messageId && !trackingRecord.messageId) {
+              trackingRecord.messageId = statusInfo.messageId;
             }
           }
-          continue;
         }
 
-        await this.updateTrackingStatus(tracking, statusInfo);
-        updated++;
+        if (trackingRecord) {
+          const currentStatus = trackingRecord.status;
+          let shouldUpdate = false;
 
+          // Update based on status precedence
+          if (
+            statusInfo.status === "delivered" &&
+            currentStatus !== "delivered"
+          ) {
+            trackingRecord.status = "delivered";
+            trackingRecord.deliveredAt = statusInfo.timestamp;
+            shouldUpdate = true;
+            logger.info(`Marking as delivered: ${trackingRecord.contactEmail}`);
+          } else if (
+            statusInfo.status === "bounced" &&
+            currentStatus !== "bounced"
+          ) {
+            trackingRecord.status = "bounced";
+            trackingRecord.bouncedAt = statusInfo.timestamp;
+            trackingRecord.bounceReason = statusInfo.reason;
+            trackingRecord.dsn = statusInfo.dsn; // Changed from bounceDsn to dsn
+            shouldUpdate = true;
+            logger.info(`Marking as bounced: ${trackingRecord.contactEmail}`);
+          } else if (
+            statusInfo.status === "deferred" &&
+            currentStatus === "sent"
+          ) {
+            // Don't change status for deferred, just log the error
+            trackingRecord.error = `Deferred: ${statusInfo.reason || "Temporary delivery issue"}`;
+            shouldUpdate = true;
+            logger.info(
+              `Email deferred: ${trackingRecord.contactEmail}, reason: ${statusInfo.reason}`
+            );
+          }
+
+          if (shouldUpdate) {
+            await trackingRecord.save();
+            updated++;
+
+            // Update campaign metrics
+            await this.updateCampaignMetrics(
+              trackingRecord.campaignId.toString()
+            );
+          }
+        } else {
+          logger.debug(
+            `No tracking record found for: ${statusInfo.recipient || statusInfo.messageId}`
+          );
+        }
       } catch (error) {
-        logger.error(`Error updating ${statusInfo.messageId}:`, error);
+        logger.error("Error updating tracking record:", error);
       }
     }
 
+    // Update last processed time
     if (logs.length > 0) {
       const latestTime = Math.max(
-        ...logs.map(log => parseInt(log.time, 10) * 1000)
+        ...logs.map((l) => parseInt(l.time, 10) * 1000)
       );
       this.lastProcessedTime = latestTime;
-      await this.redis.set('mailcow:last_processed_time', latestTime.toString());
+      await this.redis.set(
+        "mailcow:last_processed_time",
+        latestTime.toString()
+      );
     }
 
-    return { processed, updated };
+    return { processed, updated, matchedByEmail };
   }
 
-  private async updateTrackingStatus(
-    tracking: any,
-    statusInfo: ProcessedStatus
-  ): Promise<void> {
-    const previousStatus = tracking.status;
-    let shouldUpdateCampaign = false;
+  async updateCampaignMetrics(campaignId: string): Promise<void> {
+    try {
+      const metrics = await EmailTracking.aggregate([
+        { $match: { campaignId: campaignId } },
+        {
+          $group: {
+            _id: null,
+            sent: { $sum: { $cond: [{ $ne: ["$status", "pending"] }, 1, 0] } },
+            delivered: {
+              $sum: { $cond: [{ $eq: ["$status", "delivered"] }, 1, 0] },
+            },
+            bounced: {
+              $sum: { $cond: [{ $eq: ["$status", "bounced"] }, 1, 0] },
+            },
+            failed: { $sum: { $cond: [{ $eq: ["$status", "failed"] }, 1, 0] } },
+            clicked: {
+              $sum: { $cond: [{ $eq: ["$status", "clicked"] }, 1, 0] },
+            },
+          },
+        },
+      ]);
 
-    switch (statusInfo.status) {
-      case 'delivered':
-        if (tracking.status !== 'delivered' && tracking.status !== 'clicked' && tracking.status !== 'opened') {
-          tracking.status = 'delivered';
-          tracking.deliveredAt = statusInfo.timestamp;
-          shouldUpdateCampaign = true;
-        }
-        break;
+      if (metrics.length > 0) {
+        await Campaign.findByIdAndUpdate(campaignId, {
+          $set: {
+            "metrics.sent": metrics[0].sent,
+            "metrics.delivered": metrics[0].delivered,
+            "metrics.bounced": metrics[0].bounced,
+            "metrics.failed": metrics[0].failed,
+            "metrics.clicked": metrics[0].clicked,
+          },
+        });
 
-      case 'bounced':
-        tracking.status = 'bounced';
-        tracking.bouncedAt = statusInfo.timestamp;
-        tracking.bounceReason = statusInfo.reason || 'Unknown';
-        tracking.bounceType = this.categorizeBounce(statusInfo.dsn, statusInfo.reason);
-        shouldUpdateCampaign = true;
-        break;
-
-      case 'deferred':
-        if (!['delivered', 'opened', 'clicked', 'bounced'].includes(tracking.status)) {
-          tracking.error = `Deferred: ${statusInfo.reason || 'Temporary delivery issue'}`;
-        }
-        break;
-
-      case 'rejected':
-        tracking.status = 'failed';
-        tracking.error = `Rejected: ${statusInfo.reason || 'Message rejected by server'}`;
-        shouldUpdateCampaign = true;
-        break;
-    }
-
-    await tracking.save();
-
-    if (shouldUpdateCampaign && tracking.campaignId) {
-      await this.updateCampaignMetrics(
-        tracking.campaignId,
-        statusInfo.status,
-        previousStatus
+        logger.info(`Updated campaign metrics for ${campaignId}:`, metrics[0]);
+      }
+    } catch (error) {
+      logger.error(
+        `Failed to update campaign metrics for ${campaignId}:`,
+        error
       );
     }
   }
 
-  private categorizeBounce(dsn?: string, reason?: string): 'hard' | 'soft' | 'unknown' {
-    if (dsn) {
-      if (dsn.startsWith('5')) return 'hard';
-      if (dsn.startsWith('4')) return 'soft';
-    }
-
-    if (reason) {
-      const lowerReason = reason.toLowerCase();
-      
-      if (
-        lowerReason.includes('user unknown') ||
-        lowerReason.includes('no such user') ||
-        lowerReason.includes('address rejected') ||
-        lowerReason.includes('domain not found') ||
-        lowerReason.includes('invalid recipient')
-      ) {
-        return 'hard';
-      }
-
-      if (
-        lowerReason.includes('mailbox full') ||
-        lowerReason.includes('over quota') ||
-        lowerReason.includes('temporarily') ||
-        lowerReason.includes('try again') ||
-        lowerReason.includes('connection timed out')
-      ) {
-        return 'soft';
-      }
-    }
-
-    return 'unknown';
-  }
-
-  private async updateCampaignMetrics(
-    campaignId: string,
-    newStatus: string,
-    previousStatus: string
-  ): Promise<void> {
-    try {
-      const updates: any = {};
-
-      switch (newStatus) {
-        case 'delivered':
-          if (previousStatus !== 'delivered') {
-            updates['metrics.delivered'] = 1;
-            updates['metrics.successfulDeliveries'] = 1;
-          }
-          break;
-        case 'bounced':
-          updates['metrics.bounced'] = 1;
-          updates['metrics.bounces'] = 1;
-          break;
-        case 'rejected':
-        case 'failed':
-          updates['metrics.bounced'] = 1;
-          updates['metrics.bounces'] = 1;
-          break;
-      }
-
-      if (previousStatus === 'sent' && newStatus === 'delivered') {
-        updates['metrics.sent'] = -1;
-      }
-
-      if (Object.keys(updates).length > 0) {
-        await Campaign.findByIdAndUpdate(campaignId, { $inc: updates });
-        
-        logger.info(`Campaign metrics updated`, {
-          campaignId,
-          newStatus,
-          previousStatus,
-          updates
-        });
-      }
-    } catch (error) {
-      logger.error(`Error updating campaign metrics:`, error);
-    }
-  }
-
-  async syncStatuses(): Promise<{ success: boolean; processed: number; updated: number; error?: string }> {
+  async syncStatuses(): Promise<{
+    success: boolean;
+    processed: number;
+    updated: number;
+    matchedByEmail?: number;
+    error?: string;
+  }> {
     if (this.isProcessing) {
-      logger.info('Sync already in progress');
-      return { success: false, processed: 0, updated: 0, error: 'Sync already in progress' };
-    }
-
-    this.isProcessing = true;
-
-    try {
-      logger.info('Starting Mailcow status sync...');
-      
-      const logs = await this.fetchLogs();
-      logger.info(`Fetched ${logs.length} log entries`);
-      
-      const result = await this.processLogs(logs);
-      
-      logger.info(`Mailcow sync completed`, result);
-
-      return {
-        success: true,
-        ...result
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Mailcow sync failed:', errorMessage);
+      logger.info("Sync already in progress, skipping...");
       return {
         success: false,
         processed: 0,
         updated: 0,
-        error: errorMessage
+        error: "Already processing",
+      };
+    }
+
+    if (!this.config.apiUrl || !this.config.apiKey) {
+      logger.error("Mailcow not configured, skipping sync");
+      return {
+        success: false,
+        processed: 0,
+        updated: 0,
+        error: "Not configured",
+      };
+    }
+
+    this.isProcessing = true;
+    logger.info("Starting Mailcow status sync...");
+
+    try {
+      const logs = await this.fetchLogs();
+      logger.info(`Fetched ${logs.length} log entries`);
+
+      const result = await this.processLogs(logs);
+
+      logger.info("Mailcow sync completed", result);
+
+      return {
+        success: true,
+        ...result,
+      };
+    } catch (error: any) {
+      const errorMessage = error?.message ? error.message : "Unknown error";
+      logger.error("Mailcow sync failed:", errorMessage);
+      return {
+        success: false,
+        processed: 0,
+        updated: 0,
+        error: errorMessage,
       };
     } finally {
       this.isProcessing = false;
@@ -400,10 +450,17 @@ export class MailcowStatusService {
   }
 
   startAutoSync(): void {
+    if (process.env.MAILCOW_SYNC_ENABLED !== "true") {
+      logger.info("Mailcow sync disabled by configuration");
+      return;
+    }
+
     logger.info(`Starting auto-sync: ${this.config.syncInterval}ms`);
-    
+
+    // Initial sync
     this.syncStatuses();
-    
+
+    // Schedule periodic syncs
     setInterval(() => {
       this.syncStatuses();
     }, this.config.syncInterval);
@@ -421,7 +478,7 @@ export class MailcowStatusService {
         apiUrl: this.config.apiUrl,
         logsPerBatch: this.config.logsPerBatch,
         syncInterval: this.config.syncInterval,
-      }
+      },
     };
   }
 }
