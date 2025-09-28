@@ -466,18 +466,50 @@ class TemplateRenderingService {
         ...renderedComponents
       );
 
-      // Render to HTML using React Email
-      const htmlContent = await render(emailElement, {
-        pretty: false,
-      });
+    // Render to HTML using React Email
+    let htmlContent = await render(emailElement, {
+      pretty: false,
+    });
 
-      return htmlContent;
+    // ADD THIS: Apply link tracking if tracking ID is provided (same as single property)
+    if (campaignData?.trackingId) {
+      // Extract the contact ID properly
+      const contactId = typeof contactData === 'string' 
+        ? contactData 
+        : (contactData.id || contactData._id || '');
 
-    } catch (error: any) {
-      logger.error('Failed to generate multi-property HTML content:', error);
-      throw new Error(`Multi-property template rendering failed: ${error.message}`);
+      const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(
+        htmlContent,
+        {
+          trackingId: campaignData.trackingId,
+          campaignId: campaignData.campaignId || '',
+          contactId: contactId,
+          baseUrl: process.env.API_URL || 'https://api.mailivo.landivo.com',
+        }
+      );
+
+      // Update existing tracking record with links
+      if (extractedLinks.length > 0) {
+        await EmailTracking.findOneAndUpdate(
+          { trackingId: campaignData.trackingId },
+          {
+            $set: { links: extractedLinks }
+          }
+        );
+        
+        logger.info(`Stored ${extractedLinks.length} links for multi-property tracking ${campaignData.trackingId}`);
+      }
+
+      htmlContent = transformedHtml;
     }
+
+    return htmlContent;
+
+  } catch (error: any) {
+    logger.error('Failed to generate multi-property HTML content:', error);
+    throw new Error(`Multi-property template rendering failed: ${error.message}`);
   }
+}
 
   private renderComponentToReact(
     component: EmailComponent,
