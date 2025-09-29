@@ -65,6 +65,7 @@ export interface CreateCampaignRequest {
   emailTemplate: string;
   emailAddressGroup: string;
   emailSchedule: string;
+  subject?: string;
   emailVolume: number;
   description?: string;
   scheduledDate?: string;

@@ -6,14 +6,25 @@ import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ArrowLeft, Mail, Loader2, RefreshCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Mail,
+  Loader2,
+  RefreshCcw,
+} from "lucide-react";
 import { CreateCampaignRequest } from "@/types/campaign";
 import { useLandivoProperties } from "@/hooks/useLandivoProperties";
 import { useTemplates } from "@/hooks/useTemplates";
 import Link from "next/link";
 
 // Step configuration
-import { singlePropertySteps, buildStepArray, getStepByIndex, getTotalSteps } from "../../lib/stepConfig";
+import {
+  singlePropertySteps,
+  buildStepArray,
+  getStepByIndex,
+  getTotalSteps,
+} from "../../lib/stepConfig";
 import { StepsSidebar } from "../../components/StepsSidebar";
 
 // Step components with new names
@@ -24,8 +35,10 @@ import { PaymentOptions } from "../components/PaymentOptions";
 import { PictureSelection } from "../components/PictureSelection";
 import { SubjectLine } from "../components/SubjectLine";
 import { Scheduling } from "../components/Scheduling";
+import { useEmailLists } from "@/hooks/useEmailLists";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
 
 export default function CreateCampaignPage() {
   const router = useRouter();
@@ -51,30 +64,45 @@ export default function CreateCampaignPage() {
     emailVolume: 100,
     emailSchedule: "immediate",
     subject: "",
-    imageSelections: {}
+    imageSelections: {},
   });
 
-  const { properties, propertiesLoading, propertiesError } = useLandivoProperties();
-  const { templates, emailLists, templatesLoading, templatesError, listsLoading, listsError } = useTemplates();
-
+  const {
+    data: properties,
+    isLoading: propertiesLoading,
+    error: propertiesError,
+  } = useLandivoProperties();
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    error: templatesError,
+  } = useTemplates();
+  const {
+    data: emailLists,
+    isLoading: listsLoading,
+    error: listsError,
+    refetch: refetchLists,
+  } = useEmailLists();
   // Auto-fill when property is pre-selected from URL
   useEffect(() => {
     if (propertyId && properties && !propertiesLoading) {
-      const selectedProperty = properties.find(p => p.id === propertyId);
+      const selectedProperty = properties.find((p) => p.id === propertyId);
       if (selectedProperty) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           property: propertyId,
           name: `${selectedProperty.streetAddress}, ${selectedProperty.city}, ${selectedProperty.zip}`,
           description: selectedProperty.title,
         }));
-        setErrors(prev => {
+        setErrors((prev) => {
           const { property, ...rest } = prev;
           return rest;
         });
         setCurrentStep(2);
       } else if (properties.length > 0) {
-        console.warn(`Property ID ${propertyId} not found, redirecting to step 1`);
+        console.warn(
+          `Property ID ${propertyId} not found, redirecting to step 1`
+        );
         router.replace("/dashboard/landivo/campaigns/create");
         return;
       }
@@ -82,11 +110,11 @@ export default function CreateCampaignPage() {
   }, [propertyId, properties, propertiesLoading, router]);
 
   const handlePropertyChange = (propertyId: string) => {
-    setFormData(prev => ({ ...prev, property: propertyId }));
+    setFormData((prev) => ({ ...prev, property: propertyId }));
     if (propertyId && properties) {
-      const selectedProperty = properties.find(p => p.id === propertyId);
+      const selectedProperty = properties.find((p) => p.id === propertyId);
       if (selectedProperty) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           property: propertyId,
           name: `${selectedProperty.streetAddress}, ${selectedProperty.city}, ${selectedProperty.zip}`,
@@ -99,28 +127,33 @@ export default function CreateCampaignPage() {
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     const currentStepDef = getStepByIndex(steps, step);
-    
+
     if (!currentStepDef) return true;
 
     switch (currentStepDef.id) {
-      case 'property':
+      case "property":
         if (!formData.property) newErrors.property = "Please select a property";
         break;
-      case 'basic-info':
-        if (!formData.name?.trim()) newErrors.name = "Campaign name is required";
-        if (!formData.description?.trim()) newErrors.description = "Description is required";
+      case "basic-info":
+        if (!formData.name?.trim())
+          newErrors.name = "Campaign name is required";
+        if (!formData.description?.trim())
+          newErrors.description = "Description is required";
         break;
-      case 'audience':
-        if (!formData.emailList) newErrors.emailList = "Please select an email list";
-        if (!formData.emailTemplate) newErrors.emailTemplate = "Please select a template";
+      case "audience":
+        if (!formData.emailList)
+          newErrors.emailList = "Please select an email list";
+        if (!formData.emailTemplate)
+          newErrors.emailTemplate = "Please select a template";
         if (!formData.emailVolume || formData.emailVolume < 1) {
           newErrors.emailVolume = "Email volume must be at least 1";
         }
         break;
-      case 'subject':
-        if (!formData.subject?.trim()) newErrors.subject = "Subject line is required";
+      case "subject":
+        if (!formData.subject?.trim())
+          newErrors.subject = "Subject line is required";
         break;
-      case 'schedule':
+      case "schedule":
         if (formData.emailSchedule === "scheduled" && !selectedDate) {
           newErrors.emailSchedule = "Please select a date and time";
         }
@@ -133,7 +166,7 @@ export default function CreateCampaignPage() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
     }
   };
 
@@ -142,7 +175,7 @@ export default function CreateCampaignPage() {
       router.push("/dashboard/landivo/campaigns");
       return;
     }
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleStepClick = (step: number) => {
@@ -152,21 +185,30 @@ export default function CreateCampaignPage() {
     setCurrentStep(step);
   };
 
-  const selectedTemplate = templates?.find(t => t.id === formData.emailTemplate);
-  const selectedProperty = properties?.find(p => p.id === formData.property);
+  const selectedTemplate = templates?.find(
+    (t: any) => t.id === formData.emailTemplate
+  );
+  const selectedProperty = properties?.find(
+    (p: any) => p.id === formData.property
+  );
 
   const stepProps = {
     formData,
     setFormData,
     errors,
-    properties,
-    templates,
-    emailLists,
+    properties: properties || [],
+    templates: templates || [],
+    emailLists: emailLists || [],
     selectedDate,
     setSelectedDate,
     propertiesLoading,
     propertiesError,
     handlePropertyChange,
+    templatesLoading,
+    templatesError,
+    listsLoading,
+    listsError,
+    refetchLists,
   };
 
   // Component mapping
@@ -175,19 +217,34 @@ export default function CreateCampaignPage() {
     if (!currentStepDef) return null;
 
     switch (currentStepDef.component) {
-      case 'PropertySelection':
+      case "PropertySelection":
         return <PropertySelection {...stepProps} />;
-      case 'BasicInfo':
+      case "BasicInfo":
         return <BasicInfo {...stepProps} />;
-      case 'AudienceSelection':
+      case "AudienceSelection":
         return <AudienceSelection {...stepProps} />;
-      case 'PaymentOptions':
-        return <PaymentOptions formData={formData} setFormData={setFormData} errors={errors} selectedTemplate={selectedTemplate} />;
-      case 'PictureSelection':
-        return <PictureSelection formData={formData} setFormData={setFormData} errors={errors} selectedTemplate={selectedTemplate} selectedProperty={selectedProperty} />;
-      case 'SubjectLine':
+      case "PaymentOptions":
+        return (
+          <PaymentOptions
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            selectedTemplate={selectedTemplate}
+          />
+        );
+      case "PictureSelection":
+        return (
+          <PictureSelection
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            selectedTemplate={selectedTemplate}
+            selectedProperty={selectedProperty}
+          />
+        );
+      case "SubjectLine":
         return <SubjectLine {...stepProps} />;
-      case 'Scheduling':
+      case "Scheduling":
         return <Scheduling {...stepProps} />;
       default:
         return null;
@@ -199,13 +256,17 @@ export default function CreateCampaignPage() {
 
     setLoading(true);
     try {
-      const campaignStatus = formData.emailSchedule === "immediate" ? "active" : "draft";
+      const campaignStatus =
+        formData.emailSchedule === "immediate" ? "active" : "draft";
       const campaignData = {
         ...formData,
         type: "single",
         status: campaignStatus,
         source: "landivo",
-        scheduledDate: formData.emailSchedule === "scheduled" ? selectedDate?.toISOString() : null,
+        scheduledDate:
+          formData.emailSchedule === "scheduled"
+            ? selectedDate?.toISOString()
+            : null,
       };
 
       const response = await fetch(`${API_URL}/campaigns`, {
@@ -227,7 +288,8 @@ export default function CreateCampaignPage() {
     } catch (error) {
       console.error("Campaign creation failed:", error);
       setErrors({
-        submit: error instanceof Error ? error.message : "Unknown error occurred",
+        submit:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     } finally {
       setLoading(false);
@@ -240,9 +302,9 @@ export default function CreateCampaignPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
         <div className="w-64 bg-white shadow-sm">
-          <StepsSidebar 
-            steps={steps} 
-            currentStep={currentStep} 
+          <StepsSidebar
+            steps={steps}
+            currentStep={currentStep}
             onStepClick={handleStepClick}
             title="Campaign Setup"
           />
@@ -254,8 +316,12 @@ export default function CreateCampaignPage() {
               <div className="border-b border-gray-200 p-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Create Campaign</h1>
-                    <p className="text-gray-600">Complete all steps to create your campaign</p>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      Create Campaign
+                    </h1>
+                    <p className="text-gray-600">
+                      Complete all steps to create your campaign
+                    </p>
                   </div>
                   <Link href="/dashboard/landivo/campaigns">
                     <Button variant="outline" size="sm">
@@ -288,14 +354,20 @@ export default function CreateCampaignPage() {
                 <div className="flex justify-between pt-6">
                   <div>
                     {currentStep > 1 && (
-                      <Button variant="outline" onClick={handlePrevious}>Previous</Button>
+                      <Button variant="outline" onClick={handlePrevious}>
+                        Previous
+                      </Button>
                     )}
                   </div>
                   <div className="space-x-2">
                     {currentStep < totalSteps ? (
                       <Button onClick={handleNext}>Next Step</Button>
                     ) : (
-                      <Button onClick={handleSubmit} disabled={loading} size="lg">
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        size="lg"
+                      >
                         {loading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

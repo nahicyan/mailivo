@@ -7,7 +7,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ArrowLeft, Mail, Loader2, RefreshCcw, Building } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Mail,
+  Loader2,
+  RefreshCcw,
+  Building,
+} from "lucide-react";
 import { CreateCampaignRequest } from "@/types/campaign";
 import { useLandivoProperties } from "@/hooks/useLandivoProperties";
 import { useTemplates } from "@/hooks/useTemplates";
@@ -15,7 +22,12 @@ import { hasAgentProfileComponents } from "@landivo/email-template";
 import Link from "next/link";
 
 // Step configuration
-import { multiPropertySteps, buildStepArray, getStepByIndex, getTotalSteps } from "../../lib/stepConfig";
+import {
+  multiPropertySteps,
+  buildStepArray,
+  getStepByIndex,
+  getTotalSteps,
+} from "../../lib/stepConfig";
 import { StepsSidebar } from "../../components/StepsSidebar";
 
 // Step components with new names
@@ -28,13 +40,19 @@ import { MultiPictureSelection } from "../components/MultiPictureSelection";
 import { MultiSubjectLine } from "../components/MultiSubjectLine";
 import { MultiScheduling } from "../components/MultiScheduling";
 import { validatePaymentOptions } from "@/utils/paymentValidation";
-import { validateMultiPropertySchedule, prepareMultiPropertyCampaignData } from "@/utils/multiPropertyValidation";
+import {
+  validateMultiPropertySchedule,
+  prepareMultiPropertyCampaignData,
+} from "@/utils/multiPropertyValidation";
+import { useEmailLists } from "@/hooks/useEmailLists";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
 
 interface ExtendedCreateCampaignRequest extends CreateCampaignRequest {
   selectedProperties: string[];
   sortedPropertyOrder: string[];
+  subject?: string;
   selectedAgent?: string;
 }
 
@@ -46,7 +64,9 @@ export default function CreateMultiPropertyCampaignPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState<Partial<ExtendedCreateCampaignRequest>>({
+  const [formData, setFormData] = useState<
+    Partial<ExtendedCreateCampaignRequest>
+  >({
     name: "",
     description: "",
     selectedProperties: [],
@@ -60,55 +80,91 @@ export default function CreateMultiPropertyCampaignPage() {
     paymentPlans: {},
   });
 
-  const { properties, propertiesLoading, propertiesError } = useLandivoProperties();
-  const { templates, emailLists, templatesLoading, templatesError, listsLoading, listsError, refetchLists } = useTemplates();
+  const {
+    data: properties,
+    isLoading: propertiesLoading,
+    error: propertiesError,
+  } = useLandivoProperties();
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    error: templatesError,
+  } = useTemplates();
+  const {
+    data: emailLists,
+    isLoading: listsLoading,
+    error: listsError,
+    refetch: refetchLists,
+  } = useEmailLists();
 
-  const selectedTemplate = templates?.find(t => t.id === formData.emailTemplate);
-  const hasAgentProfile = selectedTemplate ? hasAgentProfileComponents(selectedTemplate.components) : false;
+  const selectedTemplate = templates?.find(
+    (t: any) => t.id === formData.emailTemplate
+  );
+  const hasAgentProfile = selectedTemplate
+    ? hasAgentProfileComponents(selectedTemplate.components)
+    : false;
 
   // Build step array with conditions
-  const steps = useMemo(() => 
-    buildStepArray(multiPropertySteps, { showAgentProfileStep: hasAgentProfile }),
+  const steps = useMemo(
+    () =>
+      buildStepArray(multiPropertySteps, {
+        showAgentProfileStep: hasAgentProfile,
+      }),
     [hasAgentProfile]
   );
   const totalSteps = getTotalSteps(steps);
 
   const handleSortOrderChange = (sortedIds: string[]) => {
-    setFormData(prev => ({ ...prev, sortedPropertyOrder: sortedIds }));
+    setFormData((prev) => ({ ...prev, sortedPropertyOrder: sortedIds }));
   };
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     const currentStepDef = getStepByIndex(steps, step);
-    
+
     if (!currentStepDef) return true;
 
     switch (currentStepDef.id) {
-      case 'property':
-        if (!formData.selectedProperties || formData.selectedProperties.length === 0) {
+      case "property":
+        if (
+          !formData.selectedProperties ||
+          formData.selectedProperties.length === 0
+        ) {
           newErrors.selectedProperties = "Please select at least one property";
         }
         break;
-      case 'basic-info':
-        if (!formData.name?.trim()) newErrors.name = "Campaign name is required";
-        if (!formData.description?.trim()) newErrors.description = "Campaign description is required";
+      case "basic-info":
+        if (!formData.name?.trim())
+          newErrors.name = "Campaign name is required";
+        if (!formData.description?.trim())
+          newErrors.description = "Campaign description is required";
         break;
-      case 'audience':
-        if (!formData.emailList) newErrors.emailList = "Please select an email list";
-        if (!formData.emailTemplate) newErrors.emailTemplate = "Please select an email template";
+      case "audience":
+        if (!formData.emailList)
+          newErrors.emailList = "Please select an email list";
+        if (!formData.emailTemplate)
+          newErrors.emailTemplate = "Please select an email template";
         break;
-      case 'agent-profile':
-        if (!formData.selectedAgent) newErrors.selectedAgent = "Please select an agent profile";
+      case "agent-profile":
+        if (!formData.selectedAgent)
+          newErrors.selectedAgent = "Please select an agent profile";
         break;
-      case 'payment':
-        const { isValid, errors: paymentErrors } = validatePaymentOptions(formData, properties);
+      case "payment":
+        const { isValid, errors: paymentErrors } = validatePaymentOptions(
+          formData,
+          properties
+        );
         if (!isValid) Object.assign(newErrors, paymentErrors);
         break;
-      case 'subject':
-        if (!formData.subject?.trim()) newErrors.subject = "Subject line is required";
+      case "subject":
+        if (!formData.subject?.trim())
+          newErrors.subject = "Subject line is required";
         break;
-      case 'schedule':
-        const scheduleValidation = validateMultiPropertySchedule(formData, selectedDate);
+      case "schedule":
+        const scheduleValidation = validateMultiPropertySchedule(
+          formData,
+          selectedDate
+        );
         Object.assign(newErrors, scheduleValidation.errors);
         break;
     }
@@ -119,12 +175,12 @@ export default function CreateMultiPropertyCampaignPage() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
     }
   };
 
   const handlePrevious = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleStepClick = (step: number) => {
@@ -138,7 +194,7 @@ export default function CreateMultiPropertyCampaignPage() {
     formData,
     setFormData,
     errors,
-    properties: (properties || []) as any,
+    properties: (properties || []) as any[],
     templates: templates || [],
     emailLists: emailLists || [],
     selectedDate,
@@ -160,21 +216,37 @@ export default function CreateMultiPropertyCampaignPage() {
     if (!currentStepDef) return null;
 
     switch (currentStepDef.component) {
-      case 'MultiPropertySelection':
+      case "MultiPropertySelection":
         return <MultiPropertySelection {...stepProps} />;
-      case 'MultiBasicInfo':
+      case "MultiBasicInfo":
         return <MultiBasicInfo {...stepProps} />;
-      case 'MultiAudienceSelection':
+      case "MultiAudienceSelection":
         return <MultiAudienceSelection {...stepProps} />;
-      case 'MultiAgentProfile':
+      case "MultiAgentProfile":
         return <MultiAgentProfile {...stepProps} />;
-      case 'MultiPaymentOptions':
-        return <MultiPaymentOptions formData={formData} setFormData={setFormData} errors={errors} selectedTemplate={selectedTemplate} properties={properties} />;
-      case 'MultiPictureSelection':
-        return <MultiPictureSelection formData={formData} setFormData={setFormData} errors={errors} selectedTemplate={selectedTemplate} properties={properties} />;
-      case 'MultiSubjectLine':
+      case "MultiPaymentOptions":
+        return (
+          <MultiPaymentOptions
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            selectedTemplate={selectedTemplate}
+            properties={properties}
+          />
+        );
+      case "MultiPictureSelection":
+        return (
+          <MultiPictureSelection
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            selectedTemplate={selectedTemplate}
+            properties={properties}
+          />
+        );
+      case "MultiSubjectLine":
         return <MultiSubjectLine {...stepProps} />;
-      case 'MultiScheduling':
+      case "MultiScheduling":
         return <MultiScheduling {...stepProps} />;
       default:
         return null;
@@ -217,7 +289,8 @@ export default function CreateMultiPropertyCampaignPage() {
     } catch (error) {
       console.error("Campaign creation failed:", error);
       setErrors({
-        submit: error instanceof Error ? error.message : "Unknown error occurred",
+        submit:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     } finally {
       setLoading(false);
@@ -230,9 +303,9 @@ export default function CreateMultiPropertyCampaignPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
         <div className="w-64 bg-white shadow-sm">
-          <StepsSidebar 
-            steps={steps} 
-            currentStep={currentStep} 
+          <StepsSidebar
+            steps={steps}
+            currentStep={currentStep}
             onStepClick={handleStepClick}
             title="Multi-Property Campaign"
           />
@@ -244,8 +317,12 @@ export default function CreateMultiPropertyCampaignPage() {
               <div className="border-b border-gray-200 p-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Create Multi-Property Campaign</h1>
-                    <p className="text-gray-600">Complete all steps to create your campaign</p>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      Create Multi-Property Campaign
+                    </h1>
+                    <p className="text-gray-600">
+                      Complete all steps to create your campaign
+                    </p>
                   </div>
                   <Link href="/dashboard/landivo/campaigns">
                     <Button variant="outline" size="sm">
@@ -278,14 +355,20 @@ export default function CreateMultiPropertyCampaignPage() {
                 <div className="flex justify-between pt-6">
                   <div>
                     {currentStep > 1 && (
-                      <Button variant="outline" onClick={handlePrevious}>Previous</Button>
+                      <Button variant="outline" onClick={handlePrevious}>
+                        Previous
+                      </Button>
                     )}
                   </div>
                   <div className="space-x-2">
                     {currentStep < totalSteps ? (
                       <Button onClick={handleNext}>Next Step</Button>
                     ) : (
-                      <Button onClick={handleSubmit} disabled={loading} size="lg">
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        size="lg"
+                      >
                         {loading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

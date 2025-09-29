@@ -336,7 +336,6 @@ export function MultiSubjectLine({ formData, setFormData, errors, properties }: 
                         onChange={handleSubjectEdit}
                         placeholder="Enter your custom subject line or select templates above to auto-generate..."
                         maxLength={150}
-                        showToolbar={true}
                         showEmojiPicker={true}
                         className="min-h-[150px]"
                     />
