@@ -42,7 +42,7 @@ function calculateClickMetrics(tracking: IEmailTracking) {
     hasNewClicker: tracking.linkClicks.length === 1,
   };
 }
-
+// Get tracking status
 router.get('/:trackingId/status', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { trackingId } = req.params;

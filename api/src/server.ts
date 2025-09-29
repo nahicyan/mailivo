@@ -17,6 +17,8 @@ import { mailcowSyncJob } from "./jobs/mailcowSync.job";
 import { emailStatusManager } from "./services/tracking/EmailStatusManager";
 import { trackingSyncService } from "./services/tracking/TrackingSyncService";
 
+const logger = console;
+
 const app = express();
 
 // Fix trust proxy issue
@@ -108,6 +110,12 @@ const startServer = async () => {
     // Connect to Redis - CRITICAL: App crashes if Redis unavailable
     await connectRedis();
 
+    // 🔔 Setup event listeners for status changes (ADD THIS)
+    emailStatusManager.on("statusChanged", async (data) => {
+      logger.info("Email status changed:", data);
+      // You can add additional handlers here (e.g., notifications)
+    });
+
     // Start the server only after both connections succeed
     app.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
@@ -122,13 +130,23 @@ const startServer = async () => {
       void mailcowSyncJob; // This line prevents the unused warning
     }
 
-    // Graceful shutdown
-    process.on("SIGTERM", async () => {
-      await emailStatusManager.cleanup();
-      await trackingSyncService.cleanup();
-      campaignSchedulerService.stop();
-      // ... other cleanup
-    });
+    // 🛑 Graceful shutdown (you had SIGTERM already; SIGINT added too)
+    const graceful = async (signal: string) => {
+      try {
+        console.log(`\n${signal} received. Cleaning up...`);
+        await emailStatusManager.cleanup();
+        await trackingSyncService.cleanup();
+        campaignSchedulerService.stop();
+        // ... other cleanup (e.g., close DB/Redis if your connectors expose close())
+        process.exit(0);
+      } catch (err) {
+        console.error("Cleanup error:", err);
+        process.exit(1);
+      }
+    };
+
+    process.on("SIGTERM", () => void graceful("SIGTERM"));
+    process.on("SIGINT", () => void graceful("SIGINT"));
   } catch (error) {
     console.error("💥 Failed to start server:", error);
     process.exit(1);
