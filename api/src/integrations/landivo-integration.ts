@@ -1,4 +1,4 @@
-// api/src/integrations/landivo-integration.ts
+pi/src/integrations/landivo-integration.ts
 import axios, { AxiosInstance } from 'axios';
 import { WorkflowExecutionService } from '../services/workflow-execution-service';
 import { logger } from '../utils/logger';
@@ -239,20 +239,21 @@ export class LandivoIntegration {
     }
   }
 
-  async submitQualification(qualificationData: Partial<LandivoQualification>): Promise<LandivoQualification> {
+  async submitQualification(qualificationData: Partial<LandivoQualification>, workflowId?: string): Promise<LandivoQualification> {
     try {
       const response = await this.axios.post('/qualification/submit', qualificationData);
       
-      // Trigger workflow if qualified
-      if (response.data.qualified && qualificationData.propertyId) {
-        await this.workflowService.executeWorkflow({
-          trigger: 'qualification_submitted',
-          data: {
+      // Trigger workflow if qualified and workflow ID is provided
+      if (response.data.qualified && qualificationData.propertyId && workflowId) {
+        await this.workflowService.executeWorkflow(
+          workflowId,
+          [response.data.id], // Use qualification ID as contact ID
+          {
             qualification: response.data,
             propertyId: qualificationData.propertyId,
             buyerEmail: qualificationData.email
           }
-        });
+        );
       }
       
       return response.data;
@@ -269,19 +270,22 @@ export class LandivoIntegration {
     buyerId: string;
     offeredPrice: number;
     buyerMessage?: string;
-  }): Promise<LandivoOffer> {
+  }, workflowId?: string): Promise<LandivoOffer> {
     try {
       const response = await this.axios.post('/offer/makeOffer', offerData);
       
-      // Trigger workflow for new offer
-      await this.workflowService.executeWorkflow({
-        trigger: 'offer_submitted',
-        data: {
-          offer: response.data,
-          propertyId: offerData.propertyId,
-          buyerId: offerData.buyerId
-        }
-      });
+      // Trigger workflow for new offer if workflow ID provided
+      if (workflowId) {
+        await this.workflowService.executeWorkflow(
+          workflowId,
+          [offerData.buyerId],
+          {
+            offer: response.data,
+            propertyId: offerData.propertyId,
+            buyerId: offerData.buyerId
+          }
+        );
+      }
       
       return response.data;
     } catch (error) {
@@ -323,37 +327,78 @@ export class LandivoIntegration {
   }
 
   // ========== WORKFLOW INTEGRATION ==========
+  // Note: These methods need workflow IDs and contact IDs to be properly configured
+  // You'll need to either:
+  // 1. Configure workflow IDs in environment variables
+  // 2. Fetch workflows by trigger type from database
+  // 3. Pass workflow IDs as parameters
 
-  async onPropertyAdded(property: LandivoProperty): Promise<void> {
-    await this.workflowService.executeWorkflow({
-      trigger: 'property_added',
-      data: { property }
-    });
+  async onPropertyAdded(property: LandivoProperty, workflowId?: string): Promise<void> {
+    if (!workflowId) {
+      // Skip workflow execution if no workflow ID provided
+      logger.info('No workflow configured for property_added trigger');
+      return;
+    }
+    
+    // Get buyer IDs interested in this property type/location
+    const buyers = await this.getAllBuyers();
+    const interestedBuyerIds = buyers
+      .filter(buyer => 
+        buyer.preferredAreas.includes(property.city) || 
+        buyer.preferredAreas.includes(property.state)
+      )
+      .map(buyer => buyer.id);
+    
+    if (interestedBuyerIds.length > 0) {
+      await this.workflowService.executeWorkflow(
+        workflowId,
+        interestedBuyerIds,
+        { property }
+      );
+    }
   }
 
-  async onBuyerRegistered(buyer: LandivoBuyer): Promise<void> {
-    await this.workflowService.executeWorkflow({
-      trigger: 'buyer_registered',
-      data: { buyer }
-    });
+  async onBuyerRegistered(buyer: LandivoBuyer, workflowId?: string): Promise<void> {
+    if (!workflowId) {
+      logger.info('No workflow configured for buyer_registered trigger');
+      return;
+    }
+    
+    await this.workflowService.executeWorkflow(
+      workflowId,
+      [buyer.id],
+      { buyer }
+    );
   }
 
-  async onOfferStatusChanged(offer: LandivoOffer, previousStatus: string): Promise<void> {
-    await this.workflowService.executeWorkflow({
-      trigger: 'offer_status_changed',
-      data: {
+  async onOfferStatusChanged(offer: LandivoOffer, previousStatus: string, workflowId?: string): Promise<void> {
+    if (!workflowId) {
+      logger.info('No workflow configured for offer_status_changed trigger');
+      return;
+    }
+    
+    await this.workflowService.executeWorkflow(
+      workflowId,
+      [offer.buyerId],
+      {
         offer,
         previousStatus,
         newStatus: offer.offerStatus
       }
-    });
+    );
   }
 
-  async onDealCreated(deal: LandivoDeal): Promise<void> {
-    await this.workflowService.executeWorkflow({
-      trigger: 'deal_created',
-      data: { deal }
-    });
+  async onDealCreated(deal: LandivoDeal, workflowId?: string): Promise<void> {
+    if (!workflowId) {
+      logger.info('No workflow configured for deal_created trigger');
+      return;
+    }
+    
+    await this.workflowService.executeWorkflow(
+      workflowId,
+      [deal.buyerId],
+      { deal }
+    );
   }
 
   // ========== UTILITY METHODS ==========
@@ -406,10 +451,3 @@ export class LandivoIntegration {
     }
   }
 }
-
-// Export singleton instance
-export const landivoIntegration = new LandivoIntegration(
-  new WorkflowExecutionService()
-);
-
-export default landivoIntegration;
