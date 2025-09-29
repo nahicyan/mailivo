@@ -1,10 +1,47 @@
-pi/src/integrations/landivo-integration.ts
 import axios, { AxiosInstance } from 'axios';
 import { WorkflowExecutionService } from '../services/workflow-execution-service';
 import { logger } from '../utils/logger';
 import { LandivoProperty, LandivoBuyer } from '../types/landivo';
 
-// Use the existing types from your project instead of creating new ones
+export interface LandivoResidency {
+  id: string;
+  title: string;
+  description: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zip: string;
+  county: string;
+  sqft?: number; // Optional as per Prisma schema
+  acre: number;
+  askingPrice: number;
+  financing: string;
+  financingTwo?: string;
+  financingThree?: string;
+  monthlyPaymentOne?: number;
+  monthlyPaymentTwo?: number;
+  monthlyPaymentThree?: number;
+  downPaymentOne?: number;
+  downPaymentTwo?: number;
+  downPaymentThree?: number;
+  loanAmountOne?: number;
+  loanAmountTwo?: number;
+  loanAmountThree?: number;
+  interestOne?: number;
+  interestTwo?: number;
+  interestThree?: number;
+  status: string;
+  imageUrls?: any; // Json type in Prisma
+  landType: string[];
+  zoning: string;
+  latitude: number;
+  longitude: number;
+  apnOrPin: string;
+  profileId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface LandivoQualification {
   id: string;
   propertyId?: string;
@@ -66,7 +103,6 @@ export class LandivoIntegration {
     this.workflowService = workflowService;
     this.landivoApiUrl = landivoApiUrl || process.env.LANDIVO_API_URL || 'http://localhost:8200';
     
-    // Initialize axios instance with base configuration
     this.axios = axios.create({
       baseURL: this.landivoApiUrl,
       timeout: 10000,
@@ -75,7 +111,6 @@ export class LandivoIntegration {
       }
     });
 
-    // Add request/response interceptors for logging
     this.axios.interceptors.request.use(
       (config) => {
         logger.debug(`Landivo API Request: ${config.method?.toUpperCase()} ${config.url}`);
@@ -98,8 +133,6 @@ export class LandivoIntegration {
       }
     );
   }
-
-  // ========== PROPERTY METHODS ==========
 
   async getAllProperties(): Promise<LandivoProperty[]> {
     try {
@@ -169,8 +202,6 @@ export class LandivoIntegration {
     }
   }
 
-  // ========== BUYER METHODS ==========
-
   async getAllBuyers(): Promise<LandivoBuyer[]> {
     try {
       const response = await this.axios.get('/buyer');
@@ -214,8 +245,6 @@ export class LandivoIntegration {
     }
   }
 
-  // ========== QUALIFICATION METHODS ==========
-
   async getQualification(id: string): Promise<LandivoQualification | null> {
     try {
       const response = await this.axios.get(`/qualification/${id}`);
@@ -243,11 +272,10 @@ export class LandivoIntegration {
     try {
       const response = await this.axios.post('/qualification/submit', qualificationData);
       
-      // Trigger workflow if qualified and workflow ID is provided
       if (response.data.qualified && qualificationData.propertyId && workflowId) {
         await this.workflowService.executeWorkflow(
           workflowId,
-          [response.data.id], // Use qualification ID as contact ID
+          [response.data.id],
           {
             qualification: response.data,
             propertyId: qualificationData.propertyId,
@@ -263,8 +291,6 @@ export class LandivoIntegration {
     }
   }
 
-  // ========== OFFER METHODS ==========
-
   async makeOffer(offerData: {
     propertyId: string;
     buyerId: string;
@@ -274,7 +300,6 @@ export class LandivoIntegration {
     try {
       const response = await this.axios.post('/offer/makeOffer', offerData);
       
-      // Trigger workflow for new offer if workflow ID provided
       if (workflowId) {
         await this.workflowService.executeWorkflow(
           workflowId,
@@ -304,8 +329,6 @@ export class LandivoIntegration {
     }
   }
 
-  // ========== DEAL METHODS ==========
-
   async getDealsByProperty(propertyId: string): Promise<LandivoDeal[]> {
     try {
       const response = await this.axios.get(`/deal/property/${propertyId}`);
@@ -326,27 +349,19 @@ export class LandivoIntegration {
     }
   }
 
-  // ========== WORKFLOW INTEGRATION ==========
-  // Note: These methods need workflow IDs and contact IDs to be properly configured
-  // You'll need to either:
-  // 1. Configure workflow IDs in environment variables
-  // 2. Fetch workflows by trigger type from database
-  // 3. Pass workflow IDs as parameters
-
   async onPropertyAdded(property: LandivoProperty, workflowId?: string): Promise<void> {
     if (!workflowId) {
-      // Skip workflow execution if no workflow ID provided
       logger.info('No workflow configured for property_added trigger');
       return;
     }
     
-    // Get buyer IDs interested in this property type/location
     const buyers = await this.getAllBuyers();
     const interestedBuyerIds = buyers
-      .filter(buyer => 
-        buyer.preferredAreas.includes(property.city) || 
-        buyer.preferredAreas.includes(property.state)
-      )
+      .filter(buyer => {
+        // Check if buyer has preferredAreas property
+        const areas = (buyer as any).preferredAreas || [];
+        return areas.includes(property.city) || areas.includes(property.state);
+      })
       .map(buyer => buyer.id);
     
     if (interestedBuyerIds.length > 0) {
@@ -401,17 +416,11 @@ export class LandivoIntegration {
     );
   }
 
-  // ========== UTILITY METHODS ==========
-
   async syncProperties(): Promise<{ count: number; lastSync: string }> {
     try {
       const properties = await this.getAllProperties();
       
-      // Process each property for workflow triggers
       for (const property of properties) {
-        // Check if this is a new property and trigger workflow
-        // This would typically check against a local cache or database
-        // For now, we'll just log
         logger.info(`Synced property: ${property.id} - ${property.title}`);
       }
       
@@ -441,7 +450,6 @@ export class LandivoIntegration {
     }
   }
 
-  // Health check for Landivo API connection
   async healthCheck(): Promise<{ status: string; message: string }> {
     try {
       await this.axios.get('/health', { timeout: 5000 });
@@ -451,3 +459,6 @@ export class LandivoIntegration {
     }
   }
 }
+
+export { LandivoIntegration };
+export default LandivoIntegration;
