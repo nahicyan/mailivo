@@ -36,7 +36,7 @@ const fetchAgentProfiles = async (): Promise<AgentProfile[]> => {
   return data.profiles || [];
 };
 
-export function StepAgentProfile({ formData, setFormData, errors, selectedTemplate }: Props) {
+export function MultiAgentProfile({ formData, setFormData, errors, selectedTemplate }: Props) {
   const [selectedAgentId, setSelectedAgentId] = useState<string>(formData.selectedAgent || '');
 
   // Check if selected template has agent profile components

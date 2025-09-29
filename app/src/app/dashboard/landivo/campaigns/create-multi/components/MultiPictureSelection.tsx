@@ -180,7 +180,7 @@ const ImageSelectionSummary: React.FC<{
 };
 
 // Main component
-export function Step5Picture({ 
+export function MultiPictureSelection({ 
   formData, 
   setFormData, 
   errors, 

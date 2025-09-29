@@ -51,7 +51,7 @@ const ADDRESS_FORMAT_TEMPLATES = [
     '{county}, {city}, {state} {zip}'
 ];
 
-export function Step6Subject({ formData, setFormData, errors, properties }: Props) {
+export function SubjectLine({ formData, setFormData, errors, properties }: Props) {
     const [selectedSubjectTemplate, setSelectedSubjectTemplate] = useState('');
     const [selectedAddressTemplate, setSelectedAddressTemplate] = useState('');
     const [generatedSubject, setGeneratedSubject] = useState('');

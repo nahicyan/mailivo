@@ -15,7 +15,7 @@ const stripHtml = (html: string) => {
     return html.replace(/<[^>]*>/g, '').trim();
 };
 
-export function Step2BasicInfo({ formData, setFormData, errors }: Props) {
+export function BasicInfo({ formData, setFormData, errors }: Props) {
     return (
         <Card>
             <CardHeader>

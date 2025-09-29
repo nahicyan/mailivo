@@ -49,7 +49,7 @@ interface Props {
   onSortOrderChange?: (sortedIds: string[]) => void;
 }
 
-export function Step1Property({ 
+export function MultiPropertySelection({ 
   formData, 
   setFormData, 
   errors, 

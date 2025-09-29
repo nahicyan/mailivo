@@ -45,7 +45,7 @@ type PlanSelectionStrategy =
   | 'interest-low' 
   | 'interest-high';
 
-export function Step4PaymentOptions({ 
+export function MultiPaymentOptions({ 
   formData, 
   setFormData, 
   errors, 

@@ -19,7 +19,7 @@ interface Props {
     templatesError: any;
 }
 
-export function Step3Audience({ formData, setFormData, errors, emailLists, listsLoading, listsError, refetchLists, templates, templatesLoading, templatesError }: Props) {
+export function MultiAudienceSelection({ formData, setFormData, errors, emailLists, listsLoading, listsError, refetchLists, templates, templatesLoading, templatesError }: Props) {
     return (
         <div className="space-y-6">
             <Card>

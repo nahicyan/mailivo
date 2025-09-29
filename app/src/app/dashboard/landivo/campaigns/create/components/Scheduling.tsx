@@ -23,7 +23,7 @@ interface Props {
     templates: any[];
 }
 
-export function Step7Schedule({ 
+export function Scheduling({ 
     formData, 
     setFormData, 
     errors, 

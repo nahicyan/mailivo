@@ -16,7 +16,7 @@ interface Props {
   selectedTemplate?: any;
 }
 
-export function Step4PaymentOptions({ formData, setFormData, errors, selectedTemplate }: Props) {
+export function PaymentOptions({ formData, setFormData, errors, selectedTemplate }: Props) {
   // Check if template has payment-calculator components
   const paymentCalculatorComponents = useMemo(() => {
     if (!selectedTemplate?.components) return [];
@@ -274,7 +274,7 @@ export function Step4PaymentOptions({ formData, setFormData, errors, selectedTem
           <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs">
             <p><strong>Template Info:</strong></p>
             <p>Found {paymentCalculatorComponents.length} payment calculator component(s)</p>
-            <p>Component names: {paymentCalculatorComponents.map(c => c.name).join(', ')}</p>
+            <p>Component names: {paymentCalculatorComponents.map((c: { name: string }) => c.name).join(', ')}</p>
           </div>
         </CardContent>
       </Card>
@@ -336,7 +336,7 @@ export function Step4PaymentOptions({ formData, setFormData, errors, selectedTem
           <div className="p-3 bg-blue-50 border border-blue-200 rounded">
             <p><strong>Template Info:</strong></p>
             <p>Payment calculator components: {paymentCalculatorComponents.length}</p>
-            <p>Component names: {paymentCalculatorComponents.map(c => c.name).join(', ')}</p>
+            <p>Component names: {paymentCalculatorComponents.map((c: { name: string }) => c.name).join(', ')}</p>
           </div>
         </div>
       </CardContent>

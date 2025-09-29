@@ -46,7 +46,7 @@ interface Props {
   propertiesError: any;
 }
 
-export function Step1Property({ 
+export function PropertySelection({ 
   formData, 
   setFormData, 
   handlePropertyChange,
