@@ -1,4 +1,4 @@
-import { useQuery } from '@tantml:react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 export interface EmailList {
@@ -28,7 +28,7 @@ export function useEmailLists() {
   return useQuery({
     queryKey: ['email-lists'],
     queryFn: fetchEmailLists,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: (failureCount, error) => {
       return error.message.includes('404') ? false : failureCount < 3;
     }

@@ -130,7 +130,7 @@ export function MultiPropertySelection({
   const filteredData = useMemo(() => {
     if (!properties) return [];
     
-    return properties.filter((property) => {
+    return properties.filter((property: any) => {
       // Search query filtering
       const searchFields = [
         property.title,

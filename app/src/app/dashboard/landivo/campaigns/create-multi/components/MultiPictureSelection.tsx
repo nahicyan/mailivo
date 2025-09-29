@@ -229,7 +229,7 @@ export function MultiPictureSelection({
       // Create default selections for properties without existing selections
       const newSelections: PropertyImageSelection[] = [];
       
-      selectedPropertiesData.forEach(property => {
+      selectedPropertiesData.forEach((property) => {
         const existing = existingFromForm.find((sel: PropertyImageSelection) => sel.propertyId === property.id);
         if (existing) {
           newSelections.push(existing);

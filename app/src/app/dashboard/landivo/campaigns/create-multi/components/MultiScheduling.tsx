@@ -103,7 +103,7 @@ export function MultiScheduling({
       : formData.selectedProperties;
     
     return orderToUse
-      .map((id: string) => properties.find(p => p.id === id))
+      .map((id: string) => properties.find((p: any) => p.id === id))
       .filter(Boolean);
   }, [properties, formData.selectedProperties, formData.sortedPropertyOrder]);
 
@@ -132,18 +132,18 @@ export function MultiScheduling({
 
   // Calculate totals and statistics
   const campaignStats = useMemo(() => {
-    const propertiesWithFinancing = selectedPropertiesData.filter(
-      property => formData.financingEnabled && getPropertyPaymentPlan(property.id)
-    );
+const propertiesWithFinancing = selectedPropertiesData.filter(
+  (property: any) => formData.financingEnabled && getPropertyPaymentPlan(property.id)
+);
     
-    const totalMonthlyPayments = propertiesWithFinancing.reduce((sum, property) => {
-      const plan = getPropertyPaymentPlan(property.id);
-      return sum + (plan?.monthlyPayment || 0);
-    }, 0);
+const totalMonthlyPayments = propertiesWithFinancing.reduce((sum: number, property: any) => {
+  const plan = getPropertyPaymentPlan(property.id);
+  return sum + (plan?.monthlyPayment || 0);
+}, 0);
 
-    const averagePrice = selectedPropertiesData.reduce((sum, property) => {
-      return sum + (property.askingPrice || 0);
-    }, 0) / selectedPropertiesData.length;
+const averagePrice = selectedPropertiesData.reduce((sum: number, property: any) => {
+  return sum + (property.askingPrice || 0);
+}, 0) / selectedPropertiesData.length;
 
     return {
       totalProperties: selectedPropertiesData.length,
@@ -331,7 +331,7 @@ export function MultiScheduling({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {selectedPropertiesData.map((property, index) => {
+            {selectedPropertiesData.map((property: any, index: number) => {
               const paymentPlan = getPropertyPaymentPlan(property.id);
               const imageSelection = getPropertyImageSelection(property.id);
               

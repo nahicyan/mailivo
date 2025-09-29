@@ -79,13 +79,13 @@ export function MultiPaymentOptions({
   const selectedPropertiesData = useMemo(() => {
     if (!properties || !formData.selectedProperties?.length) return [];
     return formData.selectedProperties
-      .map((id: string) => properties.find(p => p.id === id))
+      .map((id: string) => properties.find((p: any) => p.id === id))
       .filter(Boolean);
   }, [properties, formData.selectedProperties]);
 
   // Filter properties with financing available
   const propertiesWithFinancing = useMemo(() => {
-    return selectedPropertiesData.filter(property => 
+    return selectedPropertiesData.filter((property: any) =>
       property?.financing === 'Available'
     );
   }, [selectedPropertiesData]);
@@ -412,7 +412,7 @@ export function MultiPaymentOptions({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {propertiesWithFinancing.map(property => {
+                     {propertiesWithFinancing.map((property: any) => {
                         const plans = getAvailablePlans(property.id);
                         const selectedPlan = selectedPlansMap[property.id];
                         const fullAddress = `${property.streetAddress}, ${property.city}, ${property.state} ${property.zip}`;

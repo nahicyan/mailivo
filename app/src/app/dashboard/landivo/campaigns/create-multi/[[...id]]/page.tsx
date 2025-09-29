@@ -54,6 +54,7 @@ interface ExtendedCreateCampaignRequest extends CreateCampaignRequest {
   sortedPropertyOrder: string[];
   subject?: string;
   selectedAgent?: string;
+  paymentPlans?: Record<string, any>;
 }
 
 export default function CreateMultiPropertyCampaignPage() {
