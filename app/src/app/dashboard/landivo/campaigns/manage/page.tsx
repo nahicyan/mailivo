@@ -1,12 +1,13 @@
 // app/src/app/dashboard/landivo/campaigns/manage/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +17,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Plus,
   Search,
@@ -41,22 +42,25 @@ import {
   Play,
   Pause,
   RefreshCw,
-  AlertTriangle
-} from 'lucide-react';
-import { CampaignTypeDialog } from '@/components/campaigns/CampaignTypeDialog';
-import { formatDate, formatNumber } from '@/lib/utils';
-import { Campaign } from '@/types/campaign';
-import { toast } from 'sonner';
+  AlertTriangle,
+} from "lucide-react";
+import { CampaignTypeDialog } from "@/components/campaigns/CampaignTypeDialog";
+import { formatDate, formatNumber } from "@/lib/utils";
+import { Campaign } from "@/types/campaign";
+import { toast } from "sonner";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
 
 export default function ManageCampaignsPage() {
   const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
+    null
+  );
   const [duplicating, setDuplicating] = useState<string | null>(null);
   const [properties, setProperties] = useState<any[]>([]);
   const [emailLists, setEmailLists] = useState<any[]>([]);
@@ -74,15 +78,15 @@ export default function ManageCampaignsPage() {
     try {
       const response = await fetch(`${API_URL}/campaigns?source=landivo`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
         },
-        credentials: 'include'
+        credentials: "include",
       });
       const data = await response.json();
       setCampaigns(data.campaigns || data);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
-      toast.error('Failed to load campaigns');
+      console.error("Error fetching campaigns:", error);
+      toast.error("Failed to load campaigns");
     } finally {
       setLoading(false);
     }
@@ -90,17 +94,18 @@ export default function ManageCampaignsPage() {
 
   const fetchProperties = async () => {
     try {
-      const serverURL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+      const serverURL =
+        process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5000";
       const response = await fetch(`${serverURL}/residency/allresd/`, {
-        credentials: 'include'
+        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Properties data:', data); // Debug log
+        console.log("Properties data:", data); // Debug log
         setProperties(Array.isArray(data) ? data : []);
       }
     } catch (error) {
-      console.error('Error fetching properties:', error);
+      console.error("Error fetching properties:", error);
     }
   };
 
@@ -108,17 +113,17 @@ export default function ManageCampaignsPage() {
     try {
       const response = await fetch(`${API_URL}/landivo-email-lists`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
         },
-        credentials: 'include'
+        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Email lists data:', data); // Debug log
-        setEmailLists(Array.isArray(data) ? data : (data.emailLists || []));
+        console.log("Email lists data:", data); // Debug log
+        setEmailLists(Array.isArray(data) ? data : data.emailLists || []);
       }
     } catch (error) {
-      console.error('Error fetching email lists:', error);
+      console.error("Error fetching email lists:", error);
     }
   };
 
@@ -126,17 +131,17 @@ export default function ManageCampaignsPage() {
     try {
       const response = await fetch(`${API_URL}/templates`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
         },
-        credentials: 'include'
+        credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Templates data:', data); // Debug log
-        setTemplates(Array.isArray(data) ? data : (data.templates || []));
+        console.log("Templates data:", data); // Debug log
+        setTemplates(Array.isArray(data) ? data : data.templates || []);
       }
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      console.error("Error fetching templates:", error);
     }
   };
 
@@ -144,23 +149,28 @@ export default function ManageCampaignsPage() {
     if (!Array.isArray(properties)) {
       return propertyId;
     }
-    const property = properties.find(p => p.id === propertyId || p._id === propertyId);
+    const property = properties.find(
+      (p) => p.id === propertyId || p._id === propertyId
+    );
     if (!property) return propertyId;
 
-    return `${property.streetAddress || ''}, ${property.city || ''}, ${property.zip || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
+    return `${property.streetAddress || ""}, ${property.city || ""}, ${property.zip || ""}`
+      .replace(/^,\s*|,\s*$/g, "")
+      .replace(/,\s*,/g, ",");
   };
 
   const getEmailListDetails = (listId: string) => {
     if (!Array.isArray(emailLists)) {
       return {
         name: listId,
-        recipientCount: 0
+        recipientCount: 0,
       };
     }
-    const list = emailLists.find(l => l.id === listId || l._id === listId);
+    const list = emailLists.find((l) => l.id === listId || l._id === listId);
     return {
       name: list?.name || listId,
-      recipientCount: list?.buyerCount || list?.contactCount || list?.recipients?.length || 0
+      recipientCount:
+        list?.buyerCount || list?.contactCount || list?.recipients?.length || 0,
     };
   };
 
@@ -168,7 +178,9 @@ export default function ManageCampaignsPage() {
     if (!Array.isArray(templates)) {
       return templateId;
     }
-    const template = templates.find(t => t.id === templateId || t._id === templateId);
+    const template = templates.find(
+      (t) => t.id === templateId || t._id === templateId
+    );
     return template?.name || template?.title || templateId;
   };
 
@@ -188,26 +200,29 @@ export default function ManageCampaignsPage() {
     const campaignId = (campaign as any)._id || campaign.id;
     setDuplicating(campaignId);
     try {
-      const response = await fetch(`${API_URL}/campaigns/${campaignId}/duplicate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-        },
-        credentials: 'include'
-      });
+      const response = await fetch(
+        `${API_URL}/campaigns/${campaignId}/duplicate`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+          },
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to duplicate campaign');
+        throw new Error(errorData.error || "Failed to duplicate campaign");
       }
 
-      toast.success('Campaign duplicated successfully');
+      toast.success("Campaign duplicated successfully");
       fetchCampaigns();
     } catch (error) {
-      console.error('Error duplicating campaign:', error);
-toast.error('Failed to duplicate campaign', {
-  description: error instanceof Error ? error.message : 'Unknown error',
-});
+      console.error("Error duplicating campaign:", error);
+      toast.error("Failed to duplicate campaign", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     } finally {
       setDuplicating(null);
     }
@@ -224,25 +239,25 @@ toast.error('Failed to duplicate campaign', {
     const campaignId = (campaignToDelete as any)._id || campaignToDelete.id;
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
         },
-        credentials: 'include'
+        credentials: "include",
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete campaign');
+        throw new Error(errorData.error || "Failed to delete campaign");
       }
 
-      toast.success('Campaign deleted successfully');
+      toast.success("Campaign deleted successfully");
       fetchCampaigns();
     } catch (error) {
-      console.error('Error deleting campaign:', error);
-toast.error('Failed to duplicate campaign', {
-  description: error instanceof Error ? error.message : 'Unknown error',
-});
+      console.error("Error deleting campaign:", error);
+      toast.error("Failed to duplicate campaign", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     } finally {
       setDeleteDialogOpen(false);
       setCampaignToDelete(null);
@@ -252,57 +267,65 @@ toast.error('Failed to duplicate campaign', {
   const handleSendCampaign = async (campaignId: string) => {
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}/send`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
         },
-        credentials: 'include'
+        credentials: "include",
       });
 
-      if (!response.ok) throw new Error('Failed to send campaign');
+      if (!response.ok) throw new Error("Failed to send campaign");
 
-      toast.success('Campaign sending initiated');
+      toast.success("Campaign sending initiated");
       fetchCampaigns(); // Refresh the list
     } catch (error) {
-      console.error('Error sending campaign:', error);
-      toast.error('Failed to send campaign');
+      console.error("Error sending campaign:", error);
+      toast.error("Failed to send campaign");
     }
   };
 
   const handlePauseCampaign = async (campaignId: string) => {
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}/pause`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
         },
-        credentials: 'include'
+        credentials: "include",
       });
 
-      if (!response.ok) throw new Error('Failed to pause campaign');
+      if (!response.ok) throw new Error("Failed to pause campaign");
 
-      toast.success('Campaign paused');
+      toast.success("Campaign paused");
       fetchCampaigns(); // Refresh the list
     } catch (error) {
-      console.error('Error pausing campaign:', error);
-      toast.error('Failed to pause campaign');
+      console.error("Error pausing campaign:", error);
+      toast.error("Failed to pause campaign");
     }
   };
 
-  const filteredCampaigns = campaigns.filter(campaign =>
-    campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    campaign.property.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCampaigns = campaigns.filter(
+    (campaign) =>
+      campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      campaign.property.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'paused': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-blue-100 text-blue-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'sending': return 'bg-purple-100 text-purple-800';
-      case 'sent': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "paused":
+        return "bg-yellow-100 text-yellow-800";
+      case "completed":
+        return "bg-blue-100 text-blue-800";
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "sending":
+        return "bg-purple-100 text-purple-800";
+      case "sent":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -310,14 +333,24 @@ toast.error('Failed to duplicate campaign', {
     setCampaignTypeDialogOpen(true);
   };
 
-
-// Calculate stats
-const totalSent = campaigns.reduce((sum, c) => sum + (c.metrics?.sent || 0), 0);
-const totalClicks = campaigns.reduce((sum, c) => sum + (c.metrics?.totalClicks || 0), 0);
-const uniqueClickers = campaigns.reduce((sum, c) => sum + (c.metrics?.clicked || 0), 0);
-const avgClickRate = totalSent > 0 ? (uniqueClickers / totalSent * 100).toFixed(1) : '0';
-const clicksPerCampaign = campaigns.length > 0 ? (totalClicks / campaigns.length).toFixed(1) : '0';
-const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+  // Calculate stats
+  const totalSent = campaigns.reduce(
+    (sum, c) => sum + (c.metrics?.sent || 0),
+    0
+  );
+  const totalClicks = campaigns.reduce(
+    (sum, c) => sum + (c.metrics?.totalClicks || 0),
+    0
+  );
+  const uniqueClickers = campaigns.reduce(
+    (sum, c) => sum + (c.metrics?.clicked || 0),
+    0
+  );
+  const avgClickRate =
+    totalSent > 0 ? ((uniqueClickers / totalSent) * 100).toFixed(1) : "0";
+  const clicksPerCampaign =
+    campaigns.length > 0 ? (totalClicks / campaigns.length).toFixed(1) : "0";
+  const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
 
   return (
     <div className="space-y-6">
@@ -370,7 +403,9 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-green-600">{activeCampaigns}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {activeCampaigns}
+                </p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -387,28 +422,30 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
             </div>
           </CardContent>
         </Card>
-<Card>
-  <CardContent className="p-4">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm text-muted-foreground">Click Metrics</p>
-        <p className="text-2xl font-bold text-purple-600">{avgClickRate}%</p>
-        <div className="mt-2 space-y-1">
-          <p className="text-xs text-muted-foreground">
-            Total Clicks: {formatNumber(totalClicks)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Unique Clickers: {formatNumber(uniqueClickers)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Avg per Campaign: {clicksPerCampaign}
-          </p>
-        </div>
-      </div>
-      <MousePointer className="h-8 w-8 text-purple-600" />
-    </div>
-  </CardContent>
-</Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Click Metrics</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {avgClickRate}%
+                </p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Total Clicks: {formatNumber(totalClicks)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Unique Clickers: {formatNumber(uniqueClickers)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Avg per Campaign: {clicksPerCampaign}
+                  </p>
+                </div>
+              </div>
+              <MousePointer className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Campaigns List */}
@@ -433,7 +470,9 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
               <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? 'Try adjusting your search' : 'Create your first campaign to get started'}
+                {searchTerm
+                  ? "Try adjusting your search"
+                  : "Create your first campaign to get started"}
               </p>
               <Button onClick={handleCreateCampaign}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -453,7 +492,9 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
               onViewAnalytics={handleViewAnalytics}
               onSend={handleSendCampaign}
               onPause={handlePauseCampaign}
-              duplicating={duplicating === ((campaign as any)._id || campaign.id)}
+              duplicating={
+                duplicating === ((campaign as any)._id || campaign.id)
+              }
               getPropertyAddress={getPropertyAddress}
               getEmailListDetails={getEmailListDetails}
               getTemplateName={getTemplateName}
@@ -468,7 +509,8 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{campaignToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{campaignToDelete?.name}"? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -487,7 +529,6 @@ const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
         open={campaignTypeDialogOpen}
         onOpenChange={setCampaignTypeDialogOpen}
       />
-
     </div>
   );
 }
@@ -520,37 +561,48 @@ function CampaignCard({
   duplicating,
   getPropertyAddress,
   getEmailListDetails,
-  getTemplateName
+  getTemplateName,
 }: CampaignCardProps) {
-const campaignId = (campaign as any)._id || campaign.id;
-const openRate = campaign.metrics?.sent ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
-const clickRate = campaign.metrics?.sent && campaign.metrics?.clicked 
-  ? (campaign.metrics.clicked / campaign.metrics.sent * 100) 
-  : 0;
-const uniqueClickRate = campaign.metrics?.sent && campaign.metrics?.clicks 
-  ? ((campaign.metrics.clicks / campaign.metrics.sent) * 100).toFixed(1)
-  : '0';
-const emailListDetails = getEmailListDetails(campaign.emailList);
+  const campaignId = (campaign as any)._id || campaign.id;
+  const openRate = campaign.metrics?.sent
+    ? (campaign.metrics.open / campaign.metrics.sent) * 100
+    : 0;
+  const clickRate =
+    campaign.metrics?.sent && campaign.metrics?.clicked
+      ? (campaign.metrics.clicked / campaign.metrics.sent) * 100
+      : 0;
+  const uniqueClickRate =
+    campaign.metrics?.sent && campaign.metrics?.clicks
+      ? ((campaign.metrics.clicks / campaign.metrics.sent) * 100).toFixed(1)
+      : "0";
+  const emailListDetails = getEmailListDetails(campaign.emailList);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'paused': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-blue-100 text-blue-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'sending': return 'bg-purple-100 text-purple-800';
-      case 'sent': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "paused":
+        return "bg-yellow-100 text-yellow-800";
+      case "completed":
+        return "bg-blue-100 text-blue-800";
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "sending":
+        return "bg-purple-100 text-purple-800";
+      case "sent":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const canSend = campaign.status === 'draft' || campaign.status === 'paused';
-  const canPause = campaign.status === 'active'  // || campaign.status === 'sending';
+  const canSend = campaign.status === "draft" || campaign.status === "paused";
+  const canPause = campaign.status === "active"; // || campaign.status === 'sending';
 
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col gap-4">
           {/* Campaign Info */}
           <div className="flex-1 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -560,60 +612,61 @@ const emailListDetails = getEmailListDetails(campaign.emailList);
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Property</p>
-                <p className="font-medium truncate">{getPropertyAddress(campaign.property)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Email List</p>
-                <p className="font-medium truncate">
-                  {emailListDetails.name}
-                  {emailListDetails.recipientCount > 0 && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({formatNumber(emailListDetails.recipientCount)} Recipients)
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Template</p>
-                <p className="font-medium truncate">{getTemplateName(campaign.emailTemplate)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Schedule</p>
-                <p className="font-medium">{campaign.emailSchedule}</p>
-              </div>
-            </div>
+            <CampaignStatus
+              stats={{
+                queued: campaign.metrics?.queued || 0,
+                sent: campaign.metrics?.sent || 0,
+                delivered: campaign.metrics?.successfulDeliveries || 0,
+                opened: campaign.metrics?.open || 0,
+                clicked:
+                  campaign.metrics?.clicked ||
+                  campaign.metrics?.uniqueClickers ||
+                  0,
+                bounced: campaign.metrics?.bounces || 0,
+                total: campaign.metrics?.sent || 0,
+              }}
+              showPercentages={false}
+              className="mt-4"
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Volume</p>
-                <p className="font-medium">{formatNumber(campaign.emailVolume || 0)}</p>
+                <p className="font-medium">
+                  {formatNumber(campaign.emailVolume || 0)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Sent</p>
-                <p className="font-medium text-blue-600">{formatNumber(campaign.metrics?.sent || 0)}</p>
+                <p className="font-medium text-blue-600">
+                  {formatNumber(campaign.metrics?.sent || 0)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Opens</p>
                 <p className="font-medium text-green-600">
-                  {formatNumber(campaign.metrics?.open || 0)} ({openRate.toFixed(1)}%)
+                  {formatNumber(campaign.metrics?.open || 0)} (
+                  {openRate.toFixed(1)}%)
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Clicks</p>
                 <p className="font-medium text-purple-600">
-                  {formatNumber(campaign.metrics?.totalClicks || 0)} ({clickRate.toFixed(1)}%)
+                  {formatNumber(campaign.metrics?.totalClicks || 0)} (
+                  {clickRate.toFixed(1)}%)
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Bounces</p>
-                <p className="font-medium text-red-600">{formatNumber(campaign.metrics?.bounces || 0)}</p>
+                <p className="font-medium text-red-600">
+                  {formatNumber(campaign.metrics?.bounces || 0)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Delivered</p>
-                <p className="font-medium text-blue-600">{formatNumber(campaign.metrics?.successfulDeliveries || 0)}</p>
+                <p className="font-medium text-blue-600">
+                  {formatNumber(campaign.metrics?.successfulDeliveries || 0)}
+                </p>
               </div>
             </div>
 

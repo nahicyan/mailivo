@@ -2,6 +2,11 @@
 import { Router, Request, Response } from "express";
 import { Campaign } from "../models/Campaign";
 import { Contact } from "../models/Contact.model";
+import { emailStatusManager } from '../services/tracking/EmailStatusManager';
+import { metricsAggregator } from '../services/tracking/MetricsAggregator';
+import { trackingSyncService } from '../services/tracking/TrackingSyncService';
+import { webhookProcessor } from '../services/tracking/WebhookProcessor';
+import { authenticate } from '../middleware/auth.middleware';
 import { logger } from "../utils/logger";
 import {
   EmailTracking,
@@ -37,6 +42,99 @@ function calculateClickMetrics(tracking: IEmailTracking) {
     hasNewClicker: tracking.linkClicks.length === 1,
   };
 }
+
+router.get('/:trackingId/status', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { trackingId } = req.params;
+    const tracking = await EmailTracking.findOne({ trackingId });
+    
+    if (!tracking) {
+      res.status(404).json({ error: 'Tracking record not found' });
+      return;
+    }
+
+    const history = await emailStatusManager.getStatusHistory(trackingId);
+    
+    res.json({
+      current: {
+        status: tracking.status,
+        updatedAt: tracking.updatedAt
+      },
+      history
+    });
+  } catch (error) {
+    logger.error('Error fetching tracking status:', error);
+    res.status(500).json({ error: 'Failed to fetch status' });
+  }
+});
+
+// Update tracking status manually
+router.put('/:trackingId/status', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { trackingId } = req.params;
+    const { status, reason } = req.body;
+    
+    const result = await emailStatusManager.updateStatus(trackingId, status, {
+      source: 'manual',
+      reason,
+      timestamp: new Date()
+    });
+    
+    res.json(result);
+  } catch (error) {
+    logger.error('Error updating tracking status:', error);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// Get campaign metrics
+router.get('/campaign/:campaignId/metrics', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { campaignId } = req.params;
+    const metrics = await metricsAggregator.calculateCampaignMetrics(campaignId);
+    const realtime = await metricsAggregator.getRealtimeMetrics(campaignId);
+    
+    res.json({
+      metrics,
+      realtime
+    });
+  } catch (error) {
+    logger.error('Error fetching campaign metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch metrics' });
+  }
+});
+
+// Webhook endpoints
+router.post('/webhooks/:provider', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { provider } = req.params;
+    const signature = req.headers['x-webhook-signature'] as string;
+    
+    const result = await webhookProcessor.processWebhook(
+      provider,
+      req.body,
+      signature
+    );
+    
+    res.json(result);
+  } catch (error) {
+    logger.error(`Webhook processing failed for ${req.params.provider}:`, error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+// Sync status
+router.get('/sync/status', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const stats = await trackingSyncService.getQueueStats();
+    res.json(stats);
+  } catch (error) {
+    logger.error('Error fetching sync status:', error);
+    res.status(500).json({ error: 'Failed to fetch sync status' });
+  }
+});
+
+export default router;
 
 // Unsubscribe endpoint
 router.get(

@@ -14,6 +14,8 @@ import { connectRedis } from "./config/redis";
 import { routes } from "./routes";
 import { campaignSchedulerService } from "./services/campaignScheduler.service";
 import { mailcowSyncJob } from "./jobs/mailcowSync.job";
+import { emailStatusManager } from "./services/tracking/EmailStatusManager";
+import { trackingSyncService } from "./services/tracking/TrackingSyncService";
 
 const app = express();
 
@@ -113,7 +115,7 @@ const startServer = async () => {
       // Start the campaign scheduler
       campaignSchedulerService.start();
     });
-    
+
     if (process.env.MAILCOW_SYNC_ENABLED === "true") {
       console.log("✅ Mailcow sync job initialized");
       // The job auto-starts based on the cron schedule
@@ -122,6 +124,8 @@ const startServer = async () => {
 
     // Graceful shutdown
     process.on("SIGTERM", async () => {
+      await emailStatusManager.cleanup();
+      await trackingSyncService.cleanup();
       campaignSchedulerService.stop();
       // ... other cleanup
     });
