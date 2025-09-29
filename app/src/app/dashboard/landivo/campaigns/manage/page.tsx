@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {CampaignStatus} from '@/components/campaigns/CampaignStatus';
+import { CampaignStatus } from "@/components/campaigns/CampaignStatus";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -616,14 +616,19 @@ function CampaignCard({
               stats={{
                 queued: campaign.metrics?.queued || 0,
                 sent: campaign.metrics?.sent || 0,
-                delivered: campaign.metrics?.successfulDeliveries || 0,
-                opened: campaign.metrics?.open || 0,
-                clicked:
-                  campaign.metrics?.clicked ||
-                  campaign.metrics?.uniqueClickers ||
+                delivered:
+                  campaign.metrics?.successfulDeliveries ||
+                  campaign.metrics?.delivered ||
                   0,
-                bounced: campaign.metrics?.bounces || 0,
-                total: campaign.metrics?.sent || 0,
+                opened: campaign.metrics?.open || campaign.metrics?.opened || 0,
+                clicked:
+                  campaign.metrics?.clicks || campaign.metrics?.clicked || 0,
+                bounced:
+                  campaign.metrics?.bounces || campaign.metrics?.bounced || 0,
+                total:
+                  campaign.totalContacts ||
+                  campaign.metrics?.totalRecipients ||
+                  0,
               }}
               showPercentages={false}
               className="mt-4"

@@ -1,17 +1,18 @@
 // app/src/components/campaigns/CampaignStatus.tsx
-import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import {
-  Send,
-  CheckCircle,
-  AlertCircle,
-  Clock,
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Send, 
+  CheckCircle, 
+  AlertCircle, 
+  Clock, 
   Mail,
   MousePointer,
-  Eye,
-} from "lucide-react";
+  Eye
+} from 'lucide-react';
+import { apiClient } from '@/lib/landivo/api-client';
 
 interface CampaignMetrics {
   total: number;
@@ -40,10 +41,7 @@ interface CampaignStatusProps {
   showAllCampaigns?: boolean;
 }
 
-export function CampaignStatus({
-  campaignId,
-  showAllCampaigns = false,
-}: CampaignStatusProps) {
+export function CampaignStatus({ campaignId, showAllCampaigns = false }: CampaignStatusProps) {
   const [metrics, setMetrics] = useState<CampaignMetrics | null>(null);
   const [realtimeData, setRealtimeData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -56,13 +54,8 @@ export function CampaignStatus({
         setError(null);
 
         if (showAllCampaigns) {
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/tracking/campaign/${campaignId}/metrics`,
-            {
-              credentials: "include",
-            }
-          );
-          const data = await response.json();
+          // Fetch aggregated metrics for all campaigns
+          const response = await apiClient.get('/api/campaigns/analytics/summary');
           const aggregated: CampaignMetrics = {
             total: 0,
             queued: 0,
@@ -82,7 +75,7 @@ export function CampaignStatus({
             clickRate: 0,
             bounceRate: 0,
             complaintRate: 0,
-            unsubscribeRate: 0,
+            unsubscribeRate: 0
           };
 
           // Aggregate data from all campaigns
@@ -103,53 +96,38 @@ export function CampaignStatus({
 
             // Calculate rates
             if (aggregated.total > 0) {
-              aggregated.deliveryRate =
-                (aggregated.delivered / aggregated.total) * 100;
-              aggregated.bounceRate =
-                (aggregated.bounced / aggregated.total) * 100;
+              aggregated.deliveryRate = (aggregated.delivered / aggregated.total) * 100;
+              aggregated.bounceRate = (aggregated.bounced / aggregated.total) * 100;
             }
             if (aggregated.delivered > 0) {
-              aggregated.openRate =
-                (aggregated.opened / aggregated.delivered) * 100;
-              aggregated.clickRate =
-                (aggregated.clicked / aggregated.delivered) * 100;
-              aggregated.complaintRate =
-                (aggregated.complaints / aggregated.delivered) * 100;
-              aggregated.unsubscribeRate =
-                (aggregated.unsubscribed / aggregated.delivered) * 100;
+              aggregated.openRate = (aggregated.opened / aggregated.delivered) * 100;
+              aggregated.clickRate = (aggregated.clicked / aggregated.delivered) * 100;
+              aggregated.complaintRate = (aggregated.complaints / aggregated.delivered) * 100;
+              aggregated.unsubscribeRate = (aggregated.unsubscribed / aggregated.delivered) * 100;
             }
           }
 
           setMetrics(aggregated);
         } else if (campaignId) {
           // Fetch metrics for specific campaign using new endpoint
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/tracking/campaign/${campaignId}/metrics`,
-            {
-              credentials: "include",
-            }
-          );
-          const data = await response.json();
+          const response = await apiClient.get(`/api/tracking/campaign/${campaignId}/metrics`);
           setMetrics(response.data.metrics);
           setRealtimeData(response.data.realtime);
         }
       } catch (err: any) {
-        console.error("Error fetching metrics:", err);
-        setError(
-          err.response?.data?.error || "Failed to load campaign metrics"
-        );
+        console.error('Error fetching metrics:', err);
+        setError(err.response?.data?.error || 'Failed to load campaign metrics');
       } finally {
         setLoading(false);
       }
     };
 
     fetchMetrics();
-
+    
     // Poll for updates every 30 seconds if showing single campaign
-    const interval =
-      campaignId && !showAllCampaigns
-        ? setInterval(fetchMetrics, 30000)
-        : undefined;
+    const interval = campaignId && !showAllCampaigns 
+      ? setInterval(fetchMetrics, 30000)
+      : undefined;
 
     return () => {
       if (interval) clearInterval(interval);
@@ -160,9 +138,7 @@ export function CampaignStatus({
     return (
       <Card>
         <CardContent className="py-6">
-          <div className="text-center text-muted-foreground">
-            Loading metrics...
-          </div>
+          <div className="text-center text-muted-foreground">Loading metrics...</div>
         </CardContent>
       </Card>
     );
@@ -182,9 +158,7 @@ export function CampaignStatus({
     return (
       <Card>
         <CardContent className="py-6">
-          <div className="text-center text-muted-foreground">
-            No metrics available
-          </div>
+          <div className="text-center text-muted-foreground">No metrics available</div>
         </CardContent>
       </Card>
     );
@@ -192,38 +166,27 @@ export function CampaignStatus({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "delivered":
-        return "bg-green-500";
-      case "opened":
-        return "bg-blue-500";
-      case "clicked":
-        return "bg-purple-500";
-      case "bounced":
-        return "bg-red-500";
-      case "failed":
-        return "bg-red-600";
-      case "sent":
-        return "bg-yellow-500";
-      case "queued":
-        return "bg-gray-400";
-      default:
-        return "bg-gray-300";
+      case 'delivered': return 'bg-green-500';
+      case 'opened': return 'bg-blue-500';
+      case 'clicked': return 'bg-purple-500';
+      case 'bounced': return 'bg-red-500';
+      case 'failed': return 'bg-red-600';
+      case 'sent': return 'bg-yellow-500';
+      case 'queued': return 'bg-gray-400';
+      default: return 'bg-gray-300';
     }
   };
 
-  const progressValue =
-    metrics.total > 0
-      ? ((metrics.delivered + metrics.bounced + metrics.failed) /
-          metrics.total) *
-        100
-      : 0;
+  const progressValue = metrics.total > 0 
+    ? ((metrics.delivered + metrics.bounced + metrics.failed) / metrics.total) * 100 
+    : 0;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
-          {showAllCampaigns ? "All Campaigns Status" : "Campaign Status"}
+          {showAllCampaigns ? 'All Campaigns Status' : 'Campaign Status'}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -245,7 +208,7 @@ export function CampaignStatus({
               <div className="font-semibold">{metrics.queued}</div>
             </div>
           </div>
-
+          
           <div className="flex items-center gap-2">
             <Send className="h-4 w-4 text-yellow-500" />
             <div>
