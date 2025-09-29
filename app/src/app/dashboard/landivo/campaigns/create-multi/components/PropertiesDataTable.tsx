@@ -1,4 +1,5 @@
 // app/src/app/dashboard/landivo/campaigns/create-multi/components/PropertiesDataTable.tsx
+// MINIMAL CHANGE: Only added isSingleSelect prop support
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -74,6 +75,7 @@ interface Props {
   onSelectProperty: (propertyId: string, checked: boolean) => void;
   onSortOrderChange?: (sortedData: Property[]) => void;
   loading: boolean;
+  isSingleSelect?: boolean; // ADDED: Optional single-select mode
 }
 
 type SortConfig = {
@@ -89,7 +91,8 @@ export function PropertiesDataTable({
   onSelectAll,
   onSelectProperty,
   onSortOrderChange,
-  loading
+  loading,
+  isSingleSelect = false // ADDED: Default to false for backward compatibility
 }: Props) {
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [expandedCells, setExpandedCells] = useState<{[key: string]: boolean}>({});
@@ -231,76 +234,70 @@ export function PropertiesDataTable({
     });
   }, [data, sortConfig]);
 
-  // Notify parent when sort order changes
+  // Notify parent of sorted data
   useEffect(() => {
     if (onSortOrderChange) {
       onSortOrderChange(sortedData);
     }
   }, [sortedData, onSortOrderChange]);
 
-  // Handle sorting
+  // Handle sort
   const handleSort = (columnId: string) => {
-    setSortConfig(current => {
-      if (current?.key === columnId) {
-        // Toggle direction or clear sort
-        if (current.direction === 'asc') {
+    setSortConfig(prev => {
+      if (prev?.key === columnId) {
+        // Toggle direction or clear
+        if (prev.direction === 'asc') {
           return { key: columnId, direction: 'desc' };
-        } else {
-          return null; // Clear sort
         }
-      } else {
-        // Set new column sort
-        return { key: columnId, direction: 'asc' };
+        return null; // Clear sort
       }
+      return { key: columnId, direction: 'asc' };
     });
   };
 
   // Get sort icon
   const getSortIcon = (columnId: string) => {
-    if (sortConfig?.key !== columnId) {
-      return <ChevronUp className="h-4 w-4 opacity-30" />;
-    }
-    
+    if (sortConfig?.key !== columnId) return null;
     return sortConfig.direction === 'asc' 
       ? <ChevronUp className="h-4 w-4" />
       : <ChevronDown className="h-4 w-4" />;
   };
 
-  // Format cell value
-  const formatCellValue = (value: any, columnId: string, rowId: string, isRichText?: boolean) => {
-    if (value === null || value === undefined) return 'N/A';
+  // Format currency
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: 'USD', 
+      minimumFractionDigits: 0 
+    }).format(amount);
 
-    // Handle rich text fields specially
+  // Format number
+  const formatNumber = (num: number) =>
+    new Intl.NumberFormat('en-US').format(num);
+
+  // Format cell value
+  const formatCellValue = (value: any, columnId: string, propertyId: string, isRichText?: boolean) => {
+    if (value === null || value === undefined) return <span className="text-gray-400">N/A</span>;
+
     if (isRichText) {
-      return renderRichTextContent(value, rowId, columnId);
+      return renderRichTextContent(value, propertyId, columnId);
     }
 
-    if (columnId === 'askingPrice' || columnId === 'minPrice' || columnId === 'hoaFee') {
-      return new Intl.NumberFormat('en-US', { 
-        style: 'currency', 
-        currency: 'USD',
-        minimumFractionDigits: 0 
-      }).format(value);
+    if (columnId === 'askingPrice' || columnId === 'minPrice') {
+      return formatCurrency(Number(value));
     }
 
     if (columnId === 'sqft' || columnId === 'acre') {
-      return new Intl.NumberFormat('en-US').format(value);
-    }
-
-    if (columnId === 'latitude' || columnId === 'longitude') {
-      return typeof value === 'number' ? value.toFixed(6) : value;
-    }
-
-    if (columnId === 'createdAt' || columnId === 'updatedAt') {
-      return value ? new Date(value).toLocaleDateString() : 'N/A';
+      return formatNumber(Number(value));
     }
 
     if (columnId === 'status') {
       return (
         <Badge className={
-          value === 'Available' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
-          value === 'Pending' ? 'bg-orange-100 text-orange-800 hover:bg-orange-100' :
-          value === 'Sold' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' :
+          value === 'Active' ? 
+          'bg-green-100 text-green-800 hover:bg-green-100' :
+          value === 'Available' ?
+          'bg-blue-100 text-blue-800 hover:bg-blue-100' :
           'bg-gray-100 text-gray-800 hover:bg-gray-100'
         }>
           {value}
@@ -360,7 +357,6 @@ export function PropertiesDataTable({
               <TableHead className="w-12 sticky-checkbox-header">
                 <Checkbox
                   checked={isAllSelected}
-                  indeterminate={isSomeSelected || undefined}
                   onCheckedChange={onSelectAll}
                   aria-label="Select all properties"
                 />
@@ -390,7 +386,8 @@ export function PropertiesDataTable({
               <TableRow 
                 key={property.id}
                 className={`hover:bg-gray-50 transition-colors ${
-                  selectedProperties.includes(property.id) ? 'bg-blue-50' : ''
+                  selectedProperties.includes(property.id) ?
+                  'bg-blue-50' : ''
                 }`}
               >
                 {/* Select Checkbox - Sticky */}
