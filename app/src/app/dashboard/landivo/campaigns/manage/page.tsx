@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { CampaignStatus } from "@/components/campaigns/CampaignStatus";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -602,7 +601,7 @@ function CampaignCard({
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Campaign Info */}
           <div className="flex-1 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -612,27 +611,36 @@ function CampaignCard({
               </Badge>
             </div>
 
-            <CampaignStatus
-              stats={{
-                queued: campaign.metrics?.queued || 0,
-                sent: campaign.metrics?.sent || 0,
-                delivered:
-                  campaign.metrics?.successfulDeliveries ||
-                  campaign.metrics?.delivered ||
-                  0,
-                opened: campaign.metrics?.open || campaign.metrics?.opened || 0,
-                clicked:
-                  campaign.metrics?.clicks || campaign.metrics?.clicked || 0,
-                bounced:
-                  campaign.metrics?.bounces || campaign.metrics?.bounced || 0,
-                total:
-                  campaign.totalContacts ||
-                  campaign.metrics?.totalRecipients ||
-                  0,
-              }}
-              showPercentages={false}
-              className="mt-4"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Property</p>
+                <p className="font-medium truncate">
+                  {getPropertyAddress(campaign.property)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Email List</p>
+                <p className="font-medium truncate">
+                  {emailListDetails.name}
+                  {emailListDetails.recipientCount > 0 && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({formatNumber(emailListDetails.recipientCount)}{" "}
+                      Recipients)
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Template</p>
+                <p className="font-medium truncate">
+                  {getTemplateName(campaign.emailTemplate)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Schedule</p>
+                <p className="font-medium">{campaign.emailSchedule}</p>
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
               <div>
