@@ -124,8 +124,7 @@ router.post('/webhooks/:provider', async (req: Request, res: Response): Promise<
 });
 
 // Sync status
-router.get('/sync/status', authenticate, async (req: Request, res: Response): Promise<void> => {
-  try {
+router.get('/sync/status', authenticate, async (_req: Request, res: Response): Promise<void> => {  try {
     const stats = await trackingSyncService.getQueueStats();
     res.json(stats);
   } catch (error) {
@@ -133,8 +132,6 @@ router.get('/sync/status', authenticate, async (req: Request, res: Response): Pr
     res.status(500).json({ error: 'Failed to fetch sync status' });
   }
 });
-
-export default router;
 
 // Unsubscribe endpoint
 router.get(

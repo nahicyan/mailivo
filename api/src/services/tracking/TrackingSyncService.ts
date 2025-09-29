@@ -148,7 +148,7 @@ export class TrackingSyncService {
 
   private async checkForConflict(
     trackingId: string,
-    newStatus: string,
+    _newStatus: string,
     metadata?: any
   ): Promise<boolean> {
     // Check if there's a recent update from a higher priority source
@@ -168,7 +168,7 @@ export class TrackingSyncService {
 
   private async resolveConflict(
     trackingId: string,
-    status: string,
+    _status: string,
     metadata?: any
   ): Promise<boolean> {
     // Implement conflict resolution logic

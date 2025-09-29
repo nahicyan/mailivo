@@ -107,6 +107,8 @@ export interface IEmailTracking extends Document {
     city?: string;
     region?: string;
   };
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const emailTrackingSchema = new Schema<IEmailTracking>(

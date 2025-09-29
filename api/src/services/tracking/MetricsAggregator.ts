@@ -1,4 +1,4 @@
-import { EmailTracking, EmailStatus } from '../../models/EmailTracking.model';
+import { EmailTracking } from '../../models/EmailTracking.model';
 import { Campaign } from '../../models/Campaign';
 import { logger } from '../../utils/logger';
 
@@ -24,17 +24,21 @@ export interface CampaignMetrics {
   bounceRate: number;
   complaintRate: number;
   unsubscribeRate: number;
+  delivery_delay: number; // Add missing property
+  rendering_failure: number; // Add missing property
+  resubscribe: number; // Add missing property
+
   // Engagement
   uniqueOpens: number;
   uniqueClicks: number;
   totalOpens: number;
   totalClicks: number;
+  [key: string]: number;
 }
 
 export class MetricsAggregator {
   async calculateCampaignMetrics(campaignId: string): Promise<CampaignMetrics> {
     try {
-      // Get all tracking records for the campaign
       const trackingRecords = await EmailTracking.find({ campaignId });
       
       const metrics: CampaignMetrics = {
@@ -51,6 +55,9 @@ export class MetricsAggregator {
         deferred: 0,
         complaints: 0,
         unsubscribed: 0,
+        delivery_delay: 0,
+        rendering_failure: 0,
+        resubscribe: 0,
         deliveryRate: 0,
         openRate: 0,
         clickRate: 0,
@@ -64,15 +71,16 @@ export class MetricsAggregator {
         totalClicks: 0
       };
 
-      // Count statuses
       const uniqueOpeners = new Set<string>();
       const uniqueClickers = new Set<string>();
 
       for (const record of trackingRecords) {
-        // Count by status
-        metrics[record.status]++;
+        // Safely increment status count
+        const statusKey = record.status as keyof CampaignMetrics;
+        if (statusKey in metrics && typeof metrics[statusKey] === 'number') {
+          (metrics[statusKey] as number)++;
+        }
 
-        // Track unique opens/clicks
         if (record.openedAt) {
           uniqueOpeners.add(record.contactId);
           metrics.totalOpens++;
@@ -105,12 +113,12 @@ export class MetricsAggregator {
       }
 
       return metrics;
-
     } catch (error) {
       logger.error(`Error calculating metrics for campaign ${campaignId}:`, error);
       throw error;
     }
   }
+  
 
   async updateCampaignMetrics(campaignId: string): Promise<void> {
     try {
@@ -145,7 +153,7 @@ export class MetricsAggregator {
   }
 
   async getRealtimeMetrics(campaignId: string): Promise<any> {
-    const pipeline = [
+    const pipeline: any[] = [
       { $match: { campaignId } },
       {
         $facet: {

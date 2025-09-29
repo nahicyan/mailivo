@@ -1,326 +1,344 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { 
-  List, 
-  Send, 
-  Mail, 
-  MailOpen, 
-  MousePointer, 
-  MailX,
+// app/src/components/campaigns/CampaignStatus.tsx
+import React, { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import {
+  Send,
   CheckCircle,
-  Loader2
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
+  AlertCircle,
+  Clock,
+  Mail,
+  MousePointer,
+  Eye,
+} from "lucide-react";
 
-// Types
-interface CampaignStats {
+interface CampaignMetrics {
+  total: number;
   queued: number;
   sent: number;
   delivered: number;
   opened: number;
   clicked: number;
   bounced: number;
-  total?: number;
-}
-
-interface EmailTracking {
-  _id: string;
-  campaignId: string;
-  contactId: string;
-  status: string;
-  sentAt?: Date | string;
-  deliveredAt?: Date | string;
-  openedAt?: Date | string;
-  clickedAt?: Date | string;
-  bouncedAt?: Date | string;
-  [key: string]: any;
-}
-
-interface StatusNode {
-  id: string;
-  label: string;
-  count: number | string;
-  icon: React.ComponentType<{ className?: string }>;
-  isActive: boolean;
-  color: string;
-  bgColor: string;
+  failed: number;
+  dropped: number;
+  rejected: number;
+  deferred: number;
+  complaints: number;
+  unsubscribed: number;
+  deliveryRate: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  complaintRate: number;
+  unsubscribeRate: number;
 }
 
 interface CampaignStatusProps {
   campaignId?: string;
-  stats?: CampaignStats;
-  trackingData?: EmailTracking[];
-  loading?: boolean;
-  className?: string;
-  showPercentages?: boolean;
+  showAllCampaigns?: boolean;
 }
 
-// Helper function to calculate stats from tracking data
-const calculateStatsFromTracking = (trackingData: EmailTracking[]): CampaignStats => {
-  const stats: CampaignStats = {
-    queued: 0,
-    sent: 0,
-    delivered: 0,
-    opened: 0,
-    clicked: 0,
-    bounced: 0,
-    total: trackingData.length
-  };
-
-  trackingData.forEach((tracking) => {
-    // Count by status
-    if (tracking.status === 'queued') stats.queued++;
-    if (tracking.status === 'bounced') stats.bounced++;
-    
-    // Count by timestamps (more accurate)
-    if (tracking.sentAt) stats.sent++;
-    if (tracking.deliveredAt) stats.delivered++;
-    if (tracking.openedAt || tracking.clickedAt) stats.opened++; // clicked implies opened
-    if (tracking.clickedAt) stats.clicked++;
-  });
-
-  return stats;
-};
-
-// Format number with commas
-const formatNumber = (num: number): string => {
-  return new Intl.NumberFormat('en-US').format(num);
-};
-
-const CampaignStatus: React.FC<CampaignStatusProps> = ({
+export function CampaignStatus({
   campaignId,
-  stats: propStats,
-  trackingData,
-  loading = false,
-  className,
-  showPercentages = false
-}) => {
-  const [stats, setStats] = useState<CampaignStats>(propStats || {
-    queued: 0,
-    sent: 0,
-    delivered: 0,
-    opened: 0,
-    clicked: 0,
-    bounced: 0
-  });
-  const [isLoading, setIsLoading] = useState(loading);
+  showAllCampaigns = false,
+}: CampaignStatusProps) {
+  const [metrics, setMetrics] = useState<CampaignMetrics | null>(null);
+  const [realtimeData, setRealtimeData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch stats from API if campaignId is provided
   useEffect(() => {
-    if (campaignId && !propStats && !trackingData) {
-      fetchCampaignStats(campaignId);
-    } else if (trackingData && !propStats) {
-      const calculatedStats = calculateStatsFromTracking(trackingData);
-      setStats(calculatedStats);
-    }
-  }, [campaignId, propStats, trackingData]);
+    const fetchMetrics = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const fetchCampaignStats = async (id: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/campaigns/${id}/stats`);
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
+        if (showAllCampaigns) {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/tracking/campaign/${campaignId}/metrics`,
+            {
+              credentials: "include",
+            }
+          );
+          const data = await response.json();
+          const aggregated: CampaignMetrics = {
+            total: 0,
+            queued: 0,
+            sent: 0,
+            delivered: 0,
+            opened: 0,
+            clicked: 0,
+            bounced: 0,
+            failed: 0,
+            dropped: 0,
+            rejected: 0,
+            deferred: 0,
+            complaints: 0,
+            unsubscribed: 0,
+            deliveryRate: 0,
+            openRate: 0,
+            clickRate: 0,
+            bounceRate: 0,
+            complaintRate: 0,
+            unsubscribeRate: 0,
+          };
+
+          // Aggregate data from all campaigns
+          if (response.data.campaigns) {
+            for (const campaign of response.data.campaigns) {
+              if (campaign.metrics) {
+                aggregated.total += campaign.metrics.totalRecipients || 0;
+                aggregated.sent += campaign.metrics.sent || 0;
+                aggregated.delivered += campaign.metrics.delivered || 0;
+                aggregated.opened += campaign.metrics.opened || 0;
+                aggregated.clicked += campaign.metrics.clicked || 0;
+                aggregated.bounced += campaign.metrics.bounced || 0;
+                aggregated.failed += campaign.metrics.failed || 0;
+                aggregated.complaints += campaign.metrics.complaints || 0;
+                aggregated.unsubscribed += campaign.metrics.unsubscribed || 0;
+              }
+            }
+
+            // Calculate rates
+            if (aggregated.total > 0) {
+              aggregated.deliveryRate =
+                (aggregated.delivered / aggregated.total) * 100;
+              aggregated.bounceRate =
+                (aggregated.bounced / aggregated.total) * 100;
+            }
+            if (aggregated.delivered > 0) {
+              aggregated.openRate =
+                (aggregated.opened / aggregated.delivered) * 100;
+              aggregated.clickRate =
+                (aggregated.clicked / aggregated.delivered) * 100;
+              aggregated.complaintRate =
+                (aggregated.complaints / aggregated.delivered) * 100;
+              aggregated.unsubscribeRate =
+                (aggregated.unsubscribed / aggregated.delivered) * 100;
+            }
+          }
+
+          setMetrics(aggregated);
+        } else if (campaignId) {
+          // Fetch metrics for specific campaign using new endpoint
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/tracking/campaign/${campaignId}/metrics`,
+            {
+              credentials: "include",
+            }
+          );
+          const data = await response.json();
+          setMetrics(response.data.metrics);
+          setRealtimeData(response.data.realtime);
+        }
+      } catch (err: any) {
+        console.error("Error fetching metrics:", err);
+        setError(
+          err.response?.data?.error || "Failed to load campaign metrics"
+        );
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching campaign stats:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  // Update stats when props change
-  useEffect(() => {
-    if (propStats) {
-      setStats(propStats);
-    }
-  }, [propStats]);
+    fetchMetrics();
 
-  // Define the main flow nodes
-  const mainFlowNodes: StatusNode[] = [
-    {
-      id: 'queued',
-      label: 'Queued',
-      count: formatNumber(stats.queued),
-      icon: List,
-      isActive: stats.queued > 0,
-      color: 'text-gray-700',
-      bgColor: 'bg-gray-900'
-    },
-    {
-      id: 'sent',
-      label: 'Sent',
-      count: formatNumber(stats.sent),
-      icon: Send,
-      isActive: stats.sent > 0,
-      color: 'text-gray-700',
-      bgColor: 'bg-gray-900'
-    },
-    {
-      id: 'delivered',
-      label: 'Delivered',
-      count: formatNumber(stats.delivered),
-      icon: Mail,
-      isActive: stats.delivered > 0,
-      color: 'text-gray-700',
-      bgColor: 'bg-gray-900'
-    },
-    {
-      id: 'opened',
-      label: 'Opened',
-      count: formatNumber(stats.opened),
-      icon: MailOpen,
-      isActive: stats.opened > 0,
-      color: 'text-gray-700',
-      bgColor: 'bg-gray-900'
-    },
-    {
-      id: 'clicked',
-      label: 'Clicked',
-      count: stats.clicked > 0 ? formatNumber(stats.clicked) : 'No',
-      icon: MousePointer,
-      isActive: stats.clicked > 0,
-      color: stats.clicked > 0 ? 'text-gray-700' : 'text-gray-400',
-      bgColor: stats.clicked > 0 ? 'bg-gray-900' : 'bg-gray-300'
-    }
-  ];
+    // Poll for updates every 30 seconds if showing single campaign
+    const interval =
+      campaignId && !showAllCampaigns
+        ? setInterval(fetchMetrics, 30000)
+        : undefined;
 
-  // Calculate percentages if needed
-  const getPercentage = (value: number, total: number): string => {
-    if (total === 0) return '0%';
-    return `${((value / total) * 100).toFixed(1)}%`;
-  };
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [campaignId, showAllCampaigns]);
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <Card className={cn("p-8", className)}>
-        <div className="flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-500">Loading campaign statistics...</span>
-        </div>
+      <Card>
+        <CardContent className="py-6">
+          <div className="text-center text-muted-foreground">
+            Loading metrics...
+          </div>
+        </CardContent>
       </Card>
     );
   }
 
-  return (
-    <Card className={cn("p-8 bg-white", className)}>
-      <div className="space-y-8">
-        {/* Main Flow */}
-        <div className="relative">
-          <div className="flex items-center justify-between">
-            {mainFlowNodes.map((node, index) => {
-              const Icon = node.icon;
-              const isLast = index === mainFlowNodes.length - 1;
-              
-              return (
-                <React.Fragment key={node.id}>
-                  {/* Node */}
-                  <div className="flex flex-col items-center z-10">
-                    <div className={cn(
-                      "w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200",
-                      node.bgColor,
-                      node.isActive ? 'shadow-lg' : 'opacity-60'
-                    )}>
-                      <Icon className={cn("w-6 h-6 text-white", node.id === 'clicked' && !node.isActive && 'text-gray-500')} />
-                    </div>
-                    <div className="mt-3 text-center">
-                      <div className={cn(
-                        "text-2xl font-bold",
-                        node.color
-                      )}>
-                        {node.count}
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {node.label}
-                        {showPercentages && stats.total && node.id !== 'clicked' && (
-                          <span className="text-xs text-gray-400 block">
-                            ({getPercentage(
-                              stats[node.id as keyof CampaignStats] as number, 
-                              stats.total
-                            )})
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <div className="text-center text-red-500">{error}</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-                  {/* Connector Line */}
-                  {!isLast && (
-                    <div className="flex-1 h-px bg-gray-300 -mt-7 mx-2" />
-                  )}
-                </React.Fragment>
-              );
-            })}
+  if (!metrics) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <div className="text-center text-muted-foreground">
+            No metrics available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "delivered":
+        return "bg-green-500";
+      case "opened":
+        return "bg-blue-500";
+      case "clicked":
+        return "bg-purple-500";
+      case "bounced":
+        return "bg-red-500";
+      case "failed":
+        return "bg-red-600";
+      case "sent":
+        return "bg-yellow-500";
+      case "queued":
+        return "bg-gray-400";
+      default:
+        return "bg-gray-300";
+    }
+  };
+
+  const progressValue =
+    metrics.total > 0
+      ? ((metrics.delivered + metrics.bounced + metrics.failed) /
+          metrics.total) *
+        100
+      : 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-5 w-5" />
+          {showAllCampaigns ? "All Campaigns Status" : "Campaign Status"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Progress Bar */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Progress</span>
+            <span>{progressValue.toFixed(1)}%</span>
+          </div>
+          <Progress value={progressValue} className="h-2" />
+        </div>
+
+        {/* Status Badges */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-gray-500" />
+            <div>
+              <div className="text-xs text-muted-foreground">Queued</div>
+              <div className="font-semibold">{metrics.queued}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-yellow-500" />
+            <div>
+              <div className="text-xs text-muted-foreground">Sent</div>
+              <div className="font-semibold">{metrics.sent}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <div>
+              <div className="text-xs text-muted-foreground">Delivered</div>
+              <div className="font-semibold">{metrics.delivered}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <div>
+              <div className="text-xs text-muted-foreground">Bounced</div>
+              <div className="font-semibold">{metrics.bounced}</div>
+            </div>
           </div>
         </div>
 
-        {/* Bounced Status (Below with branch) */}
-        {stats.bounced > 0 && (
-          <div className="relative">
-            {/* Branch Line from Delivered */}
-            <div className="absolute left-1/2 -top-8 w-px h-8 bg-gray-300" 
-                 style={{ left: 'calc(50% - 110px)' }} />
-            
-            <div className="flex justify-center" style={{ marginLeft: '-110px' }}>
-              <div className="flex flex-col items-center">
-                <div className="w-14 h-14 rounded-full bg-gray-900 flex items-center justify-center shadow-lg">
-                  <MailX className="w-6 h-6 text-white" />
-                </div>
-                <div className="mt-3 text-center">
-                  <div className="text-2xl font-bold text-gray-700">
-                    {formatNumber(stats.bounced)}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    Bounced
-                    {showPercentages && stats.sent > 0 && (
-                      <span className="text-xs text-gray-400 block">
-                        ({getPercentage(stats.bounced, stats.sent)})
-                      </span>
-                    )}
-                  </div>
-                </div>
+        {/* Engagement Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-blue-500" />
+            <div>
+              <div className="text-xs text-muted-foreground">Opened</div>
+              <div className="font-semibold">{metrics.opened}</div>
+              <div className="text-xs text-muted-foreground">
+                {metrics.openRate.toFixed(1)}%
               </div>
             </div>
           </div>
-        )}
 
-        {/* Summary Stats */}
-        {showPercentages && stats.sent > 0 && (
-          <div className="pt-6 border-t border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="text-gray-500">Delivery Rate:</span>
-                <span className="ml-2 font-semibold text-green-600">
-                  {getPercentage(stats.delivered, stats.sent)}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Open Rate:</span>
-                <span className="ml-2 font-semibold text-blue-600">
-                  {getPercentage(stats.opened, stats.delivered)}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">CTR:</span>
-                <span className="ml-2 font-semibold text-purple-600">
-                  {getPercentage(stats.clicked, stats.opened)}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Bounce Rate:</span>
-                <span className="ml-2 font-semibold text-red-600">
-                  {getPercentage(stats.bounced, stats.sent)}
-                </span>
+          <div className="flex items-center gap-2">
+            <MousePointer className="h-4 w-4 text-purple-500" />
+            <div>
+              <div className="text-xs text-muted-foreground">Clicked</div>
+              <div className="font-semibold">{metrics.clicked}</div>
+              <div className="text-xs text-muted-foreground">
+                {metrics.clickRate.toFixed(1)}%
               </div>
             </div>
           </div>
-        )}
-      </div>
+
+          <div>
+            <div className="text-xs text-muted-foreground">Unsubscribed</div>
+            <div className="font-semibold">{metrics.unsubscribed}</div>
+            <div className="text-xs text-muted-foreground">
+              {metrics.unsubscribeRate.toFixed(1)}%
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-muted-foreground">Complaints</div>
+            <div className="font-semibold">{metrics.complaints}</div>
+            <div className="text-xs text-muted-foreground">
+              {metrics.complaintRate.toFixed(1)}%
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Status */}
+        <div className="space-y-2 pt-4 border-t">
+          <div className="text-sm font-medium">Detailed Status</div>
+          <div className="grid grid-cols-2 gap-2">
+            <Badge variant="outline" className="justify-between">
+              <span>Total Recipients</span>
+              <span>{metrics.total}</span>
+            </Badge>
+            <Badge variant="outline" className="justify-between">
+              <span>Delivery Rate</span>
+              <span>{metrics.deliveryRate.toFixed(1)}%</span>
+            </Badge>
+            {metrics.deferred > 0 && (
+              <Badge variant="outline" className="justify-between">
+                <span>Deferred</span>
+                <span>{metrics.deferred}</span>
+              </Badge>
+            )}
+            {metrics.dropped > 0 && (
+              <Badge variant="outline" className="justify-between">
+                <span>Dropped</span>
+                <span>{metrics.dropped}</span>
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
-};
-
-export default CampaignStatus;
+}
