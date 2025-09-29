@@ -110,7 +110,7 @@ const startServer = async () => {
     // Connect to Redis - CRITICAL: App crashes if Redis unavailable
     await connectRedis();
 
-    // 🔔 Setup event listeners for status changes (ADD THIS)
+    // 🔔 Setup event listeners for status changes 
     emailStatusManager.on("statusChanged", async (data) => {
       logger.info("Email status changed:", data);
       // You can add additional handlers here (e.g., notifications)

@@ -1,626 +1,415 @@
-// Landivo integration utilities for property-based workflow automation
-
+// api/src/integrations/landivo-integration.ts
+import axios, { AxiosInstance } from 'axios';
 import { WorkflowExecutionService } from '../services/workflow-execution-service';
-import { WorkflowDatabase } from '../models/workflow-database';
+import { logger } from '../utils/logger';
+import { LandivoProperty, LandivoBuyer } from '../types/landivo';
 
-export interface Property {
+// Use the existing types from your project instead of creating new ones
+interface LandivoQualification {
   id: string;
-  title: string;
-  description: string;
-  price: number;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    coordinates: { lat: number; lng: number };
-  };
-  details: {
-    propertyType: 'apartment' | 'house' | 'condo' | 'townhouse' | 'commercial';
-    bedrooms: number;
-    bathrooms: number;
-    squareFeet: number;
-    yearBuilt?: number;
-    lotSize?: number;
-  };
-  features: string[];
-  images: Array<{
-    url: string;
-    caption?: string;
-    isPrimary: boolean;
-  }>;
-  listingDate: Date;
-  lastUpdated: Date;
-  status: 'active' | 'pending' | 'sold' | 'off_market';
-  agentId: string;
-  mls?: string;
+  propertyId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  qualified: boolean;
+  disqualificationReason?: string;
+  grossAnnualIncome?: string;
+  totalMonthlyPayments?: number;
+  currentCreditScore?: string;
+  employmentStatus?: string;
+  verifyIncome?: string;
+  homeUsage?: string;
+  homePurchaseTiming?: string;
+  currentHomeOwnership?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface BuyerProfile {
+interface LandivoOffer {
   id: string;
-  contactId: string;
-  preferences: {
-    propertyTypes: string[];
-    priceRange: { min: number; max: number };
-    locations: Array<{
-      city: string;
-      state: string;
-      radius: number; // miles
-    }>;
-    bedrooms: { min?: number; max?: number };
-    bathrooms: { min?: number; max?: number };
-    squareFeet: { min?: number; max?: number };
-    features: string[];
-  };
-  searchCriteria: {
-    isActive: boolean;
-    urgency: 'low' | 'medium' | 'high';
-    timeline: string;
-    budget: {
-      preApprovalAmount?: number;
-      downPayment?: number;
-      monthlyPayment?: number;
-    };
-  };
-  engagement: {
-    lastActivity: Date;
-    propertiesViewed: string[];
-    favoritedProperties: string[];
-    inquiriesSent: number;
-    emailEngagement: {
-      opens: number;
-      clicks: number;
-      lastOpen?: Date;
-      lastClick?: Date;
-    };
-  };
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PropertyAlert {
-  id: string;
-  buyerProfileId: string;
   propertyId: string;
-  alertType: 'new_listing' | 'price_change' | 'status_change' | 'similar_property';
-  priority: 'low' | 'medium' | 'high';
-  matchScore: number; // 0-100
-  triggerData: {
-    previousPrice?: number;
-    newPrice?: number;
-    previousStatus?: string;
-    newStatus?: string;
-    changedAt: Date;
-  };
-  sentAt?: Date;
-  viewedAt?: Date;
-  clickedAt?: Date;
-  inquirySent?: boolean;
-  createdAt: Date;
+  buyerId: string;
+  offeredPrice: number;
+  counteredPrice?: number;
+  offerStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'EXPIRED';
+  buyerMessage?: string;
+  sysMessage?: string;
+  timestamp: string;
 }
 
-export class LandivoWorkflowIntegration {
+interface LandivoDeal {
+  id: string;
+  buyerId: string;
+  propertyId: string;
+  purchasePrice: number;
+  salePrice: number;
+  downPayment?: number;
+  loanAmount?: number;
+  interestRate?: number;
+  term?: number;
+  monthlyPayment?: number;
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'CANCELLED';
+  startDate: string;
+  completionDate?: string;
+}
+
+export class LandivoIntegration {
+  private axios: AxiosInstance;
+  private landivoApiUrl: string;
   private workflowService: WorkflowExecutionService;
-  private landivoAPI: LandivoAPI;
 
-  constructor(workflowService: WorkflowExecutionService, landivoAPI: LandivoAPI) {
+  constructor(
+    workflowService: WorkflowExecutionService,
+    landivoApiUrl?: string
+  ) {
     this.workflowService = workflowService;
-    this.landivoAPI = landivoAPI;
-  }
-
-  // Initialize Landivo webhook handlers
-  async setupWebhookHandlers(): Promise<void> {
-    // Property lifecycle webhooks
-    this.landivoAPI.onPropertyAdded(this.handleNewProperty.bind(this));
-    this.landivoAPI.onPropertyUpdated(this.handlePropertyUpdate.bind(this));
-    this.landivoAPI.onPropertyStatusChanged(this.handlePropertyStatusChange.bind(this));
-    this.landivoAPI.onPriceChanged(this.handlePriceChange.bind(this));
-
-    // Contact/Buyer webhooks
-    this.landivoAPI.onBuyerRegistered(this.handleNewBuyer.bind(this));
-    this.landivoAPI.onBuyerPreferencesUpdated(this.handleBuyerPreferencesUpdate.bind(this));
-    this.landivoAPI.onPropertyViewed(this.handlePropertyViewed.bind(this));
-    this.landivoAPI.onPropertyFavorited(this.handlePropertyFavorited.bind(this));
-    this.landivoAPI.onInquirySent(this.handleInquirySent.bind(this));
-
-    console.log('Landivo webhook handlers initialized');
-  }
-
-  // Handle new property listings
-  private async handleNewProperty(property: Property): Promise<void> {
-    console.log(`New property added: ${property.id} - ${property.title}`);
-
-    try {
-      // Find matching buyer profiles
-      const matchingBuyers = await this.findMatchingBuyers(property);
-      
-      if (matchingBuyers.length === 0) {
-        console.log(`No matching buyers found for property ${property.id}`);
-        return;
+    this.landivoApiUrl = landivoApiUrl || process.env.LANDIVO_API_URL || 'http://localhost:8200';
+    
+    // Initialize axios instance with base configuration
+    this.axios = axios.create({
+      baseURL: this.landivoApiUrl,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
       }
+    });
 
-      // Find active property alert workflows
-      const alertWorkflows = await WorkflowDatabase.getActiveWorkflows('property_alerts');
-      
-      for (const workflow of alertWorkflows) {
-        // Trigger workflow for each matching buyer
-        const contactIds = matchingBuyers.map(buyer => buyer.contactId);
-        
-        await this.workflowService.executeWorkflow(
-          workflow.id,
-          contactIds,
-          {
-            trigger: 'new_property_match',
-            property,
-            matchingBuyers: matchingBuyers.map(buyer => ({
-              buyerProfileId: buyer.id,
-              contactId: buyer.contactId,
-              matchScore: this.calculateMatchScore(property, buyer)
-            }))
-          },
-          {
-            priority: this.calculateAlertPriority(property, matchingBuyers),
-            batchSize: 50
-          }
-        );
+    // Add request/response interceptors for logging
+    this.axios.interceptors.request.use(
+      (config) => {
+        logger.debug(`Landivo API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        return config;
+      },
+      (error) => {
+        logger.error('Landivo API Request Error:', error);
+        return Promise.reject(error);
       }
-
-      // Create property alerts for tracking
-      await this.createPropertyAlerts(property, matchingBuyers, 'new_listing');
-
-      console.log(`Triggered workflows for ${matchingBuyers.length} matching buyers`);
-
-    } catch (error) {
-      console.error('Error handling new property:', error);
-    }
-  }
-
-  // Handle property updates (price changes, status changes, etc.)
-  private async handlePropertyUpdate(
-    property: Property, 
-    changes: { field: string; oldValue: any; newValue: any }[]
-  ): Promise<void> {
-    console.log(`Property updated: ${property.id}`, changes);
-
-    // Check if this is a significant change that should trigger alerts
-    const significantChanges = changes.filter(change => 
-      ['price', 'status', 'details.bedrooms', 'details.bathrooms'].includes(change.field)
     );
 
-    if (significantChanges.length === 0) {
-      return;
-    }
+    this.axios.interceptors.response.use(
+      (response) => {
+        logger.debug(`Landivo API Response: ${response.status} ${response.config.url}`);
+        return response;
+      },
+      (error) => {
+        logger.error(`Landivo API Response Error: ${error.response?.status} ${error.config?.url}`);
+        return Promise.reject(error);
+      }
+    );
+  }
 
+  // ========== PROPERTY METHODS ==========
+
+  async getAllProperties(): Promise<LandivoProperty[]> {
     try {
-      // Find buyers who have shown interest in this property
-      const interestedBuyers = await this.findInterestedBuyers(property.id);
-      
-      // Also find new matching buyers if price dropped significantly
-      const priceChange = changes.find(c => c.field === 'price');
-      let newMatchingBuyers: BuyerProfile[] = [];
-      
-      if (priceChange && priceChange.newValue < priceChange.oldValue * 0.95) {
-        // 5% or more price drop - find new potential matches
-        newMatchingBuyers = await this.findMatchingBuyers(property);
-      }
-
-      const allTargetBuyers = [...interestedBuyers, ...newMatchingBuyers];
-      
-      if (allTargetBuyers.length === 0) {
-        return;
-      }
-
-      // Trigger update workflows
-      const updateWorkflows = await WorkflowDatabase.getActiveWorkflows('property_alerts');
-      
-      for (const workflow of updateWorkflows) {
-        const contactIds = allTargetBuyers.map(buyer => buyer.contactId);
-        
-        await this.workflowService.executeWorkflow(
-          workflow.id,
-          contactIds,
-          {
-            trigger: 'property_update',
-            property,
-            changes: significantChanges,
-            updateType: priceChange ? 'price_change' : 'details_change'
-          },
-          {
-            priority: priceChange ? 2 : 1, // Higher priority for price changes
-            batchSize: 25
-          }
-        );
-      }
-
-      // Create update alerts
-      const alertType = priceChange ? 'price_change' : 'status_change';
-      await this.createPropertyAlerts(property, allTargetBuyers, alertType);
-
+      const response = await this.axios.get('/residency/allresd');
+      return response.data;
     } catch (error) {
-      console.error('Error handling property update:', error);
+      logger.error('Failed to fetch all properties:', error);
+      throw new Error('Failed to fetch properties from Landivo');
     }
   }
 
-  // Handle new buyer registration
-  private async handleNewBuyer(buyer: BuyerProfile): Promise<void> {
-    console.log(`New buyer registered: ${buyer.id}`);
-
+  async getProperty(id: string): Promise<LandivoProperty | null> {
     try {
-      // Find welcome series workflows
-      const welcomeWorkflows = await WorkflowDatabase.getActiveWorkflows('welcome_series');
-      
-      for (const workflow of welcomeWorkflows) {
-        await this.workflowService.executeWorkflow(
-          workflow.id,
-          [buyer.contactId],
-          {
-            trigger: 'buyer_registered',
-            buyerProfile: buyer,
-            registrationDate: new Date()
-          },
-          {
-            priority: 1,
-            delay: 300000 // 5 minute delay to allow for profile completion
-          }
-        );
+      const response = await this.axios.get(`/residency/${id}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
       }
+      logger.error(`Failed to fetch property ${id}:`, error);
+      throw new Error(`Failed to fetch property: ${error.message}`);
+    }
+  }
 
-      // Find initial property matches
-      const matchingProperties = await this.findMatchingProperties(buyer);
+  async getPropertiesByIds(ids: string[]): Promise<LandivoProperty[]> {
+    try {
+      const promises = ids.map(id => this.getProperty(id));
+      const results = await Promise.allSettled(promises);
       
-      if (matchingProperties.length > 0) {
-        // Trigger initial property recommendation workflow
-        const recommendationWorkflows = await WorkflowDatabase.getActiveWorkflows('property_alerts');
-        
-        for (const workflow of recommendationWorkflows) {
-          await this.workflowService.executeWorkflow(
-            workflow.id,
-            [buyer.contactId],
-            {
-              trigger: 'initial_property_recommendations',
-              buyerProfile: buyer,
-              recommendedProperties: matchingProperties.slice(0, 10), // Top 10 matches
-              isInitialRecommendation: true
-            },
-            {
-              priority: 0,
-              delay: 3600000 // 1 hour delay after registration
-            }
+      return results
+        .filter(result => result.status === 'fulfilled' && result.value !== null)
+        .map(result => (result as PromiseFulfilledResult<LandivoProperty>).value);
+    } catch (error) {
+      logger.error('Failed to fetch multiple properties:', error);
+      throw new Error('Failed to fetch properties from Landivo');
+    }
+  }
+
+  async searchProperties(filters: {
+    city?: string;
+    state?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    landType?: string[];
+    status?: string;
+  }): Promise<LandivoProperty[]> {
+    try {
+      const properties = await this.getAllProperties();
+      
+      return properties.filter(property => {
+        if (filters.city && property.city.toLowerCase() !== filters.city.toLowerCase()) return false;
+        if (filters.state && property.state.toLowerCase() !== filters.state.toLowerCase()) return false;
+        if (filters.minPrice && property.askingPrice < filters.minPrice) return false;
+        if (filters.maxPrice && property.askingPrice > filters.maxPrice) return false;
+        if (filters.status && property.status !== filters.status) return false;
+        if (filters.landType && filters.landType.length > 0) {
+          const hasMatchingType = filters.landType.some(type => 
+            property.landType.includes(type)
           );
+          if (!hasMatchingType) return false;
         }
-      }
-
-    } catch (error) {
-      console.error('Error handling new buyer:', error);
-    }
-  }
-
-  // Handle buyer preference updates
-  private async handleBuyerPreferencesUpdate(
-    buyer: BuyerProfile,
-    previousPreferences: BuyerProfile['preferences']
-  ): Promise<void> {
-    console.log(`Buyer preferences updated: ${buyer.id}`);
-
-    try {
-      // Check if preferences changed significantly
-      const significantChange = this.hasSignificantPreferenceChange(
-        previousPreferences,
-        buyer.preferences
-      );
-
-      if (!significantChange) {
-        return;
-      }
-
-      // Find new matching properties based on updated preferences
-      const matchingProperties = await this.findMatchingProperties(buyer);
-      
-      if (matchingProperties.length > 0) {
-        // Trigger updated recommendations workflow
-        const updateWorkflows = await WorkflowDatabase.getActiveWorkflows('lead_nurturing');
-        
-        for (const workflow of updateWorkflows) {
-          await this.workflowService.executeWorkflow(
-            workflow.id,
-            [buyer.contactId],
-            {
-              trigger: 'preferences_updated',
-              buyerProfile: buyer,
-              previousPreferences,
-              newMatchingProperties: matchingProperties.slice(0, 8),
-              preferenceUpdateDate: new Date()
-            },
-            {
-              priority: 1,
-              delay: 1800000 // 30 minute delay
-            }
-          );
-        }
-      }
-
-    } catch (error) {
-      console.error('Error handling buyer preferences update:', error);
-    }
-  }
-
-  // Handle property viewing events
-  private async handlePropertyViewed(
-    propertyId: string,
-    buyerId: string,
-    viewData: { source: string; duration?: number; device?: string }
-  ): Promise<void> {
-    console.log(`Property viewed: ${propertyId} by buyer ${buyerId}`);
-
-    try {
-      const buyer = await this.landivoAPI.getBuyerProfile(buyerId);
-      const property = await this.landivoAPI.getProperty(propertyId);
-      
-      if (!buyer || !property) {
-        return;
-      }
-
-      // Update buyer engagement data
-      await this.updateBuyerEngagement(buyerId, {
-        lastActivity: new Date(),
-        propertiesViewed: [propertyId]
+        return true;
       });
-
-      // Find engagement-based workflows
-      const engagementWorkflows = await WorkflowDatabase.getActiveWorkflows('lead_nurturing');
-      
-      for (const workflow of engagementWorkflows) {
-        await this.workflowService.executeWorkflow(
-          workflow.id,
-          [buyer.contactId],
-          {
-            trigger: 'property_viewed',
-            property,
-            buyerProfile: buyer,
-            viewData,
-            viewedAt: new Date()
-          },
-          {
-            priority: 2, // High priority for engagement events
-            delay: 1800000 // 30 minute delay for follow-up
-          }
-        );
-      }
-
-      // Find similar properties for recommendations
-      const similarProperties = await this.findSimilarProperties(property, buyer);
-      
-      if (similarProperties.length > 0) {
-        // Trigger similar property recommendations
-        await this.workflowService.executeWorkflow(
-          engagementWorkflows[0]?.id, // Use first available workflow
-          [buyer.contactId],
-          {
-            trigger: 'similar_property_recommendations',
-            viewedProperty: property,
-            similarProperties: similarProperties.slice(0, 5),
-            buyerProfile: buyer
-          },
-          {
-            priority: 1,
-            delay: 7200000 // 2 hour delay
-          }
-        );
-      }
-
     } catch (error) {
-      console.error('Error handling property viewed:', error);
+      logger.error('Failed to search properties:', error);
+      throw new Error('Failed to search properties');
     }
   }
 
-  // Utility methods for matching and scoring
+  // ========== BUYER METHODS ==========
 
-  private async findMatchingBuyers(property: Property): Promise<BuyerProfile[]> {
-    // This would query your buyer database to find profiles that match the property
-    const buyers = await this.landivoAPI.getBuyerProfiles({
-      propertyTypes: property.details.propertyType,
-      priceRange: { min: property.price * 0.8, max: property.price * 1.2 },
-      location: property.location.city,
-      bedrooms: property.details.bedrooms,
-      bathrooms: property.details.bathrooms
-    });
-
-    return buyers.filter(buyer => {
-      const matchScore = this.calculateMatchScore(property, buyer);
-      return matchScore >= 70; // Only high-confidence matches
-    });
+  async getAllBuyers(): Promise<LandivoBuyer[]> {
+    try {
+      const response = await this.axios.get('/buyer');
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to fetch all buyers:', error);
+      throw new Error('Failed to fetch buyers from Landivo');
+    }
   }
 
-  private async findMatchingProperties(buyer: BuyerProfile): Promise<Property[]> {
-    const properties = await this.landivoAPI.getProperties({
-      propertyTypes: buyer.preferences.propertyTypes,
-      priceRange: buyer.preferences.priceRange,
-      locations: buyer.preferences.locations,
-      bedrooms: buyer.preferences.bedrooms,
-      bathrooms: buyer.preferences.bathrooms,
-      squareFeet: buyer.preferences.squareFeet,
-      status: 'active'
-    });
-
-    return properties.filter(property => {
-      const matchScore = this.calculateMatchScore(property, buyer);
-      return matchScore >= 60; // Broader match criteria for recommendations
-    });
-  }
-
-  private calculateMatchScore(property: Property, buyer: BuyerProfile): number {
-    let score = 0;
-    let factors = 0;
-
-    // Property type match (25% weight)
-    if (buyer.preferences.propertyTypes.includes(property.details.propertyType)) {
-      score += 25;
-    }
-    factors += 25;
-
-    // Price range match (30% weight)
-    if (property.price >= buyer.preferences.priceRange.min && 
-        property.price <= buyer.preferences.priceRange.max) {
-      score += 30;
-    } else if (property.price <= buyer.preferences.priceRange.max * 1.1) {
-      score += 20; // Partial credit if slightly over budget
-    }
-    factors += 30;
-
-    // Location match (20% weight)
-    const locationMatch = buyer.preferences.locations.some(loc => 
-      property.location.city.toLowerCase() === loc.city.toLowerCase() &&
-      property.location.state.toLowerCase() === loc.state.toLowerCase()
-    );
-    if (locationMatch) {
-      score += 20;
-    }
-    factors += 20;
-
-    // Bedroom match (15% weight)
-    if (buyer.preferences.bedrooms.min && buyer.preferences.bedrooms.max) {
-      if (property.details.bedrooms >= buyer.preferences.bedrooms.min && 
-          property.details.bedrooms <= buyer.preferences.bedrooms.max) {
-        score += 15;
+  async getBuyer(id: string): Promise<LandivoBuyer | null> {
+    try {
+      const response = await this.axios.get(`/buyer/${id}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
       }
-    } else if (buyer.preferences.bedrooms.min && 
-               property.details.bedrooms >= buyer.preferences.bedrooms.min) {
-      score += 15;
+      logger.error(`Failed to fetch buyer ${id}:`, error);
+      throw new Error(`Failed to fetch buyer: ${error.message}`);
     }
-    factors += 15;
+  }
 
-    // Bathroom match (10% weight)
-    if (buyer.preferences.bathrooms.min && 
-        property.details.bathrooms >= buyer.preferences.bathrooms.min) {
-      score += 10;
+  async getBuyersByProperty(propertyId: string): Promise<LandivoBuyer[]> {
+    try {
+      const response = await this.axios.get(`/buyer/property/${propertyId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to fetch buyers for property ${propertyId}:`, error);
+      return [];
     }
-    factors += 10;
-
-    return Math.round((score / factors) * 100);
   }
 
-  private calculateAlertPriority(property: Property, buyers: BuyerProfile[]): number {
-    // Higher priority for expensive properties or high-engagement buyers
-    let priority = 0;
-    
-    if (property.price > 1000000) priority += 1; // Luxury properties
-    if (buyers.some(b => b.searchCriteria.urgency === 'high')) priority += 2;
-    if (buyers.length > 10) priority += 1; // High demand
-    
-    return Math.min(priority, 3); // Max priority of 3
+  async getBuyerByEmail(email: string): Promise<LandivoBuyer | null> {
+    try {
+      const buyers = await this.getAllBuyers();
+      return buyers.find(buyer => buyer.email === email) || null;
+    } catch (error) {
+      logger.error(`Failed to fetch buyer by email ${email}:`, error);
+      return null;
+    }
   }
 
-  private async createPropertyAlerts(
-    property: Property,
-    buyers: BuyerProfile[],
-    alertType: PropertyAlert['alertType']
-  ): Promise<void> {
-    const alerts: Partial<PropertyAlert>[] = buyers.map(buyer => ({
-      buyerProfileId: buyer.id,
-      propertyId: property.id,
-      alertType,
-      priority: this.calculateBuyerPriority(buyer),
-      matchScore: this.calculateMatchScore(property, buyer),
-      triggerData: {
-        changedAt: new Date()
-      },
-      createdAt: new Date()
-    }));
+  // ========== QUALIFICATION METHODS ==========
 
-    await this.landivoAPI.createPropertyAlerts(alerts);
+  async getQualification(id: string): Promise<LandivoQualification | null> {
+    try {
+      const response = await this.axios.get(`/qualification/${id}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      logger.error(`Failed to fetch qualification ${id}:`, error);
+      throw new Error(`Failed to fetch qualification: ${error.message}`);
+    }
   }
 
-  private calculateBuyerPriority(buyer: BuyerProfile): 'low' | 'medium' | 'high' {
-    if (buyer.searchCriteria.urgency === 'high') return 'high';
-    if (buyer.engagement.emailEngagement.opens > 10 && 
-        buyer.engagement.propertiesViewed.length > 5) return 'high';
-    if (buyer.engagement.emailEngagement.opens > 5) return 'medium';
-    return 'low';
+  async getQualificationsByProperty(propertyId: string): Promise<LandivoQualification[]> {
+    try {
+      const response = await this.axios.get(`/qualification/property/${propertyId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to fetch qualifications for property ${propertyId}:`, error);
+      return [];
+    }
   }
 
-  private hasSignificantPreferenceChange(
-    previous: BuyerProfile['preferences'],
-    current: BuyerProfile['preferences']
-  ): boolean {
-    // Check for significant changes in key preferences
-    if (previous.priceRange.min !== current.priceRange.min ||
-        previous.priceRange.max !== current.priceRange.max) return true;
-    
-    if (JSON.stringify(previous.propertyTypes) !== JSON.stringify(current.propertyTypes)) return true;
-    if (JSON.stringify(previous.locations) !== JSON.stringify(current.locations)) return true;
-    
-    return false;
+  async submitQualification(qualificationData: Partial<LandivoQualification>): Promise<LandivoQualification> {
+    try {
+      const response = await this.axios.post('/qualification/submit', qualificationData);
+      
+      // Trigger workflow if qualified
+      if (response.data.qualified && qualificationData.propertyId) {
+        await this.workflowService.executeWorkflow({
+          trigger: 'qualification_submitted',
+          data: {
+            qualification: response.data,
+            propertyId: qualificationData.propertyId,
+            buyerEmail: qualificationData.email
+          }
+        });
+      }
+      
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to submit qualification:', error);
+      throw new Error('Failed to submit qualification');
+    }
   }
 
-  private async findInterestedBuyers(propertyId: string): Promise<BuyerProfile[]> {
-    // Find buyers who have viewed, favorited, or inquired about this property
-    return await this.landivoAPI.getBuyerProfiles({
-      interestedInProperty: propertyId
+  // ========== OFFER METHODS ==========
+
+  async makeOffer(offerData: {
+    propertyId: string;
+    buyerId: string;
+    offeredPrice: number;
+    buyerMessage?: string;
+  }): Promise<LandivoOffer> {
+    try {
+      const response = await this.axios.post('/offer/makeOffer', offerData);
+      
+      // Trigger workflow for new offer
+      await this.workflowService.executeWorkflow({
+        trigger: 'offer_submitted',
+        data: {
+          offer: response.data,
+          propertyId: offerData.propertyId,
+          buyerId: offerData.buyerId
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to make offer:', error);
+      throw new Error('Failed to submit offer');
+    }
+  }
+
+  async getOffersByProperty(propertyId: string): Promise<LandivoOffer[]> {
+    try {
+      const response = await this.axios.get(`/offer/property/${propertyId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to fetch offers for property ${propertyId}:`, error);
+      return [];
+    }
+  }
+
+  // ========== DEAL METHODS ==========
+
+  async getDealsByProperty(propertyId: string): Promise<LandivoDeal[]> {
+    try {
+      const response = await this.axios.get(`/deal/property/${propertyId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to fetch deals for property ${propertyId}:`, error);
+      return [];
+    }
+  }
+
+  async getDealsByBuyer(buyerId: string): Promise<LandivoDeal[]> {
+    try {
+      const response = await this.axios.get(`/deal/buyer/${buyerId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to fetch deals for buyer ${buyerId}:`, error);
+      return [];
+    }
+  }
+
+  // ========== WORKFLOW INTEGRATION ==========
+
+  async onPropertyAdded(property: LandivoProperty): Promise<void> {
+    await this.workflowService.executeWorkflow({
+      trigger: 'property_added',
+      data: { property }
     });
   }
 
-  private async findSimilarProperties(
-    property: Property,
-    buyer: BuyerProfile
-  ): Promise<Property[]> {
-    return await this.landivoAPI.getProperties({
-      similarTo: property.id,
-      propertyTypes: [property.details.propertyType],
-      priceRange: {
-        min: property.price * 0.8,
-        max: property.price * 1.2
-      },
-      location: property.location.city,
-      maxResults: 10
+  async onBuyerRegistered(buyer: LandivoBuyer): Promise<void> {
+    await this.workflowService.executeWorkflow({
+      trigger: 'buyer_registered',
+      data: { buyer }
     });
   }
 
-  private async updateBuyerEngagement(
-    buyerId: string,
-    engagement: Partial<BuyerProfile['engagement']>
-  ): Promise<void> {
-    await this.landivoAPI.updateBuyerEngagement(buyerId, engagement);
+  async onOfferStatusChanged(offer: LandivoOffer, previousStatus: string): Promise<void> {
+    await this.workflowService.executeWorkflow({
+      trigger: 'offer_status_changed',
+      data: {
+        offer,
+        previousStatus,
+        newStatus: offer.offerStatus
+      }
+    });
   }
 
-  // Additional handlers for completeness
-  private async handlePropertyStatusChange(property: Property, oldStatus: string): Promise<void> {
-    // Handle when properties go off market, pending, sold, etc.
-    console.log(`Property status changed: ${property.id} from ${oldStatus} to ${property.status}`);
+  async onDealCreated(deal: LandivoDeal): Promise<void> {
+    await this.workflowService.executeWorkflow({
+      trigger: 'deal_created',
+      data: { deal }
+    });
   }
 
-  private async handlePriceChange(property: Property, oldPrice: number): Promise<void> {
-    // Handle price changes specifically
-    console.log(`Property price changed: ${property.id} from $${oldPrice} to $${property.price}`);
+  // ========== UTILITY METHODS ==========
+
+  async syncProperties(): Promise<{ count: number; lastSync: string }> {
+    try {
+      const properties = await this.getAllProperties();
+      
+      // Process each property for workflow triggers
+      for (const property of properties) {
+        // Check if this is a new property and trigger workflow
+        // This would typically check against a local cache or database
+        // For now, we'll just log
+        logger.info(`Synced property: ${property.id} - ${property.title}`);
+      }
+      
+      return {
+        count: properties.length,
+        lastSync: new Date().toISOString()
+      };
+    } catch (error) {
+      logger.error('Failed to sync properties:', error);
+      throw new Error('Failed to sync properties from Landivo');
+    }
   }
 
-  private async handlePropertyFavorited(propertyId: string, buyerId: string): Promise<void> {
-    // Handle when buyers favorite properties
-    console.log(`Property favorited: ${propertyId} by buyer ${buyerId}`);
+  async syncBuyers(): Promise<{ count: number; lastSync: string }> {
+    try {
+      const buyers = await this.getAllBuyers();
+      
+      logger.info(`Synced ${buyers.length} buyers from Landivo`);
+      
+      return {
+        count: buyers.length,
+        lastSync: new Date().toISOString()
+      };
+    } catch (error) {
+      logger.error('Failed to sync buyers:', error);
+      throw new Error('Failed to sync buyers from Landivo');
+    }
   }
 
-  private async handleInquirySent(propertyId: string, buyerId: string): Promise<void> {
-    // Handle when buyers send inquiries
-    console.log(`Inquiry sent for property: ${propertyId} by buyer ${buyerId}`);
+  // Health check for Landivo API connection
+  async healthCheck(): Promise<{ status: string; message: string }> {
+    try {
+      await this.axios.get('/health', { timeout: 5000 });
+      return { status: 'healthy', message: 'Landivo API is accessible' };
+    } catch (error) {
+      return { status: 'unhealthy', message: 'Landivo API is not accessible' };
+    }
   }
 }
 
-// Landivo API interface (to be implemented)
-interface LandivoAPI {
-  getProperty(id: string): Promise<Property | null>;
-  getProperties(filters: any): Promise<Property[]>;
-  getBuyerProfile(id: string): Promise<BuyerProfile | null>;
-  getBuyerProfiles(filters: any): Promise<BuyerProfile[]>;
-  createPropertyAlerts(alerts: Partial<PropertyAlert>[]): Promise<void>;
-  updateBuyerEngagement(buyerId: string, engagement: Partial<BuyerProfile['engagement']>): Promise<void>;
-  
-  // Webhook event handlers
-  onPropertyAdded(handler: (property: Property) => void): void;
-  onPropertyUpdated(handler: (property: Property, changes: any[]) => void): void;
-  onPropertyStatusChanged(handler: (property: Property, oldStatus: string) => void): void;
-  onPriceChanged(handler: (property: Property, oldPrice: number) => void): void;
-  onBuyerRegistered(handler: (buyer: BuyerProfile) => void): void;
-  onBuyerPreferencesUpdated(handler: (buyer: BuyerProfile, previousPreferences: any) => void): void;
-  onPropertyViewed(handler: (propertyId: string, buyerId: string, viewData: any) => void): void;
-  onPropertyFavorited(handler: (propertyId: string, buyerId: string) => void): void;
-  onInquirySent(handler: (propertyId: string, buyerId: string) => void): void;
-}
+// Export singleton instance
+export const landivoIntegration = new LandivoIntegration(
+  new WorkflowExecutionService()
+);
+
+export default landivoIntegration;
