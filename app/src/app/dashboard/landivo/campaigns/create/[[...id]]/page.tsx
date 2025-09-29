@@ -258,6 +258,7 @@ export default function CreateCampaignPage() {
     try {
       const campaignStatus =
         formData.emailSchedule === "immediate" ? "active" : "draft";
+
       const campaignData = {
         ...formData,
         type: "single",
@@ -267,6 +268,16 @@ export default function CreateCampaignPage() {
           formData.emailSchedule === "scheduled"
             ? selectedDate?.toISOString()
             : null,
+        // ADD THESE REQUIRED FIELDS:
+        subject:
+          formData.subject ||
+          selectedTemplate?.subject ||
+          `Campaign for ${formData.name}`,
+        htmlContent: "<p>Email content</p>",
+        textContent: "",
+        audienceType: "landivo",
+        segments: [formData.emailList],
+        estimatedRecipients: formData.emailVolume,
       };
 
       const response = await fetch(`${API_URL}/campaigns`, {
