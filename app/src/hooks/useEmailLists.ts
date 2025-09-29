@@ -1,3 +1,4 @@
+// app/src/hooks/useEmailLists.ts
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -12,7 +13,7 @@ export interface EmailList {
 
 async function fetchEmailLists(): Promise<EmailList[]> {
   try {
-    const { data } = await api.get('/email-lists');
+    const { data } = await api.get('/landivo-email-lists');
     const lists = Array.isArray(data) ? data : (data.lists || []);
     return lists.map((list: any) => ({
       ...list,

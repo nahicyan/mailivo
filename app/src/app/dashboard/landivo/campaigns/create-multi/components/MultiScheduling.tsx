@@ -108,7 +108,7 @@ export function MultiScheduling({
   }, [properties, formData.selectedProperties, formData.sortedPropertyOrder]);
 
   // Helper functions
-  const getSelectedEmailList = () => emailLists?.find(l => l.id === formData.emailList);
+  const getSelectedEmailList = () => emailLists?.find((l: any) => l.id === formData.emailList);
   const getSelectedTemplate = () => templates?.find(t => t.id === formData.emailTemplate);
   
   const formatCurrency = (amount: number | null | undefined) => {
