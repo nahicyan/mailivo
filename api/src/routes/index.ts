@@ -5,7 +5,6 @@ import { campaignRoutes } from './campaign.route';
 import { templatesRoutes } from './template.route';
 import { landivoRoutes } from './LandivoProperty.route';
 import { landivoEmailListsRoutes } from './LandivoEmailLists.route';
-import workflowRoutes from './workflows';
 import trackingRoutes from './tracking.routes';
 import subjectTemplateRoute from './subjectTemplateRoute';
 import { templateImageRoutes } from './templateImage.route';
@@ -21,7 +20,6 @@ router.use('/campaigns', campaignRoutes);
 router.use('/templates', templatesRoutes);
 router.use('/landivo-email-lists', landivoEmailListsRoutes);
 router.use('/landivo', landivoRoutes);
-router.use('/workflows', workflowRoutes);
 router.use('/via', trackingRoutes); // More inviting route instead of /track
 router.use("/subject-templates", subjectTemplateRoute);
 router.use('/template-images', templateImageRoutes);

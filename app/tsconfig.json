@@ -24,6 +24,6 @@
       "@landivo/email-template": ["../packages/landivo/email-template/src"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/lib/workflow-validation.ts", "../api/src/lib/workflow-execution.ts", "src/app/dashboard/landivo/campaigns/create-multi/components/MultiBasicInfo.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
