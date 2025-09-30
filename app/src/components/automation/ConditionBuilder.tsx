@@ -135,7 +135,7 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
 
   const removeFilter = (conditionIndex: number, filterIndex: number) => {
     const updated = [...conditions];
-    updated[conditionIndex].conditions = updated[conditionIndex].conditions.filter((_, i) => i !== filterIndex);
+    updated[conditionIndex].conditions = (updated[conditionIndex].conditions as any[]).filter((_, i) => i !== filterIndex);
     onChange(updated);
   };
 
