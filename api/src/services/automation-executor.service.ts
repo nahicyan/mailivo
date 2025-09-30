@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { MailivoAutomation, AutomationExecution, IAutomationExecution } from '../models/MailivoAutomation';
 import { Campaign } from '../models/Campaign';
-import logger from '../utils/logger';
+import { logger } from '../utils/logger';
 
 interface ExecutionOptions {
   testMode?: boolean;

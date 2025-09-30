@@ -387,7 +387,7 @@ export class AutomationValidator {
       }
 
       // Validate 'between' operator has secondValue
-      if (filter.operator === 'between' && !filter.secondValue) {
+      if (filter.operator === 'between' && 'secondValue' in filter && !filter.secondValue) {
         errors.push({
           code: 'MISSING_SECOND_VALUE',
           message: `Between operator requires a second value for ${filter.field}.`,

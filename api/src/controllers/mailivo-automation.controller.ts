@@ -1,14 +1,12 @@
-// api/src/controllers/mailivo-automation.controller.ts
-
 import { Request, Response } from 'express';
 import { MailivoAutomation, AutomationExecution } from '../models/MailivoAutomation';
 import { AutomationValidator } from '../lib/automation-validation';
 import { AutomationExecutor } from '../services/automation-executor.service';
-import logger from '../utils/logger';
+import { logger } from '../utils/logger'; // FIXED: Named import
 
 class MailivoAutomationController {
   
-  async getAllAutomations(req: Request, res: Response) {
+  async getAllAutomations(req: Request, res: Response): Promise<void> { // FIXED: Added return type
     try {
       const userId = req.user?.id;
       const { isActive, triggerType, page = 1, limit = 20 } = req.query;
@@ -54,7 +52,7 @@ class MailivoAutomationController {
     }
   }
 
-  async getAutomation(req: Request, res: Response) {
+  async getAutomation(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -62,10 +60,11 @@ class MailivoAutomationController {
       const automation = await MailivoAutomation.findOne({ _id: id, userId });
 
       if (!automation) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       res.json({
@@ -82,7 +81,7 @@ class MailivoAutomationController {
     }
   }
 
-  async createAutomation(req: Request, res: Response) {
+  async createAutomation(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.id;
       const automationData = req.body;
@@ -94,12 +93,13 @@ class MailivoAutomationController {
       });
 
       if (!validation.isValid) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Automation validation failed',
           errors: validation.errors,
           warnings: validation.warnings
         });
+        return; // FIXED: Added return
       }
 
       const automation = new MailivoAutomation({
@@ -131,7 +131,7 @@ class MailivoAutomationController {
     }
   }
 
-  async updateAutomation(req: Request, res: Response) {
+  async updateAutomation(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -144,12 +144,13 @@ class MailivoAutomationController {
       });
 
       if (!validation.isValid) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Automation validation failed',
           errors: validation.errors,
           warnings: validation.warnings
         });
+        return; // FIXED: Added return
       }
 
       const automation = await MailivoAutomation.findOneAndUpdate(
@@ -159,10 +160,11 @@ class MailivoAutomationController {
       );
 
       if (!automation) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       logger.info(`Automation updated: ${id} by user ${userId}`);
@@ -182,7 +184,7 @@ class MailivoAutomationController {
     }
   }
 
-  async deleteAutomation(req: Request, res: Response) {
+  async deleteAutomation(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -190,10 +192,11 @@ class MailivoAutomationController {
       const automation = await MailivoAutomation.findOneAndDelete({ _id: id, userId });
 
       if (!automation) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       // Delete associated executions
@@ -215,7 +218,7 @@ class MailivoAutomationController {
     }
   }
 
-  async toggleAutomation(req: Request, res: Response) {
+  async toggleAutomation(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -224,21 +227,24 @@ class MailivoAutomationController {
       const automation = await MailivoAutomation.findOne({ _id: id, userId });
 
       if (!automation) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       // Validate before activating
       if (isActive) {
-        const validation = AutomationValidator.validateAutomation(automation.toObject());
+        // FIXED: Type assertion for validation
+        const validation = AutomationValidator.validateAutomation(automation.toObject() as any);
         if (!validation.isValid) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: 'Cannot activate automation with validation errors',
             errors: validation.errors
           });
+          return; // FIXED: Added return
         }
       }
 
@@ -262,7 +268,7 @@ class MailivoAutomationController {
     }
   }
 
-  async duplicateAutomation(req: Request, res: Response) {
+  async duplicateAutomation(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -270,10 +276,11 @@ class MailivoAutomationController {
       const original = await MailivoAutomation.findOne({ _id: id, userId });
 
       if (!original) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       const duplicate = new MailivoAutomation({
@@ -293,7 +300,7 @@ class MailivoAutomationController {
 
       await duplicate.save();
 
-      logger.info(`Automation duplicated: ${id} -> ${duplicate._id}`);
+      logger.info(`Automation duplicated: ${id} -> ${String(duplicate._id)}`); // FIXED: Type assertion
 
       res.status(201).json({
         success: true,
@@ -309,7 +316,7 @@ class MailivoAutomationController {
     }
   }
 
-  async validateAutomation(req: Request, res: Response) {
+  async validateAutomation(req: Request, res: Response): Promise<void> {
     try {
       const automationData = req.body;
 
@@ -329,7 +336,7 @@ class MailivoAutomationController {
     }
   }
 
-  async testAutomation(req: Request, res: Response) {
+  async testAutomation(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -338,10 +345,11 @@ class MailivoAutomationController {
       const automation = await MailivoAutomation.findOne({ _id: id, userId });
 
       if (!automation) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       // Execute automation in test mode
@@ -366,7 +374,7 @@ class MailivoAutomationController {
     }
   }
 
-  async getAutomationExecutions(req: Request, res: Response) {
+  async getAutomationExecutions(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
@@ -374,10 +382,11 @@ class MailivoAutomationController {
 
       const automation = await MailivoAutomation.findOne({ _id: id, userId });
       if (!automation) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       const query: any = { automationId: id };
@@ -416,7 +425,7 @@ class MailivoAutomationController {
     }
   }
 
-  async getExecutionDetails(req: Request, res: Response) {
+  async getExecutionDetails(req: Request, res: Response): Promise<void> {
     try {
       const { executionId } = req.params;
       const userId = req.user?.id;
@@ -427,10 +436,11 @@ class MailivoAutomationController {
       }).populate('automationId');
 
       if (!execution) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Execution not found'
         });
+        return; // FIXED: Added return
       }
 
       res.json({
@@ -447,17 +457,18 @@ class MailivoAutomationController {
     }
   }
 
-  async getAutomationStats(req: Request, res: Response) {
+  async getAutomationStats(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
 
       const automation = await MailivoAutomation.findOne({ _id: id, userId });
       if (!automation) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Automation not found'
         });
+        return; // FIXED: Added return
       }
 
       // Get execution stats for last 30 days
@@ -501,5 +512,3 @@ class MailivoAutomationController {
     }
   }
 }
-
-export const automationController = new MailivoAutomationController();
