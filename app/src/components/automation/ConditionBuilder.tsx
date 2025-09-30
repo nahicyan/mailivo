@@ -119,16 +119,16 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
 
   const updateCondition = (index: number, updates: Partial<AutomationCondition>) => {
     const updated = [...conditions];
-    updated[index] = { ...updated[index], ...updates } as AutomationCondition;
+    updated[index] = { ...updated[index], ...updates } as any;
     onChange(updated);
   };
 
   const addFilter = (conditionIndex: number) => {
     const updated = [...conditions];
-    updated[conditionIndex].conditions.push({
-      field: '',
-      operator: '',
-      value: ''
+    (updated[conditionIndex].conditions as any[]).push({
+      field: '' as any,
+      operator: '' as any,
+      value: '' as any
     });
     onChange(updated);
   };
