@@ -343,7 +343,7 @@ export class AutomationValidator {
    */
   private static validateCondition(
     condition: AutomationCondition,
-    state: EntitySelectionState
+    _state: EntitySelectionState
   ): ValidationError[] {
     const errors: ValidationError[] = [];
 
@@ -511,7 +511,7 @@ export class AutomationValidator {
    */
   private static generateBestPracticeWarnings(
     automation: Partial<Automation>,
-    state: EntitySelectionState
+    _state: EntitySelectionState
   ): ValidationWarning[] {
     const warnings: ValidationWarning[] = [];
 

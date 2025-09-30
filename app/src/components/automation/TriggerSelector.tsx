@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Calendar, Clock, Eye, RefreshCw, Mail, UserX, Upload } from 'lucide-react';
-import { AutomationTrigger } from '@/types/mailivo-automation';
+import { AutomationTrigger } from '@mailivo/shared-types';
 
 interface TriggerSelectorProps {
   value?: AutomationTrigger;

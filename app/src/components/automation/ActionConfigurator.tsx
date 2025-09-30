@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { AutomationTrigger, AutomationCondition, AutomationAction } from '@/types/mailivo-automation';
+import { AutomationTrigger, AutomationCondition, AutomationAction } from '@mailivo/shared-types';
 
 interface ActionConfiguratorProps {
   trigger: AutomationTrigger;

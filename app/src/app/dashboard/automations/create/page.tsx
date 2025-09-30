@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { AutomationValidator } from '@/lib/automation-validation';
-import { Automation, ValidationResult } from '@/types/mailivo-automation';
+import { Automation, ValidationResult } from '@mailivo/shared-types';
 import TriggerSelector from '@/components/automation/TriggerSelector';
 import ConditionBuilder from '@/components/automation/ConditionBuilder';
 import ActionConfigurator from '@/components/automation/ActionConfigurator';

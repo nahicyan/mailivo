@@ -327,7 +327,7 @@ export class AutomationExecutor {
   private async executeAction(
     action: any,
     resolvedEntities: any,
-    userId: string,
+    _userId: string,
     options: ExecutionOptions
   ): Promise<any> {
     if (action.type !== 'send_campaign') {
@@ -427,8 +427,8 @@ export class AutomationExecutor {
     }
   }
 
-  private async fetchAndFilterProperties(conditions: any[], userId: string): Promise<any[]> {
-    const allProperties = await this.fetchProperties([], userId);
+  private async fetchAndFilterProperties(conditions: any[], _userId: string): Promise<any[]> {
+    const allProperties = await this.fetchProperties([], _userId);
     
     const propertyConditions = conditions.filter(c => c.category === 'property_data');
     

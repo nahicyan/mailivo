@@ -24,7 +24,7 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Automation } from '@/types/mailivo-automation';
+import { Automation } from '@mailivo/shared-types';
 
 export default function AutomationsPage() {
   const router = useRouter();
