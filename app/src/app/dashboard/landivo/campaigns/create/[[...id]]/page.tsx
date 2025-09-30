@@ -141,16 +141,15 @@ export default function CreateCampaignPage() {
         if (!formData.description?.trim())
           newErrors.description = "Description is required";
         break;
-      case 'email-list':
-      if (!formData.emailList) {
-        newErrors.emailList = 'Please select an email list';
-      }
-      break;
-    case 'email-template':
-      if (!formData.emailTemplate) {
-        newErrors.emailTemplate = 'Please select an email template';
-      }
-      break;
+      case "email-list":
+        if (!formData.emailList)
+          newErrors.emailList = "Please select an email list";
+        break;
+
+      case "email-template":
+        if (!formData.emailTemplate)
+          newErrors.emailTemplate = "Please select a template";
+        break;
       case "subject":
         if (!formData.subject?.trim())
           newErrors.subject = "Subject line is required";
@@ -223,31 +222,30 @@ export default function CreateCampaignPage() {
         return <PropertySelection {...stepProps} />;
       case "BasicInfo":
         return <BasicInfo {...stepProps} />;
-    case 'EmailListSelection':
-      return (
-        <EmailListSelection
-          formData={formData}
-          setFormData={setFormData}
-          errors={errors}
-          emailLists={emailLists || []}
-          listsLoading={listsLoading}
-          listsError={listsError}
-          refetchLists={refetchLists}
-        />
-      );
-    
-    // NEW: Email Template Selection
-    case 'EmailTemplateSelection':
-      return (
-        <EmailTemplateSelection
-          formData={formData}
-          setFormData={setFormData}
-          errors={errors}
-          templates={templates || []}
-          templatesLoading={templatesLoading}
-          templatesError={templatesError}
-        />
-      );
+      case "EmailListSelection":
+        return (
+          <EmailListSelection
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            emailLists={emailLists || []}
+            listsLoading={listsLoading}
+            listsError={listsError}
+            refetchLists={refetchLists}
+          />
+        );
+
+      case "EmailTemplateSelection":
+        return (
+          <EmailTemplateSelection
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            templates={templates || []}
+            templatesLoading={templatesLoading}
+            templatesError={templatesError}
+          />
+        );
       case "PaymentOptions":
         return (
           <PaymentOptions

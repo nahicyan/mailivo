@@ -102,7 +102,7 @@ export default function CreateMultiPropertyCampaignPage() {
   const selectedTemplate = templates?.find(
     (t: any) => t.id === formData.emailTemplate
   );
-    const hasAgentProfile = selectedTemplate
+  const hasAgentProfile = selectedTemplate
     ? hasAgentProfileComponents(selectedTemplate)
     : false;
 
@@ -141,18 +141,15 @@ export default function CreateMultiPropertyCampaignPage() {
         if (!formData.description?.trim())
           newErrors.description = "Campaign description is required";
         break;
-    case 'email-list':
-      const lists = formData.emailList || [];
-      if (lists.length === 0) {
-        newErrors.emailLists = 'Please select at least one email list';
-      }
-      break;
-    
-    case 'email-template':
-      if (!formData.emailTemplate) {
-        newErrors.emailTemplate = 'Please select an email template';
-      }
-      break;
+      case "email-list":
+        if (!formData.emailList)
+          newErrors.emailList = "Please select an email list";
+        break;
+
+      case "email-template":
+        if (!formData.emailTemplate)
+          newErrors.emailTemplate = "Please select a template";
+        break;
       case "agent-profile":
         if (!formData.selectedAgent)
           newErrors.selectedAgent = "Please select an agent profile";
@@ -228,31 +225,30 @@ export default function CreateMultiPropertyCampaignPage() {
         return <MultiPropertySelection {...stepProps} />;
       case "MultiBasicInfo":
         return <MultiBasicInfo {...stepProps} />;
-    case 'MultiEmailListSelection':
-      return (
-        <MultiEmailListSelection
-          formData={formData}
-          setFormData={setFormData}
-          errors={errors}
-          emailLists={emailLists || []}
-          listsLoading={listsLoading}
-          listsError={listsError}
-          refetchLists={refetchLists}
-        />
-      );
-    
-    // NEW: Email Template Selection
-    case 'MultiEmailTemplateSelection':
-      return (
-        <MultiEmailTemplateSelection
-          formData={formData}
-          setFormData={setFormData}
-          errors={errors}
-          templates={templates || []}
-          templatesLoading={templatesLoading}
-          templatesError={templatesError}
-        />
-      );
+      case "MultiEmailListSelection":
+        return (
+          <MultiEmailListSelection
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            emailLists={emailLists || []}
+            listsLoading={listsLoading}
+            listsError={listsError}
+            refetchLists={refetchLists}
+          />
+        );
+
+      case "MultiEmailTemplateSelection":
+        return (
+          <MultiEmailTemplateSelection
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            templates={templates || []}
+            templatesLoading={templatesLoading}
+            templatesError={templatesError}
+          />
+        );
       case "MultiAgentProfile":
         return <MultiAgentProfile {...stepProps} />;
       case "MultiPaymentOptions":
