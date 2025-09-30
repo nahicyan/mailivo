@@ -101,8 +101,8 @@ export default function CreateMultiPropertyCampaignPage() {
   const selectedTemplate = templates?.find(
     (t: any) => t.id === formData.emailTemplate
   );
-  const hasAgentProfile = selectedTemplate
-    ? hasAgentProfileComponents(selectedTemplate.components)
+    const hasAgentProfile = selectedTemplate
+    ? hasAgentProfileComponents(selectedTemplate)
     : false;
 
   // Build step array with conditions
