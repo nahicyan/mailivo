@@ -427,7 +427,7 @@ emailTrackingSchema.statics.getCampaignStats = async function(campaignId: string
   return stats[0] || {};
 };
 
-EmailTrackingSchema.post('save', async function(doc, next) {
+emailTrackingSchema.post('save', async function(doc, next) {
   // Only update metrics if status changed
   if (this.isModified('status')) {
     try {
@@ -458,7 +458,7 @@ EmailTrackingSchema.post('save', async function(doc, next) {
 });
 
 // Track previous status before save
-EmailTrackingSchema.pre('save', function(next) {
+emailTrackingSchema.pre('save', function(next) {
   if (this.isModified('status') && !this.isNew) {
     this._previousStatus = this.get('status', null, { getters: false });
   }
