@@ -427,6 +427,45 @@ emailTrackingSchema.statics.getCampaignStats = async function(campaignId: string
   return stats[0] || {};
 };
 
+EmailTrackingSchema.post('save', async function(doc, next) {
+  // Only update metrics if status changed
+  if (this.isModified('status')) {
+    try {
+      const previousStatus = this._previousStatus || 'pending';
+      const newStatus = doc.status;
+      
+      const updates: any = {};
+      
+      // Decrement old status
+      if (['sent', 'delivered', 'bounced', 'failed'].includes(previousStatus)) {
+        updates[`metrics.${previousStatus}`] = -1;
+      }
+      
+      // Increment new status
+      if (['sent', 'delivered', 'bounced', 'failed'].includes(newStatus)) {
+        updates[`metrics.${newStatus}`] = 1;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await Campaign.findByIdAndUpdate(doc.campaignId, { $inc: updates });
+      }
+    } catch (error) {
+      console.error('Failed to update campaign metrics:', error);
+      // Don't block the save
+    }
+  }
+  next();
+});
+
+// Track previous status before save
+EmailTrackingSchema.pre('save', function(next) {
+  if (this.isModified('status') && !this.isNew) {
+    this._previousStatus = this.get('status', null, { getters: false });
+  }
+  next();
+});
+
+
 export const EmailTracking = model<IEmailTracking>(
   "EmailTracking",
   emailTrackingSchema

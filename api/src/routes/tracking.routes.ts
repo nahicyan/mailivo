@@ -104,6 +104,41 @@ router.get('/campaign/:campaignId/metrics', authenticate, async (req: Request, r
   }
 });
 
+// Recalculate campaign metrics from actual tracking data
+router.post('/campaign/:campaignId/recalculate-metrics', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { campaignId } = req.params;
+    
+    // Count actual statuses from tracking records
+    const [sent, delivered, bounced, failed, opened, clicked] = await Promise.all([
+      EmailTracking.countDocuments({ campaignId, status: 'sent' }),
+      EmailTracking.countDocuments({ campaignId, status: 'delivered' }),
+      EmailTracking.countDocuments({ campaignId, status: 'bounced' }),
+      EmailTracking.countDocuments({ campaignId, status: 'failed' }),
+      EmailTracking.countDocuments({ campaignId, openedAt: { $exists: true } }),
+      EmailTracking.countDocuments({ campaignId, clickedAt: { $exists: true } })
+    ]);
+    
+    // Update campaign with actual counts
+    await Campaign.findByIdAndUpdate(campaignId, {
+      $set: {
+        'metrics.sent': sent,
+        'metrics.delivered': delivered,
+        'metrics.bounced': bounced,
+        'metrics.failed': failed,
+        'metrics.opened': opened,
+        'metrics.clicked': clicked
+      }
+    });
+    
+    logger.info(`Recalculated metrics for campaign ${campaignId}`);
+    res.json({ success: true, metrics: { sent, delivered, bounced, failed, opened, clicked } });
+  } catch (error) {
+    logger.error('Error recalculating metrics:', error);
+    res.status(500).json({ error: 'Failed to recalculate metrics' });
+  }
+});
+
 // Webhook endpoints
 router.post('/webhooks/:provider', async (req: Request, res: Response): Promise<void> => {
   try {
