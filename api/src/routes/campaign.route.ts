@@ -26,7 +26,6 @@ const propertyValidation = body('property').custom((value) => {
   
   // Handle multi-property (array)
   if (Array.isArray(value) && value.length > 0) {
-    // Ensure all array elements are non-empty strings
     const allValid = value.every(id => typeof id === 'string' && id.trim().length > 0);
     if (!allValid) {
       throw new Error('All property IDs must be valid strings');
@@ -37,12 +36,31 @@ const propertyValidation = body('property').custom((value) => {
   throw new Error('Property is required (string for single property, array for multi-property)');
 });
 
+// UPDATED: Custom emailList validation for both single and multiple lists
+const emailListValidation = body('emailList').custom((value) => {
+  // Handle single email list (string)
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return true;
+  }
+  
+  // Handle multiple email lists (array)
+  if (Array.isArray(value) && value.length > 0) {
+    const allValid = value.every(id => typeof id === 'string' && id.trim().length > 0);
+    if (!allValid) {
+      throw new Error('All email list IDs must be valid strings');
+    }
+    return true;
+  }
+  
+  throw new Error('Email list is required (string for single list, array for multiple lists)');
+});
+
 // Campaign CRUD routes
 router.get('/', campaignController.getAllCampaigns.bind(campaignController));
 router.post('/', [
   body('name').notEmpty().withMessage('Campaign name is required'),
-  propertyValidation, // FIXED: Custom validation for both single and multi-property
-  body('emailList').notEmpty().withMessage('Email list is required'),
+  propertyValidation,
+  emailListValidation, // UPDATED: Now supports both string and array
   body('emailTemplate').notEmpty().withMessage('Email template is required'),
   body('emailVolume').isInt({ min: 1 }).withMessage('Email volume must be positive'),
 ], validate, campaignController.createCampaign.bind(campaignController));

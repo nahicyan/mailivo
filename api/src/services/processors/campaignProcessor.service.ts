@@ -1,4 +1,4 @@
-// api/src/services/processors/campaignProcessor.service.ts
+// api/src/services/processors/campaignProcessor.service.ts - UPDATED FOR MULTIPLE EMAIL LISTS
 import { landivoService } from '../landivo.service';
 import { Campaign } from '../../models/Campaign';
 import { Contact } from '../../models/Contact.model';
@@ -61,7 +61,7 @@ export class CampaignProcessor {
       return { 
         success: true, 
         totalEmails: emailJobs.length,
-        emailJobs // Return jobs for queue processing
+        emailJobs
       } as any;
 
     } catch (error) {
@@ -73,46 +73,41 @@ export class CampaignProcessor {
     }
   }
 
-// api/src/services/processors/campaignProcessor.service.ts
+  private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[]> {
+    const emailJobs = [];
+    
+    for (const contact of contacts) {
+      const contactId = typeof contact === 'string' 
+        ? contact 
+        : ((contact as any)._id?.toString() || contact.id?.toString() || '');
+      
+      const contactEmail = typeof contact === 'string'
+        ? ''
+        : (contact.email || '');
+      
+      const trackingId = await this.emailJobProcessor.createTrackingRecord(
+        campaign._id.toString(), 
+        contactId,
+        contactEmail,
+      );
+      
+      const personalizedContent = await this.emailJobProcessor.personalizeContent(
+        campaign, 
+        contact, 
+        trackingId
+      );
 
-private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[]> {
-  const emailJobs = [];
-  
-  for (const contact of contacts) {
-    // Extract contact ID
-    const contactId = typeof contact === 'string' 
-      ? contact 
-      : ((contact as any)._id?.toString() || contact.id?.toString() || '');
-    
-    // Extract email address
-    const contactEmail = typeof contact === 'string'
-      ? '' // Will need to look up if only ID provided
-      : (contact.email || '');
-    
-    // Create tracking record with email
-    const trackingId = await this.emailJobProcessor.createTrackingRecord(
-      campaign._id.toString(), 
-      contactId,
-      contactEmail,
-    );
-    
-    const personalizedContent = await this.emailJobProcessor.personalizeContent(
-      campaign, 
-      contact, 
-      trackingId
-    );
+      emailJobs.push({
+        campaignId: campaign._id.toString(),
+        contactId,
+        email: contactEmail || contact.email,
+        personalizedContent,
+        trackingId,
+      });
+    }
 
-    emailJobs.push({
-      campaignId: campaign._id.toString(),
-      contactId,
-      email: contactEmail || contact.email, //|| personalizedContent.to,
-      personalizedContent,
-      trackingId,
-    });
+    return emailJobs;
   }
-
-  return emailJobs;
-}
 
   private async getContactsForCampaign(campaign: any, userId: string) {
     let contacts = [];
@@ -142,12 +137,13 @@ private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[
     return contacts;
   }
 
+  // UPDATED: Handle multiple email lists
   private async getLandivoContacts(campaign: any, userId: string) {
     try {
-      const emailListId = this.extractEmailListId(campaign);
+      const emailListIds = this.extractEmailListIds(campaign);
       
-      if (!emailListId) {
-        logger.error('No Landivo email list ID found in campaign', { 
+      if (!emailListIds || emailListIds.length === 0) {
+        logger.error('No Landivo email list IDs found in campaign', { 
           campaignId: campaign._id,
           segments: campaign.segments,
           emailList: campaign.emailList 
@@ -155,16 +151,36 @@ private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[
         return [];
       }
 
-      logger.info(`Fetching Landivo contacts for email list: ${emailListId}`);
+      logger.info(`Fetching Landivo contacts for ${emailListIds.length} email list(s)`, { 
+        emailListIds 
+      });
 
-      const landivoContacts = await landivoService.getEmailListWithBuyers(emailListId);
+      // Fetch contacts from all email lists
+      const allContactsArrays = await Promise.all(
+        emailListIds.map(listId => landivoService.getEmailListWithBuyers(listId))
+      );
 
-      if (landivoContacts.length === 0) {
-        logger.warn(`No contacts found in Landivo email list ${emailListId}`);
+      // Flatten the arrays
+      const allContacts = allContactsArrays.flat();
+
+      if (allContacts.length === 0) {
+        logger.warn(`No contacts found in any of the Landivo email lists`, { emailListIds });
         return [];
       }
 
-      const transformedContacts = landivoContacts.map(contact => ({
+      // Deduplicate contacts by email address
+      const uniqueContactsMap = new Map();
+      for (const contact of allContacts) {
+        const email = contact.email.toLowerCase().trim();
+        if (!uniqueContactsMap.has(email)) {
+          uniqueContactsMap.set(email, contact);
+        }
+      }
+
+      const uniqueContacts = Array.from(uniqueContactsMap.values());
+
+      // Transform to standard format
+      const transformedContacts = uniqueContacts.map(contact => ({
         _id: contact.landivo_buyer_id,
         email: contact.email,
         firstName: contact.firstName,
@@ -177,7 +193,15 @@ private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[
         userId: userId,
       }));
 
-      logger.info(`Successfully transformed ${transformedContacts.length} Landivo contacts`);
+      logger.info(
+        `Successfully processed contacts from ${emailListIds.length} list(s)`, 
+        {
+          totalFetched: allContacts.length,
+          uniqueContacts: transformedContacts.length,
+          duplicatesRemoved: allContacts.length - transformedContacts.length
+        }
+      );
+
       return transformedContacts;
 
     } catch (error) {
@@ -191,19 +215,28 @@ private async createEmailJobs(campaign: any, contacts: any[]): Promise<EmailJob[
     }
   }
 
-  private extractEmailListId(campaign: any): string | null {
+  // UPDATED: Extract email list IDs (supports both string and array)
+  private extractEmailListIds(campaign: any): string[] {
+    // Priority 1: Use emailList field (can be string or array)
     if (campaign.emailList) {
-      return campaign.emailList;
+      if (Array.isArray(campaign.emailList)) {
+        return campaign.emailList.filter((id: any) => id && typeof id === 'string');
+      }
+      if (typeof campaign.emailList === 'string') {
+        return [campaign.emailList];
+      }
     }
     
+    // Priority 2: Use segments array (legacy support)
     if (campaign.segments && campaign.segments.length > 0) {
-      return campaign.segments[0];
+      return campaign.segments;
     }
     
+    // Priority 3: Check for legacy landivoEmailLists field
     if (campaign.landivoEmailLists && campaign.landivoEmailLists.length > 0) {
-      return campaign.landivoEmailLists[0];
+      return campaign.landivoEmailLists;
     }
 
-    return null;
+    return [];
   }
 }

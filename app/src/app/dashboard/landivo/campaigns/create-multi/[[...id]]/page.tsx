@@ -280,49 +280,56 @@ export default function CreateMultiPropertyCampaignPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!validateStep(totalSteps)) return;
+const handleSubmit = async () => {
+  if (!validateStep(totalSteps)) return;
 
-    setLoading(true);
-    try {
-      const campaignData: any = prepareMultiPropertyCampaignData(
-        formData,
-        selectedDate,
-        properties || [],
-        selectedTemplate
-      );
+  setLoading(true);
+  try {
+    const campaignData: any = prepareMultiPropertyCampaignData(
+      formData,
+      selectedDate,
+      properties || [],
+      selectedTemplate
+    );
 
-      campaignData.type = "multi-property";
-      campaignData.audienceType = "landivo";
-      campaignData.segments = [formData.emailList];
-      campaignData.estimatedRecipients = formData.emailVolume;
+    campaignData.type = "multi-property";
+    campaignData.audienceType = "landivo";
+    
+    // UPDATED: Handle multiple email lists
+    const emailListValue = formData.emailListsMulti && formData.emailListsMulti.length > 0
+      ? formData.emailListsMulti  // Send as array if multiple selected
+      : formData.emailList;        // Send as string if single selected
 
-      const response = await fetch(`${API_URL}/campaigns`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
-        },
-        credentials: "include",
-        body: JSON.stringify(campaignData),
-      });
+    campaignData.emailList = emailListValue; // Can be string or array
+    campaignData.segments = Array.isArray(emailListValue) ? emailListValue : [emailListValue];
+    campaignData.estimatedRecipients = formData.emailVolume;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create campaign");
-      }
+    const response = await fetch(`${API_URL}/campaigns`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+      },
+      credentials: "include",
+      body: JSON.stringify(campaignData),
+    });
 
-      router.push("/dashboard/landivo/campaigns/manage");
-    } catch (error) {
-      console.error("Campaign creation failed:", error);
-      setErrors({
-        submit:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      });
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to create campaign");
     }
-  };
+
+    router.push("/dashboard/landivo/campaigns/manage");
+  } catch (error) {
+    console.error("Campaign creation failed:", error);
+    setErrors({
+      submit:
+        error instanceof Error ? error.message : "Unknown error occurred",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const hasErrors = !!(propertiesError || templatesError || listsError);
 

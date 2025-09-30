@@ -274,61 +274,68 @@ export default function CreateCampaignPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!validateStep(totalSteps)) return;
 
-    setLoading(true);
-    try {
-      const campaignStatus =
-        formData.emailSchedule === "immediate" ? "active" : "draft";
+const handleSubmit = async () => {
+  if (!validateStep(totalSteps)) return;
 
-      const campaignData = {
-        ...formData,
-        type: "single",
-        status: campaignStatus,
-        source: "landivo",
-        scheduledDate:
-          formData.emailSchedule === "scheduled"
-            ? selectedDate?.toISOString()
-            : null,
-        // ADD THESE REQUIRED FIELDS:
-        subject:
-          formData.subject ||
-          selectedTemplate?.subject ||
-          `Campaign for ${formData.name}`,
-        htmlContent: "<p>Email content</p>",
-        textContent: "",
-        audienceType: "landivo",
-        segments: [formData.emailList],
-        estimatedRecipients: formData.emailVolume,
-      };
+  setLoading(true);
+  try {
+    const campaignStatus =
+      formData.emailSchedule === "immediate" ? "active" : "draft";
 
-      const response = await fetch(`${API_URL}/campaigns`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
-        },
-        credentials: "include",
-        body: JSON.stringify(campaignData),
-      });
+    // UPDATED: Handle multiple email lists
+    const emailListValue = formData.emailListsMulti && formData.emailListsMulti.length > 0
+      ? formData.emailListsMulti  // Send as array if multiple selected
+      : formData.emailList;        // Send as string if single selected
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create campaign");
-      }
+    const campaignData = {
+      ...formData,
+      type: "single",
+      status: campaignStatus,
+      source: "landivo",
+      emailList: emailListValue, // Can be string or array
+      scheduledDate:
+        formData.emailSchedule === "scheduled"
+          ? selectedDate?.toISOString()
+          : null,
+      // Required fields
+      subject:
+        formData.subject ||
+        selectedTemplate?.subject ||
+        `Campaign for ${formData.name}`,
+      htmlContent: "<p>Email content</p>",
+      textContent: "",
+      audienceType: "landivo",
+      segments: Array.isArray(emailListValue) ? emailListValue : [emailListValue],
+      estimatedRecipients: formData.emailVolume,
+    };
 
-      router.push("/dashboard/landivo/campaigns/manage");
-    } catch (error) {
-      console.error("Campaign creation failed:", error);
-      setErrors({
-        submit:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      });
-    } finally {
-      setLoading(false);
+    const response = await fetch(`${API_URL}/campaigns`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+      },
+      credentials: "include",
+      body: JSON.stringify(campaignData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to create campaign");
     }
-  };
+
+    router.push("/dashboard/landivo/campaigns/manage");
+  } catch (error) {
+    console.error("Campaign creation failed:", error);
+    setErrors({
+      submit:
+        error instanceof Error ? error.message : "Unknown error occurred",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const hasErrors = !!(propertiesError || templatesError || listsError);
 

@@ -1,4 +1,4 @@
-// api/src/models/Campaign.ts - UPDATED FOR MULTI-PROPERTY ARRAYS
+// api/src/models/Campaign.ts - UPDATED FOR MULTIPLE EMAIL LISTS
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICampaign extends Document {
@@ -13,7 +13,8 @@ export interface ICampaign extends Document {
   // UPDATED: property can be string (single) OR array (multi-property)
   property: string | string[];
 
-  emailList: string;
+  // UPDATED: emailList can now be string OR array for multiple lists
+  emailList: string | string[];
   emailTemplate: string;
   emailAddressGroup?: string;
   emailSchedule: string;
@@ -24,9 +25,9 @@ export interface ICampaign extends Document {
     string,
     {
       name?: string;
-      propertyId?: string; // For multi-property
+      propertyId?: string;
       imageIndex: number;
-      imageUrl?: string; // For multi-property
+      imageUrl?: string;
       order: number;
     }
   >;
@@ -52,6 +53,7 @@ export interface ICampaign extends Document {
       }>
     | null;
   selectedAgent?: string;
+  
   // Optional multi-property metadata
   multiPropertyMeta?: {
     type: "multi-property";
@@ -91,6 +93,7 @@ export interface ICampaign extends Document {
     bounces: number;
     successfulDeliveries: number;
     clicks: number;
+    totalClicks: number;
     didNotOpen: number;
     mobileOpen: number;
     failed: number;
@@ -121,7 +124,7 @@ const CampaignSchema: Schema = new Schema(
 
     // UPDATED: property can be string or array
     property: {
-      type: Schema.Types.Mixed, // Allows both string and array
+      type: Schema.Types.Mixed,
       required: true,
       validate: {
         validator: function (v: any) {
@@ -131,7 +134,20 @@ const CampaignSchema: Schema = new Schema(
       },
     },
 
-    emailList: { type: String, required: true },
+    // UPDATED: emailList can now be string OR array
+    emailList: {
+      type: Schema.Types.Mixed,
+      required: true,
+      validate: {
+        validator: function (v: any) {
+          if (typeof v === "string") return v.trim().length > 0;
+          if (Array.isArray(v)) return v.length > 0 && v.every(id => typeof id === "string" && id.trim().length > 0);
+          return false;
+        },
+        message: "Email list must be a non-empty string or array of strings",
+      },
+    },
+    
     emailTemplate: { type: String, required: true },
     emailAddressGroup: { type: String },
     emailSchedule: { type: String, required: true },
@@ -148,7 +164,7 @@ const CampaignSchema: Schema = new Schema(
 
     // UPDATED: selectedPlan can be object or array
     selectedPlan: {
-      type: Schema.Types.Mixed, // Allows object, array, or null
+      type: Schema.Types.Mixed,
       default: null,
     },
 
@@ -195,10 +211,9 @@ const CampaignSchema: Schema = new Schema(
       default: "draft",
     },
 
-  // Add to the campaign schema
     completedAt: {
       type: Date,
-      default: null
+      default: null,
     },
 
     metrics: {
@@ -206,7 +221,7 @@ const CampaignSchema: Schema = new Schema(
       delivered: { type: Number, default: 0 },
       opened: { type: Number, default: 0 },
       clicked: { type: Number, default: 0 },
-      totalClicks: { type: Number, default: 0 }, 
+      totalClicks: { type: Number, default: 0 },
       bounced: { type: Number, default: 0 },
       complained: { type: Number, default: 0 },
       totalRecipients: { type: Number, default: 0 },
@@ -216,7 +231,7 @@ const CampaignSchema: Schema = new Schema(
       clicks: { type: Number, default: 0 },
       didNotOpen: { type: Number, default: 0 },
       mobileOpen: { type: Number, default: 0 },
-      failed: { type: Number, default: 0 }, 
+      failed: { type: Number, default: 0 },
       hardBounces: { type: Number, default: 0 },
       softBounces: { type: Number, default: 0 },
     },
