@@ -33,7 +33,6 @@ import { StepsSidebar } from "../../components/StepsSidebar";
 // Step components with new names
 import { MultiPropertySelection } from "../components/MultiPropertySelection";
 import { MultiBasicInfo } from "../components/MultiBasicInfo";
-import { MultiAudienceSelection } from "../components/MultiAudienceSelection";
 import { MultiAgentProfile } from "../components/MultiAgentProfile";
 import { MultiPaymentOptions } from "../components/MultiPaymentOptions";
 import { MultiPictureSelection } from "../components/MultiPictureSelection";
@@ -45,6 +44,8 @@ import {
   prepareMultiPropertyCampaignData,
 } from "@/utils/multiPropertyValidation";
 import { useEmailLists } from "@/hooks/useEmailLists";
+import { MultiEmailListSelection } from "../components/MultiEmailListSelection";
+import { MultiEmailTemplateSelection } from "../components/MultiEmailTemplateSelection";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
@@ -140,12 +141,18 @@ export default function CreateMultiPropertyCampaignPage() {
         if (!formData.description?.trim())
           newErrors.description = "Campaign description is required";
         break;
-      case "audience":
-        if (!formData.emailList)
-          newErrors.emailList = "Please select an email list";
-        if (!formData.emailTemplate)
-          newErrors.emailTemplate = "Please select an email template";
-        break;
+    case 'email-list':
+      const lists = formData.emailList || [];
+      if (lists.length === 0) {
+        newErrors.emailLists = 'Please select at least one email list';
+      }
+      break;
+    
+    case 'email-template':
+      if (!formData.emailTemplate) {
+        newErrors.emailTemplate = 'Please select an email template';
+      }
+      break;
       case "agent-profile":
         if (!formData.selectedAgent)
           newErrors.selectedAgent = "Please select an agent profile";
@@ -221,8 +228,31 @@ export default function CreateMultiPropertyCampaignPage() {
         return <MultiPropertySelection {...stepProps} />;
       case "MultiBasicInfo":
         return <MultiBasicInfo {...stepProps} />;
-      case "MultiAudienceSelection":
-        return <MultiAudienceSelection {...stepProps} />;
+    case 'MultiEmailListSelection':
+      return (
+        <MultiEmailListSelection
+          formData={formData}
+          setFormData={setFormData}
+          errors={errors}
+          emailLists={emailLists || []}
+          listsLoading={listsLoading}
+          listsError={listsError}
+          refetchLists={refetchLists}
+        />
+      );
+    
+    // NEW: Email Template Selection
+    case 'MultiEmailTemplateSelection':
+      return (
+        <MultiEmailTemplateSelection
+          formData={formData}
+          setFormData={setFormData}
+          errors={errors}
+          templates={templates || []}
+          templatesLoading={templatesLoading}
+          templatesError={templatesError}
+        />
+      );
       case "MultiAgentProfile":
         return <MultiAgentProfile {...stepProps} />;
       case "MultiPaymentOptions":

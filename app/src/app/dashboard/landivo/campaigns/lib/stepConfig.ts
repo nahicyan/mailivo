@@ -1,14 +1,25 @@
 // app/src/app/dashboard/landivo/campaigns/lib/stepConfig.ts
-import { LucideIcon, Building, FileText, Users, User, CreditCard, Camera, Mail, Clock } from 'lucide-react';
+import { 
+  Building, 
+  FileText, 
+  Users, 
+  User, 
+  CreditCard, 
+  Camera, 
+  Mail, 
+  Clock,
+  ListChecks,
+  FileCode
+} from 'lucide-react';
 
 export interface StepDefinition {
   id: string;
   title: string;
-  icon: LucideIcon;
+  icon: any;
   description: string;
-  component: string; // Component name for dynamic import
-  isConditional?: boolean; // Whether this step appears conditionally
-  conditionKey?: string; // Key to check in conditions object
+  component: string;
+  isConditional?: boolean;
+  conditionKey?: string;
 }
 
 export interface StepConfig {
@@ -34,12 +45,21 @@ export const singlePropertySteps: StepConfig = {
       description: 'Campaign name and description',
       component: 'BasicInfo'
     },
+    // SPLIT: Separate Email List step
     {
-      id: 'audience',
-      title: 'Audience',
-      icon: Users,
-      description: 'Choose email list and template',
-      component: 'AudienceSelection'
+      id: 'email-list',
+      title: 'Email List',
+      icon: ListChecks,
+      description: 'Select email list',
+      component: 'EmailListSelection'
+    },
+    // SPLIT: Separate Email Template step
+    {
+      id: 'email-template',
+      title: 'Email Template',
+      icon: FileCode,
+      description: 'Choose email template',
+      component: 'EmailTemplateSelection'
     }
   ],
   conditionalSteps: [],
@@ -92,12 +112,21 @@ export const multiPropertySteps: StepConfig = {
       description: 'Campaign name and description',
       component: 'MultiBasicInfo'
     },
+    // SPLIT: Separate Email List step (multi-select capable)
     {
-      id: 'audience',
-      title: 'Audience',
-      icon: Users,
-      description: 'Choose email list and template',
-      component: 'MultiAudienceSelection'
+      id: 'email-list',
+      title: 'Email List',
+      icon: ListChecks,
+      description: 'Select email lists',
+      component: 'MultiEmailListSelection'
+    },
+    // SPLIT: Separate Email Template step
+    {
+      id: 'email-template',
+      title: 'Email Template',
+      icon: FileCode,
+      description: 'Choose email template',
+      component: 'MultiEmailTemplateSelection'
     }
   ],
   conditionalSteps: [

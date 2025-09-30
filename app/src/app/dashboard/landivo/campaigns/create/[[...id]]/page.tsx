@@ -30,12 +30,13 @@ import { StepsSidebar } from "../../components/StepsSidebar";
 // Step components with new names
 import { PropertySelection } from "../components/PropertySelection";
 import { BasicInfo } from "../components/BasicInfo";
-import { AudienceSelection } from "../components/AudienceSelection";
 import { PaymentOptions } from "../components/PaymentOptions";
 import { PictureSelection } from "../components/PictureSelection";
 import { SubjectLine } from "../components/SubjectLine";
 import { Scheduling } from "../components/Scheduling";
 import { useEmailLists } from "@/hooks/useEmailLists";
+import { EmailListSelection } from "../components/EmailListSelection";
+import { EmailTemplateSelection } from "../components/EmailTemplateSelection";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
@@ -140,15 +141,16 @@ export default function CreateCampaignPage() {
         if (!formData.description?.trim())
           newErrors.description = "Description is required";
         break;
-      case "audience":
-        if (!formData.emailList)
-          newErrors.emailList = "Please select an email list";
-        if (!formData.emailTemplate)
-          newErrors.emailTemplate = "Please select a template";
-        if (!formData.emailVolume || formData.emailVolume < 1) {
-          newErrors.emailVolume = "Email volume must be at least 1";
-        }
-        break;
+      case 'email-list':
+      if (!formData.emailList) {
+        newErrors.emailList = 'Please select an email list';
+      }
+      break;
+    case 'email-template':
+      if (!formData.emailTemplate) {
+        newErrors.emailTemplate = 'Please select an email template';
+      }
+      break;
       case "subject":
         if (!formData.subject?.trim())
           newErrors.subject = "Subject line is required";
@@ -221,8 +223,31 @@ export default function CreateCampaignPage() {
         return <PropertySelection {...stepProps} />;
       case "BasicInfo":
         return <BasicInfo {...stepProps} />;
-      case "AudienceSelection":
-        return <AudienceSelection {...stepProps} />;
+    case 'EmailListSelection':
+      return (
+        <EmailListSelection
+          formData={formData}
+          setFormData={setFormData}
+          errors={errors}
+          emailLists={emailLists || []}
+          listsLoading={listsLoading}
+          listsError={listsError}
+          refetchLists={refetchLists}
+        />
+      );
+    
+    // NEW: Email Template Selection
+    case 'EmailTemplateSelection':
+      return (
+        <EmailTemplateSelection
+          formData={formData}
+          setFormData={setFormData}
+          errors={errors}
+          templates={templates || []}
+          templatesLoading={templatesLoading}
+          templatesError={templatesError}
+        />
+      );
       case "PaymentOptions":
         return (
           <PaymentOptions
