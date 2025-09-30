@@ -1,224 +1,269 @@
+// app/src/app/dashboard/automations/create/page.tsx
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Play } from 'lucide-react';
+import { ArrowLeft, Save, Play, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import WorkflowCanvas from '@/components/automation/WorkflowCanvas';
-import NodePalette from '@/components/automation/NodePalette';
-import WorkflowStats from '@/components/automation/WorkflowStats';
-import { workflowAPI, WorkflowNode, WorkflowConnection } from '@/services/workflowAPI';
+import { AutomationValidator } from '@/lib/automation-validation';
+import { Automation, ValidationResult } from '@/types/mailivo-automation';
+import TriggerSelector from '@/components/automation/TriggerSelector';
+import ConditionBuilder from '@/components/automation/ConditionBuilder';
+import ActionConfigurator from '@/components/automation/ActionConfigurator';
 
-interface Workflow {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-  nodes: WorkflowNode[];
-  connections: WorkflowConnection[];
-}
-
-export default function CreateWorkflowPage() {
+export default function CreateAutomationPage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
-  const [workflow, setWorkflow] = useState<Workflow>({
-    id: '',
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  
+  const [automation, setAutomation] = useState<Partial<Automation>>({
     name: '',
     description: '',
     isActive: false,
-    nodes: [],
-    connections: []
+    trigger: undefined,
+    conditions: [],
+    action: undefined
   });
 
-  const generateNodeId = () => `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Real-time validation
+  useEffect(() => {
+    if (automation.trigger && automation.action) {
+      const result = AutomationValidator.validateAutomation(automation);
+      setValidation(result);
+    }
+  }, [automation]);
 
-  const addNode = useCallback((type: string, subtype: string, title: string) => {
-    const newNode: WorkflowNode = {
-      id: generateNodeId(),
-      type: type as 'trigger' | 'action' | 'condition',
-      subtype,
-      title,
-      description: '',
-      config: {},
-      position: { x: 0, y: workflow.nodes.length * 200 }
-    };
+  const handleSave = async (activate: boolean = false )=> {
+    if (!automation.trigger || !automation.action) {
+      toast.error('Please configure trigger and action');
+      return;
+    }
 
-    setWorkflow(prev => ({
-      ...prev,
-      nodes: [...prev.nodes, newNode]
-    }));
-  }, [workflow.nodes.length]);
-
-  const updateNode = useCallback((nodeId: string, updatedNode: WorkflowNode) => {
-    setWorkflow(prev => ({
-      ...prev,
-      nodes: prev.nodes.map(node => 
-        node.id === nodeId ? updatedNode : node
-      )
-    }));
-  }, []);
-
-  const deleteNode = useCallback((nodeId: string) => {
-    setWorkflow(prev => ({
-      ...prev,
-      nodes: prev.nodes.filter(node => node.id !== nodeId),
-      connections: prev.connections.filter(conn => 
-        conn.from !== nodeId && conn.to !== nodeId
-      )
-    }));
-  }, []);
-
-  const connectNodes = useCallback((fromNodeId: string, toNodeId: string) => {
-    setWorkflow(prev => ({
-      ...prev,
-      connections: [...prev.connections, { from: fromNodeId, to: toNodeId }]
-    }));
-  }, []);
-
-  const saveWorkflow = async () => {
-    if (!workflow.name.trim()) {
-      toast.error('Please enter a workflow name');
+    const validationResult = AutomationValidator.validateAutomation(automation);
+    
+    if (!validationResult.isValid) {
+      toast.error('Please fix validation errors');
       return;
     }
 
     setIsSaving(true);
+
     try {
-      const newWorkflow = await workflowAPI.createWorkflow(workflow);
-      toast.success('Workflow created successfully');
-      router.push(`/dashboard/automations/${newWorkflow.id}`);
-    } catch (error) {
-      toast.error('Failed to create workflow');
+      const response = await fetch('/api/mailivo-automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...automation,
+          isActive: activate
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save automation');
+      }
+
+      const data = await response.json();
+      
+      toast.success(activate ? 'Automation activated!' : 'Automation saved as draft');
+      router.push('/dashboard/automations');
+      
+    } catch (error: any) {
+      console.error('Save automation error:', error);
+      toast.error(error.message || 'Failed to save automation');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const canActivate = workflow.nodes.some(n => n.type === 'trigger') && 
-                     workflow.nodes.some(n => n.type === 'action');
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push('/dashboard/automations')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft size={16} className="mr-2" />
-                Back to Workflows
-              </Button>
-              
-              <div className="border-l border-gray-300 pl-4 space-y-2">
-                <div>
-                  <Label htmlFor="workflow-name" className="text-sm font-medium">
-                    Workflow Name
-                  </Label>
-                  <Input
-                    id="workflow-name"
-                    value={workflow.name}
-                    onChange={(e) => setWorkflow(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter workflow name"
-                    className="text-xl font-bold border-none p-0 h-auto bg-transparent"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="workflow-description" className="text-sm font-medium text-gray-600">
-                    Description
-                  </Label>
-                  <Input
-                    id="workflow-description"
-                    value={workflow.description}
-                    onChange={(e) => setWorkflow(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Add a description..."
-                    className="text-sm text-gray-600 border-none p-0 h-auto bg-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
-                <Label htmlFor="workflow-active" className="text-sm font-medium">
-                  Active
-                </Label>
-                <Switch
-                  id="workflow-active"
-                  checked={workflow.isActive}
-                  onCheckedChange={(checked) => setWorkflow(prev => ({ ...prev, isActive: checked }))}
-                  disabled={!canActivate}
-                />
-              </div>
-              
-              <Button
-                onClick={saveWorkflow}
-                disabled={isSaving || !workflow.name.trim()}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Save size={16} className="mr-2" />
-                {isSaving ? 'Creating...' : 'Create Workflow'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto">
-        <div className="flex h-[calc(100vh-140px)]">
-          {/* Left Sidebar - Node Palette */}
-          <div className="w-80 bg-white border-r border-gray-200 shadow-sm">
-            <div className="p-4 h-full overflow-y-auto">
-              <NodePalette onAddNode={addNode} />
-            </div>
-          </div>
-
-          {/* Canvas Area */}
-          <div className="flex-1 bg-white">
-            <WorkflowCanvas
-              nodes={workflow.nodes}
-              onUpdateNode={updateNode}
-              onDeleteNode={deleteNode}
-              connections={workflow.connections}
-              onConnect={connectNodes}
-            />
-          </div>
-
-          {/* Right Sidebar - Workflow Stats */}
-          <div className="w-80 bg-white border-l border-gray-200 shadow-sm">
-            <div className="p-4 h-full overflow-y-auto">
-              <WorkflowStats workflow={workflow} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Floating Save Button */}
-      {workflow.nodes.length > 0 && (
-        <div className="fixed bottom-6 right-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-            <span className="font-medium">{workflow.nodes.length} nodes</span>
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
           <Button
+            variant="ghost"
             size="sm"
-            onClick={saveWorkflow}
-            disabled={isSaving || !workflow.name.trim()}
-            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => router.back()}
           >
-            <Save size={14} className="mr-1" />
-            {isSaving ? 'Creating...' : 'Create'}
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Create Automation</h1>
+            <p className="text-sm text-muted-foreground">
+              Automate campaign creation with triggers and conditions
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            onClick={() => handleSave(false)}
+            disabled={isSaving || !validation?.isValid}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Draft
+          </Button>
+          <Button
+            onClick={() => handleSave(true)}
+            disabled={isSaving || !validation?.isValid}
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Save & Activate
           </Button>
         </div>
+      </div>
+
+      {/* Validation Alerts */}
+      {validation && !validation.isValid && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="font-medium mb-2">Please fix the following errors:</div>
+            <ul className="list-disc list-inside space-y-1">
+              {validation.errors.map((error, index) => (
+                <li key={index} className="text-sm">{error.message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {validation?.warnings && validation.warnings.length > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="font-medium mb-2">Warnings:</div>
+            <ul className="list-disc list-inside space-y-1">
+              {validation.warnings.map((warning, index) => (
+                <li key={index} className="text-sm text-muted-foreground">
+                  {warning.message}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Basic Info */}
+      <div className="bg-card p-6 rounded-lg border space-y-4">
+        <div>
+          <Label htmlFor="name">Automation Name *</Label>
+          <Input
+            id="name"
+            value={automation.name}
+            onChange={(e) => setAutomation({ ...automation, name: e.target.value })}
+            placeholder="e.g., New Property Alert to VIP Buyers"
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={automation.description}
+            onChange={(e) => setAutomation({ ...automation, description: e.target.value })}
+            placeholder="Describe what this automation does..."
+            rows={3}
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      {/* Automation Builder */}
+      <div className="space-y-6">
+        {/* Step 1: Trigger */}
+        <div className="bg-card p-6 rounded-lg border">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">1. Select Trigger</h3>
+              <p className="text-sm text-muted-foreground">
+                What event should start this automation?
+              </p>
+            </div>
+            {automation.trigger && (
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+            )}
+          </div>
+          
+          <TriggerSelector
+            value={automation.trigger}
+            onChange={(trigger) => setAutomation({ ...automation, trigger })}
+          />
+        </div>
+
+        {/* Step 2: Conditions */}
+        {automation.trigger && (
+          <div className="bg-card p-6 rounded-lg border">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">2. Add Conditions (Optional)</h3>
+                <p className="text-sm text-muted-foreground">
+                  Filter when this automation should run
+                </p>
+              </div>
+              {automation.conditions && automation.conditions.length > 0 && (
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              )}
+            </div>
+            
+            <ConditionBuilder
+              trigger={automation.trigger}
+              conditions={automation.conditions || []}
+              onChange={(conditions) => setAutomation({ ...automation, conditions })}
+            />
+          </div>
+        )}
+
+        {/* Step 3: Action */}
+        {automation.trigger && (
+          <div className="bg-card p-6 rounded-lg border">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">3. Configure Action</h3>
+                <p className="text-sm text-muted-foreground">
+                  What campaign should be created?
+                </p>
+              </div>
+              {automation.action && (
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              )}
+            </div>
+            
+            <ActionConfigurator
+              trigger={automation.trigger}
+              conditions={automation.conditions || []}
+              value={automation.action}
+              onChange={(action) => setAutomation({ ...automation, action })}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Summary */}
+      {automation.trigger && automation.action && validation?.isValid && (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription>
+            <div className="font-medium text-green-600">Automation is ready!</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              This automation will {automation.trigger.type.replace('_', ' ')} and create a {
+                automation.action.config.campaignType === 'single_property' 
+                  ? 'single property' 
+                  : 'multi-property'
+              } campaign using the "{automation.action.config.emailTemplate}" template.
+            </p>
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );

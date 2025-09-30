@@ -1,572 +1,391 @@
+// app/src/app/dashboard/automations/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Plus,
-  Search,
-  Filter,
-  MoreHorizontal,
-  Play,
-  Pause,
-  Copy,
-  Trash2,
-  Edit3,
-  Eye,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Users,
-  TrendingUp,
-  Zap,
-  BarChart3,
-  Calendar
-} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Play, Pause, Copy, Trash2, Edit, MoreVertical, TrendingUp, Calendar, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { WorkflowCategory, WORKFLOW_TEMPLATES } from '@mailivo/shared-types';
-import { workflowAPI } from '@/services/workflowAPI';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { toast } from 'sonner';
-import Link from 'next/link';
+import { Automation } from '@/types/mailivo-automation';
 
-// Local interface definition to avoid shared-types resolution issues
-interface Workflow {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-  nodes: any[];
-  connections: any[];
-  createdAt?: string;
-  updatedAt?: string;
-  lastRunAt?: string;
-}
-
-interface WorkflowWithHealth extends Workflow {
-  validation: {
-    isValid: boolean;
-    errorCount: number;
-    warningCount: number;
-  };
-  health: {
-    score: number;
-    grade: 'A' | 'B' | 'C' | 'D' | 'F';
-  };
-  stats: {
-    totalRuns: number;
-    successfulRuns: number;
-    failedRuns: number;
-    avgExecutionTime: number;
-    conversionRate: number;
-    lastRunAt?: Date;
-  };
-}
-
-interface DashboardSummary {
-  total: number;
-  active: number;
-  draft: number;
-  healthy: number;
-}
-
-export default function WorkflowDashboard() {
-  const [workflows, setWorkflows] = useState<WorkflowWithHealth[]>([]);
-  const [summary, setSummary] = useState<DashboardSummary>({
-    total: 0,
-    active: 0,
-    draft: 0,
-    healthy: 0
-  });
+export default function AutomationsPage() {
+  const router = useRouter();
+  const [automations, setAutomations] = useState<Automation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowWithHealth | null>(null);
-  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterActive, setFilterActive] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetchWorkflows();
-  }, [searchTerm, categoryFilter, statusFilter]);
+    loadAutomations();
+  }, []);
 
-  const fetchWorkflows = async () => {
+  const loadAutomations = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const params: any = {};
-      if (searchTerm) params.search = searchTerm;
-      if (categoryFilter !== 'all') params.category = categoryFilter;
-      if (statusFilter !== 'all') params.status = statusFilter;
+      const params = new URLSearchParams();
+      if (filterActive !== null) {
+        params.append('isActive', String(filterActive));
+      }
 
-      const data = await workflowAPI.getWorkflows(params);
-
-      // Filter out workflows without valid IDs and add safety checks
-      const validWorkflows = (data.workflows || []).filter((workflow: any) => {
-        if (!workflow.id || workflow.id === 'undefined') {
-          console.warn('Skipping workflow without valid ID:', workflow);
-          return false;
-        }
-        // Validate ObjectId format
-        if (!workflow.id.match(/^[0-9a-fA-F]{24}$/)) {
-          console.warn('Skipping workflow with invalid ID format:', workflow.id);
-          return false;
-        }
-        return true;
-      });
-
-      setWorkflows(validWorkflows);
-      setSummary(data.summary || { total: 0, active: 0, draft: 0, healthy: 0 });
+      const response = await fetch(`/api/mailivo-automations?${params.toString()}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setAutomations(data.data);
+      }
     } catch (error) {
-      console.error('Failed to fetch workflows:', error);
-      toast.error('Failed to load workflows. Please try again.');
+      console.error('Failed to load automations:', error);
+      toast.error('Failed to load automations');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleWorkflow = async (workflowId: string, isActive: boolean) => {
-    if (!workflowId || workflowId === 'undefined') {
-      toast.error('Invalid workflow ID');
-      return;
-    }
-
+  const handleToggle = async (automationId: string, isActive: boolean) => {
     try {
-      await workflowAPI.toggleWorkflow(workflowId, isActive);
-      toast.success(`Workflow ${isActive ? 'activated' : 'deactivated'} successfully`);
-      fetchWorkflows();
-    } catch (error) {
-      console.error('Failed to toggle workflow:', error);
-      toast.error('Failed to update workflow status');
-    }
-  };
-
-  const handleDuplicateWorkflow = async (workflowId: string) => {
-    if (!workflowId || workflowId === 'undefined') {
-      toast.error('Invalid workflow ID');
-      return;
-    }
-
-    try {
-      await workflowAPI.duplicateWorkflow(workflowId);
-      toast.success('Workflow duplicated successfully');
-      fetchWorkflows();
-    } catch (error) {
-      console.error('Failed to duplicate workflow:', error);
-      toast.error('Failed to duplicate workflow');
-    }
-  };
-
-  const handleDeleteWorkflow = async (workflowId: string) => {
-    if (!workflowId || workflowId === 'undefined') {
-      toast.error('Invalid workflow ID');
-      return;
-    }
-
-    if (!confirm('Are you sure you want to delete this workflow?')) {
-      return;
-    }
-
-    try {
-      await workflowAPI.deleteWorkflow(workflowId);
-      toast.success('Workflow deleted successfully');
-      fetchWorkflows();
-    } catch (error) {
-      console.error('Failed to delete workflow:', error);
-      toast.error('Failed to delete workflow');
-    }
-  };
-
-  const createFromTemplate = async (templateId: string) => {
-    try {
-      const template = WORKFLOW_TEMPLATES.find(t => t.id === templateId);
-      const response = await fetch('/api/workflows/from-template', {
+      const response = await fetch(`/api/mailivo-automations/${automationId}/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          templateId,
-          name: `${template?.name} - ${new Date().toLocaleDateString()}`,
-          description: template?.description
-        })
+        body: JSON.stringify({ isActive })
       });
 
-      if (response.ok) {
-        const newWorkflow = await response.json();
-        setShowTemplateDialog(false);
-        
-        // Validate the new workflow has a proper ID before redirecting
-        if (newWorkflow.id && newWorkflow.id !== 'undefined') {
-          window.location.href = `/dashboard/automations/${newWorkflow.id}/edit`;
-        } else {
-          toast.error('Created workflow has invalid ID');
-          fetchWorkflows(); // Refresh the list instead
-        }
-      } else {
-        toast.error('Failed to create workflow from template');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to toggle automation');
       }
-    } catch (error) {
-      console.error('Failed to create from template:', error);
-      toast.error('Failed to create workflow from template');
+
+      toast.success(`Automation ${isActive ? 'activated' : 'deactivated'}`);
+      loadAutomations();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
-  const getHealthBadgeVariant = (grade: string) => {
-    switch (grade) {
-      case 'A': return 'default';
-      case 'B': return 'secondary';
-      case 'C': return 'outline';
-      case 'D': case 'F': return 'destructive';
-      default: return 'outline';
+  const handleDuplicate = async (automationId: string) => {
+    try {
+      const response = await fetch(`/api/mailivo-automations/${automationId}/duplicate`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to duplicate automation');
+      }
+
+      toast.success('Automation duplicated');
+      loadAutomations();
+    } catch (error: any) {
+      toast.error(error.message);
     }
   };
 
-  const getStatusIcon = (workflow: WorkflowWithHealth) => {
-    if (!workflow.validation?.isValid) {
-      return <AlertTriangle className="text-red-500" size={16} />;
+  const handleDelete = async (automationId: string) => {
+    if (!confirm('Are you sure you want to delete this automation?')) {
+      return;
     }
-    if (workflow.isActive) {
-      return <Play className="text-green-500" size={16} />;
+
+    try {
+      const response = await fetch(`/api/mailivo-automations/${automationId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete automation');
+      }
+
+      toast.success('Automation deleted');
+      loadAutomations();
+    } catch (error: any) {
+      toast.error(error.message);
     }
-    return <Pause className="text-gray-500" size={16} />;
   };
 
-  const renderSummaryCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Workflows</p>
-              <p className="text-3xl font-bold text-gray-900">{summary.total}</p>
-            </div>
-            <Zap className="text-blue-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active</p>
-              <p className="text-3xl font-bold text-green-600">{summary.active}</p>
-            </div>
-            <Play className="text-green-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Drafts</p>
-              <p className="text-3xl font-bold text-yellow-600">{summary.draft}</p>
-            </div>
-            <Edit3 className="text-yellow-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Healthy (A Grade)</p>
-              <p className="text-3xl font-bold text-blue-600">{summary.healthy}</p>
-            </div>
-            <CheckCircle className="text-blue-500" size={24} />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+  const filteredAutomations = automations.filter(automation =>
+    automation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    automation.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const renderWorkflowCard = (workflow: WorkflowWithHealth) => {
-    // Safety check for workflow ID
-    if (!workflow.id || workflow.id === 'undefined') {
-      console.warn('Workflow missing or invalid ID:', workflow);
-      return null;
-    }
-
-    // Validate ObjectId format
-    if (!workflow.id.match(/^[0-9a-fA-F]{24}$/)) {
-      console.warn('Workflow with invalid ID format:', workflow.id);
-      return null;
-    }
-
-    return (
-      <Card key={workflow.id} className="hover:shadow-md transition-all duration-200">
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-2">
-                {getStatusIcon(workflow)}
-                <h3 className="font-semibold text-lg text-gray-900 truncate">
-                  {workflow.name || 'Unnamed Workflow'}
-                </h3>
-                <Badge variant={workflow.isActive ? 'default' : 'secondary'}>
-                  {workflow.isActive ? 'Active' : 'Draft'}
-                </Badge>
-                <Badge variant={getHealthBadgeVariant(workflow.health?.grade || 'F')}>
-                  {workflow.health?.grade || 'F'}
-                </Badge>
-              </div>
-
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                {workflow.description || 'No description'}
-              </p>
-
-              <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3">
-                <div className="flex items-center space-x-1">
-                  <Calendar size={12} />
-                  <span>Updated {new Date(workflow.updatedAt || '').toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Users size={12} />
-                  <span>{workflow.stats?.totalRuns || 0} runs</span>
-                </div>
-                {workflow.stats?.conversionRate > 0 && (
-                  <div className="flex items-center space-x-1">
-                    <TrendingUp size={12} />
-                    <span>{workflow.stats.conversionRate.toFixed(1)}% conversion</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Health Score */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-gray-600">Health Score</span>
-                  <span className="font-medium">{workflow.health?.score || 0}%</span>
-                </div>
-                <Progress value={workflow.health?.score || 0} className="h-1" />
-              </div>
-
-              {/* Issues Alert */}
-              {!workflow.validation?.isValid && (
-                <Alert className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    {workflow.validation?.errorCount || 0} error(s), {workflow.validation?.warningCount || 0} warning(s)
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreHorizontal size={16} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {/* Only render links if workflow.id is valid */}
-                <DropdownMenuItem asChild>
-                  <Link href={`/dashboard/automations/${workflow.id}`}>
-                    <Eye size={16} className="mr-2" />
-                    View
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href={`/dashboard/automations/${workflow.id}/edit`}>
-                    <Edit3 size={16} className="mr-2" />
-                    Edit
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleToggleWorkflow(workflow.id, !workflow.isActive)}
-                  disabled={!workflow.isActive && !workflow.validation?.isValid}
-                >
-                  {workflow.isActive ? (
-                    <>
-                      <Pause size={16} className="mr-2" />
-                      Deactivate
-                    </>
-                  ) : (
-                    <>
-                      <Play size={16} className="mr-2" />
-                      Activate
-                    </>
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDuplicateWorkflow(workflow.id)}>
-                  <Copy size={16} className="mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleDeleteWorkflow(workflow.id)}
-                  className="text-red-600"
-                >
-                  <Trash2 size={16} className="mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const getTriggerLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      property_uploaded: 'Property Upload',
+      time_based: 'Time Based',
+      property_viewed: 'Property View',
+      property_updated: 'Property Update',
+      campaign_status_changed: 'Campaign Status',
+      email_tracking_status: 'Email Tracking',
+      unsubscribe: 'Unsubscribe'
+    };
+    return labels[type] || type;
   };
 
-  const renderTemplateDialog = () => (
-    <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Choose a Workflow Template</DialogTitle>
-        </DialogHeader>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {WORKFLOW_TEMPLATES.map(template => (
-            <Card key={template.id} className="cursor-pointer hover:shadow-md transition-all duration-200">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">{template.name}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{template.description}</p>
-
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Badge variant="outline">{template.category.replace('_', ' ')}</Badge>
-                      {template.industry && (
-                        <Badge variant="secondary">{template.industry}</Badge>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <span className="text-gray-500">Duration:</span>
-                        <div className="font-medium">{template.estimatedDuration}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Open Rate:</span>
-                        <div className="font-medium text-green-600">{template.expectedResults.openRate}</div>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Conversion:</span>
-                        <div className="font-medium text-blue-600">{template.expectedResults.conversionRate}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={() => createFromTemplate(template.id)}
-                  className="w-full"
-                  size="sm"
-                >
-                  Use Template
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? 'bg-green-500' : 'bg-gray-400';
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading workflows...</p>
-        </div>
+      <div className="container mx-auto py-6">
+        <div className="text-center py-12">Loading automations...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Workflow Automation</h1>
-          <p className="text-gray-600 mt-1">Create and manage your email automation workflows</p>
+          <h1 className="text-3xl font-bold">Automations</h1>
+          <p className="text-muted-foreground">
+            Automate campaign creation with triggers and conditions
+          </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <Button onClick={() => router.push('/dashboard/automations/create')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Automation
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Automations</CardTitle>
+            <Mail className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{automations.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Automations</CardTitle>
+            <Play className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {automations.filter(a => a.isActive).length}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Executions</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {automations.reduce((sum, a) => sum + (a.stats?.totalRuns || 0), 0)}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center space-x-4">
+        <Input
+          placeholder="Search automations..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-sm"
+        />
+        
+        <div className="flex space-x-2">
           <Button
-            variant="outline"
-            onClick={() => setShowTemplateDialog(true)}
+            variant={filterActive === null ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterActive(null)}
           >
-            <Zap className="mr-2" size={16} />
-            Templates
+            All
           </Button>
-          <Button asChild>
-            <Link href="/dashboard/automations/create">
-              <Plus className="mr-2" size={16} />
-              Create Workflow
-            </Link>
+          <Button
+            variant={filterActive === true ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterActive(true)}
+          >
+            Active
+          </Button>
+          <Button
+            variant={filterActive === false ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterActive(false)}
+          >
+            Inactive
           </Button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      {renderSummaryCards()}
-
-      {/* Filters and Search */}
-      <div className="flex items-center space-x-4 bg-white p-4 rounded-lg border">
-        <div className="flex-1">
-          <Input
-            placeholder="Search workflows..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="welcome">Welcome</SelectItem>
-            <SelectItem value="nurture">Nurture</SelectItem>
-            <SelectItem value="retention">Retention</SelectItem>
-            <SelectItem value="landivo">Landivo</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Workflows Grid */}
-      {workflows.length === 0 ? (
-        <div className="text-center py-12">
-          <Zap className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No workflows</h3>
-          <p className="mt-1 text-sm text-gray-500">Get started by creating a new workflow.</p>
-          <div className="mt-6 flex justify-center space-x-3">
-            <Button onClick={() => setShowTemplateDialog(true)} variant="outline">
-              Browse Templates
-            </Button>
-            <Button asChild>
-              <Link href="/dashboard/automations/create">
-                Create Workflow
-              </Link>
-            </Button>
-          </div>
-        </div>
+      {/* Automations Table */}
+      {filteredAutomations.length === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center space-y-4">
+              <Mail className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div>
+                <h3 className="text-lg font-medium">No automations found</h3>
+                <p className="text-sm text-muted-foreground">
+                  {searchQuery ? 'Try adjusting your search' : 'Create your first automation to get started'}
+                </p>
+              </div>
+              {!searchQuery && (
+                <Button onClick={() => router.push('/dashboard/automations/create')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Automation
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {workflows.map(workflow => renderWorkflowCard(workflow)).filter(Boolean)}
-        </div>
-      )}
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Trigger</TableHead>
+                <TableHead>Conditions</TableHead>
+                <TableHead>Stats</TableHead>
+                <TableHead>Last Run</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAutomations.map((automation) => (
+                <TableRow key={automation.id}>
+                  <TableCell>
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(automation.isActive)}`} />
+                  </TableCell>
 
-      {/* Template Selection Dialog */}
-      {renderTemplateDialog()}
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{automation.name}</div>
+                      {automation.description && (
+                        <div className="text-sm text-muted-foreground line-clamp-1">
+                          {automation.description}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge variant="outline">
+                      {getTriggerLabel(automation.trigger.type)}
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell>
+                    <div className="flex items-center space-x-1">
+                      {automation.conditions.length > 0 ? (
+                        automation.conditions.map((cond, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {cond.category.replace('_', ' ')}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">None</span>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <div className="text-sm">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-muted-foreground">Runs:</span>
+                        <span className="font-medium">{automation.stats?.totalRuns || 0}</span>
+                      </div>
+                      {automation.stats && automation.stats.totalRuns > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-muted-foreground">Success:</span>
+                          <span className="font-medium text-green-600">
+                            {automation.stats.successfulRuns}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <div className="text-sm text-muted-foreground">
+                      {automation.lastRunAt 
+                        ? new Date(automation.lastRunAt).toLocaleDateString()
+                        : 'Never'}
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => router.push(`/dashboard/automations/${automation.id}/edit`)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          onClick={() => handleToggle(automation.id, !automation.isActive)}
+                        >
+                          {automation.isActive ? (
+                            <>
+                              <Pause className="h-4 w-4 mr-2" />
+                              Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-4 w-4 mr-2" />
+                              Activate
+                            </>
+                          )}
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem onClick={() => handleDuplicate(automation.id)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(automation.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }
