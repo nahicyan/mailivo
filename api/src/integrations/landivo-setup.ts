@@ -10,25 +10,25 @@ import { emailService } from '../services/email.service';
 // Create service adapters that match WorkflowExecutionEngine requirements
 const contactService = {
   getContact: async (contactId: string) => ({ id: contactId }),
-  updateContact: async (contactId: string, updates: any) => {},
-  addToList: async (contactId: string, listId: string) => {},
-  removeFromList: async (contactId: string, listId: string) => {},
-  addTags: async (contactId: string, tags: string[]) => {},
-  removeTags: async (contactId: string, tags: string[]) => {}
+  updateContact: async (_contactId: string, _updates: any) => {},
+  addToList: async (_contactId: string, _listId: string) => {},
+  removeFromList: async (_contactId: string, _listId: string) => {},
+  addTags: async (_contactId: string, _tags: string[]) => {},
+  removeTags: async (_contactId: string, _tags: string[]) => {}
 };
 
 const propertyService = {
-  getMatchingProperties: async (preferences: any, limit: number) => []
+  getMatchingProperties: async (_preferences: any, _limit: number) => []
 };
 
 const schedulingService = {
-  scheduleWorkflowContinuation: async (executionId: string, when: Date, nodeId: string) => {}
+  scheduleWorkflowContinuation: async (_executionId: string, _when: Date, _nodeId: string) => {}
 };
 
 // Create email service adapter
 const emailServiceAdapter = {
   sendEmail: emailService.sendEmail.bind(emailService),
-  getContactEmailEvents: async (contactId: string, campaignId?: string, timeframe?: number) => []
+  getContactEmailEvents: async (_contactId: string, _campaignId?: string, _timeframe?: number) => []
 };
 
 // Initialize Redis

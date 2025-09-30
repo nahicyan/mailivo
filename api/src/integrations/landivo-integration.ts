@@ -3,6 +3,7 @@ import { WorkflowExecutionService } from '../services/workflow-execution-service
 import { logger } from '../utils/logger';
 import { LandivoProperty, LandivoBuyer } from '../types/landivo';
 
+
 export interface LandivoResidency {
   id: string;
   title: string;
@@ -460,5 +461,4 @@ export class LandivoIntegration {
   }
 }
 
-export { LandivoIntegration };
 export default LandivoIntegration;
