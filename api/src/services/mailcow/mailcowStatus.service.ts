@@ -51,6 +51,7 @@ export class MailcowStatusService {
   private emailToTrackingCache: Map<string, any> = new Map();
   private pendingUpdates: BulkUpdateOperation[] = [];
   private processedQueueIds: Set<string> = new Set();
+  private affectedCampaigns: Set<string> = new Set(); 
 
   constructor() {
     const apiUrl = process.env.MAILCOW_API_URL || '';
@@ -408,11 +409,16 @@ export class MailcowStatusService {
             }
 
             if (shouldUpdate) {
-              this.pendingUpdates.push({
+               this.pendingUpdates.push({
                 trackingId: trackingRecord._id.toString(),
-                updates
-              });
-              updated++;
+                  updates
+               });
+               updated++;
+  
+            // Track affected campaign
+            if (trackingRecord.campaignId) {
+              this.affectedCampaigns.add(trackingRecord.campaignId.toString());
+              }
             }
           }
         } catch (error) {
@@ -437,30 +443,22 @@ export class MailcowStatusService {
       this.lastProcessedTime = latestTime;
       await this.redis.set('mailcow:last_processed_time', latestTime.toString());
     }
-
-    // Update campaign metrics in background (don't wait)
-    this.updateAllCampaignMetrics().catch(err => 
-      logger.error('Failed to update campaign metrics:', err)
-    );
+    await this.updateAffectedCampaignMetrics();
 
     return { processed, updated, matchedByEmail };
   }
 
-  private async updateAllCampaignMetrics(): Promise<void> {
-    try {
-      // Get all campaigns that need metric updates
-      const recentCampaigns = await Campaign.find({
-        status: 'active',
-        updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-      }).select('_id').lean();
-
-      for (const campaign of recentCampaigns) {
-        await this.updateCampaignMetrics(campaign._id.toString());
-      }
-    } catch (error) {
-      logger.error('Failed to update campaign metrics:', error);
-    }
+  private async updateAffectedCampaignMetrics(): Promise<void> {
+  if (this.affectedCampaigns.size === 0) return;
+  
+  logger.info(`Updating metrics for ${this.affectedCampaigns.size} affected campaigns`);
+  
+  for (const campaignId of this.affectedCampaigns) {
+    await this.updateCampaignMetrics(campaignId);
   }
+  
+  this.affectedCampaigns.clear();
+}
 
   async updateCampaignMetrics(campaignId: string): Promise<void> {
     try {
