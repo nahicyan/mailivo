@@ -41,13 +41,15 @@ export function MultiEmailListSelection({
   refetchLists
 }: Props) {
   // Can be single or multi-select
-  const [isSingleSelect, setIsSingleSelect] = useState(
-    formData.emailListSelectionMode === 'single' ? true : false
-  );
+  const [isSingleSelect, setIsSingleSelect] = useState(false);
   
-  const [selectedLists, setSelectedLists] = useState<string[]>(
-    formData.emailLists || (formData.emailList ? [formData.emailList] : [])
-  );
+  const [selectedLists, setSelectedLists] = useState<string[]>(() => {
+    // Initialize from formData
+    if (formData.emailList) {
+      return [formData.emailList];
+    }
+    return [];
+  });
   
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -64,22 +66,16 @@ export function MultiEmailListSelection({
 
   // Toggle selection mode
   const handleSelectionModeChange = (checked: boolean) => {
-    setIsSingleSelect(checked);
-    if (checked && selectedLists.length > 1) {
+    const newMode = checked;
+    setIsSingleSelect(newMode);
+    
+    if (newMode && selectedLists.length > 1) {
       // Keep only first selection when switching to single
       const firstList = selectedLists[0];
       setSelectedLists([firstList]);
       setFormData(prev => ({ 
         ...prev, 
-        emailList: firstList,
-        emailLists: [firstList],
-        emailListSelectionMode: 'single'
-      }));
-    } else if (!checked) {
-      setFormData(prev => ({ 
-        ...prev,
-        emailLists: selectedLists,
-        emailListSelectionMode: 'multi'
+        emailList: firstList
       }));
     }
   };
@@ -91,15 +87,13 @@ export function MultiEmailListSelection({
         setSelectedLists([listId]);
         setFormData(prev => ({ 
           ...prev, 
-          emailList: listId,
-          emailLists: [listId]
+          emailList: listId
         }));
       } else {
         setSelectedLists([]);
         setFormData(prev => ({ 
           ...prev, 
-          emailList: '',
-          emailLists: []
+          emailList: ''
         }));
       }
     } else {
@@ -108,9 +102,11 @@ export function MultiEmailListSelection({
         : selectedLists.filter(id => id !== listId);
       
       setSelectedLists(newSelection);
+      // Store first item in emailList for validation, and all in a custom field
       setFormData(prev => ({ 
         ...prev, 
-        emailLists: newSelection
+        emailList: newSelection[0] || '',
+        emailListsMulti: newSelection // Store all selections
       }));
     }
   };
@@ -121,10 +117,18 @@ export function MultiEmailListSelection({
     if (checked) {
       const allIds = filteredLists.map(list => list.id);
       setSelectedLists(allIds);
-      setFormData(prev => ({ ...prev, emailLists: allIds }));
+      setFormData(prev => ({ 
+        ...prev, 
+        emailList: allIds[0] || '',
+        emailListsMulti: allIds
+      }));
     } else {
       setSelectedLists([]);
-      setFormData(prev => ({ ...prev, emailLists: [] }));
+      setFormData(prev => ({ 
+        ...prev, 
+        emailList: '',
+        emailListsMulti: []
+      }));
     }
   };
 
@@ -250,10 +254,10 @@ export function MultiEmailListSelection({
       />
 
       {/* Validation Error */}
-      {errors.emailLists && (
+      {errors.emailList && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{errors.emailLists}</AlertDescription>
+          <AlertDescription>{errors.emailList}</AlertDescription>
         </Alert>
       )}
     </div>

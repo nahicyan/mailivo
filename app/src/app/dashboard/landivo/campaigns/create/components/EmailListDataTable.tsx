@@ -11,7 +11,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Eye, Users } from 'lucide-react';
@@ -119,10 +118,13 @@ export function EmailListDataTable({
                   {/* Selection Control */}
                   <TableCell>
                     {isSingleSelect ? (
-                      <RadioGroupItem
-                        value={list.id}
+                      <input
+                        type="radio"
+                        name="email-list-selection"
                         checked={isSelected}
-                        onClick={() => onSelectList(list.id, true)}
+                        onChange={() => onSelectList(list.id, true)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        aria-label={`Select ${list.name}`}
                       />
                     ) : (
                       <Checkbox
