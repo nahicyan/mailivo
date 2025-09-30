@@ -102,9 +102,9 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
       category: category as any,
       conditions: [
         {
-          field: '',
-          operator: '',
-          value: ''
+          field: '' as any,
+          operator: '' as any,
+          value: '' as any
         }
       ],
       matchAll: true
@@ -117,9 +117,9 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
     onChange(conditions.filter((_, i) => i !== index));
   };
 
-  const updateCondition = (index: number, updates: Partial<WorkflowCondition>) => {
+  const updateCondition = (index: number, updates: Partial<AutomationCondition>) => {
     const updated = [...conditions];
-    updated[index] = { ...updated[index], ...updates };
+    updated[index] = { ...updated[index], ...updates } as AutomationCondition;
     onChange(updated);
   };
 
@@ -144,7 +144,7 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
     updated[conditionIndex].conditions[filterIndex] = {
       ...updated[conditionIndex].conditions[filterIndex],
       ...updates
-    };
+    } as any;
     onChange(updated);
   };
 
@@ -195,7 +195,7 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
     }
   };
 
-  const renderFilterInput = (condition: WorkflowCondition, filter: any, conditionIndex: number, filterIndex: number) => {
+  const renderFilterInput = (condition: AutomationCondition, filter: any, conditionIndex: number, filterIndex: number) => {
     const fieldType = getFieldType(condition.category, filter.field);
     const operators = OPERATORS[fieldType as keyof typeof OPERATORS] || OPERATORS.text;
 
