@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import { SubjectTemplate } from '../models/SubjectTemplate.model';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { ServiceAuthRequest } from '../middleware/serviceAuth.middleware';
 
 export const subjectTemplateController = {
   // GET /api/subject-templates - List all templates for user
