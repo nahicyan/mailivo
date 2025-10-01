@@ -33,7 +33,7 @@ app.use(cookieParser());
 // Configure CORS properly for images
 app.use(
   cors({
-    origin: ["https://mailivo.landivo.com"],
+    origin: ["https://mailivo.landivo.com", "https://landivo.com"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -47,7 +47,7 @@ app.use(
   "/uploads",
   (_req, res, next) => {
     // Set CORS headers specifically for uploads
-    res.header("Access-Control-Allow-Origin", "https://mailivo.landivo.com");
+    res.header("Access-Control-Allow-Origin", "https://mailivo.landivo.com" );
     res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
     res.header("Access-Control-Allow-Headers", "Content-Type");
     res.header("Cross-Origin-Resource-Policy", "cross-origin");
