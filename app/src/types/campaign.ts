@@ -14,7 +14,7 @@ export interface Campaign {
   id: string;
   name: string;
   property: string;
-  emailList: string;
+  emailList: string | string[];
   emailTemplate: string;
   emailAddressGroup: string;
   emailSchedule: string;
@@ -61,7 +61,8 @@ metrics?: {
 export interface CreateCampaignRequest {
   name: string;
   property: string;
-  emailList: string;
+  emailList: string | string[]; // CHANGED: Now accepts array too
+  emailListsMulti?: string[]; // NEW: Added this property
   emailTemplate: string;
   emailAddressGroup: string;
   emailSchedule: string;
