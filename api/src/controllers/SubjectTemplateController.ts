@@ -174,6 +174,26 @@ export const subjectTemplateController = {
     }
   },
 
+  // NEW METHOD - Public endpoint for Landivo service
+  async listPublic(_req: ServiceAuthRequest, res: Response): Promise<void> {
+    try {
+      // Fetch all enabled templates (not user-specific for public access)
+      const templates = await SubjectTemplate.find({ 
+        isEnabled: true 
+      })
+        .select('name content isEnabled variables createdAt')
+        .sort({ createdAt: -1 })
+        .limit(50);
+
+      const templatesWithId = templates.map(template => template.toJSON());
+
+      res.json({ success: true, templates: templatesWithId });
+    } catch (error: any) {
+      console.error('Error fetching public templates:', error);
+      res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+  },
+
   // PATCH /api/subject-templates/:id/toggle - Toggle template enabled status
   async toggle(req: AuthRequest, res: Response): Promise<void> {
     try {
