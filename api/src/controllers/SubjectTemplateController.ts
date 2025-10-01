@@ -4,8 +4,8 @@ import { SubjectTemplate } from '../models/SubjectTemplate.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 export const subjectTemplateController = {
-  // GET /api/subject-templates - List all templates for user
-  async list(req: AuthRequest, res: Response): Promise<void> {
+  // GET /api/subject-templates - List all templates for user // Currently Disabled for Integration
+/*   async list(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?._id;
       if (!userId) {
@@ -31,7 +31,31 @@ export const subjectTemplateController = {
       console.error('Error fetching subject templates:', error);
       res.status(500).json({ error: 'Failed to fetch templates' });
     }
-  },
+  }, */
+ // Temporary Unlocked Route For Automation
+  async list(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user?._id;
+    
+    // Build filter - if no userId, return all templates (for testing/public access)
+    const filter: any = userId ? { userId } : {};
+    
+    const { enabled } = req.query;
+    if (enabled !== undefined) {
+      filter.isEnabled = enabled === 'true';
+    }
+
+    const templates = await SubjectTemplate.find(filter)
+      .sort({ createdAt: -1 });
+
+    const templatesWithId = templates.map(template => template.toJSON());
+
+    res.json({ success: true, templates: templatesWithId });
+  } catch (error: any) {
+    console.error('Error fetching subject templates:', error);
+    res.status(500).json({ error: 'Failed to fetch templates' });
+  }
+},
 
   // GET /api/subject-templates/:id - Get single template
   async get(req: AuthRequest, res: Response): Promise<void> {

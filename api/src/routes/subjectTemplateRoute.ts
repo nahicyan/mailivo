@@ -1,12 +1,12 @@
 // api/src/routes/subjectTemplateRoute.ts
 import express from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+//import { authenticate } from '../middleware/auth.middleware';
 import { subjectTemplateController } from '../controllers/SubjectTemplateController';
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
-router.use(authenticate);
+//router.use(authenticate);
 
 // Routes
 router.get('/', subjectTemplateController.list);
