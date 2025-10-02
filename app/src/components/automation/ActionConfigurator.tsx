@@ -1,16 +1,28 @@
 // app/src/components/automation/ActionConfigurator.tsx
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, Calendar, Clock, Mail } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { AutomationTrigger, AutomationCondition, AutomationAction } from '@mailivo/shared-types';
+import React, { useState, useEffect } from "react";
+import { useTemplates } from "@/hooks/useTemplates";
+import { useEmailLists } from "@/hooks/useEmailLists";
+import { AlertCircle, Calendar, Clock, Mail } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  AutomationTrigger,
+  AutomationCondition,
+  AutomationAction,
+} from "@mailivo/shared-types";
 
 interface ActionConfiguratorProps {
   trigger: AutomationTrigger;
@@ -19,72 +31,72 @@ interface ActionConfiguratorProps {
   onChange: (action: AutomationAction) => void;
 }
 
-export default function ActionConfigurator({ trigger, conditions, value, onChange }: ActionConfiguratorProps) {
-  const [emailLists, setEmailLists] = useState<any[]>([]);
-  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+export default function ActionConfigurator({
+  trigger,
+  conditions,
+  value,
+  onChange,
+}: ActionConfiguratorProps) {
+  const { data: templates = [], isLoading: templatesLoading } = useTemplates();
+  const { data: emailLists = [], isLoading: listsLoading } = useEmailLists();
   const [agents, setAgents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [agentsLoading, setAgentsLoading] = useState(true);
 
   // Determine property selection source
   const propertySelectionSource = (() => {
-    if (['property_uploaded', 'property_viewed', 'property_updated'].includes(trigger.type)) {
-      return 'trigger';
+    if (
+      ["property_uploaded", "property_viewed", "property_updated"].includes(
+        trigger.type
+      )
+    ) {
+      return "trigger";
     }
-    if (conditions.some(c => c.category === 'property_data')) {
-      return 'condition';
+    if (conditions.some((c) => c.category === "property_data")) {
+      return "condition";
     }
-    return 'manual';
+    return "manual";
   })();
 
-  const canSelectManualProperties = propertySelectionSource === 'manual';
+  const canSelectManualProperties = propertySelectionSource === "manual";
 
   useEffect(() => {
-    loadData();
+    loadAgents();
   }, []);
 
   useEffect(() => {
     // Initialize default action if not set
     if (!value) {
       onChange({
-        type: 'send_campaign',
+        type: "send_campaign",
         config: {
-          campaignType: 'single_property',
+          campaignType: "single_property",
           propertySelection: {
             source: propertySelectionSource,
-            propertyIds: []
+            propertyIds: [],
           },
-          emailList: '',
-          emailTemplate: '',
-          schedule: 'immediate',
-          name: '',
-          subject: ''
-        }
+          emailList: "",
+          emailTemplate: "",
+          schedule: "immediate",
+          name: "",
+          subject: "",
+        },
       });
     }
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadAgents = async () => {
+    setAgentsLoading(true);
     try {
-      // Fetch email lists from Landivo API
-      const listsResponse = await fetch(`${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/email-lists`);
-      const listsData = await listsResponse.json();
-      setEmailLists(listsData);
-
-      // Fetch email templates
-      const templatesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/templates`);
-      const templatesData = await templatesResponse.json();
-      setEmailTemplates(templatesData.data || []);
-
       // Fetch agents from Landivo API
-      const agentsResponse = await fetch(`${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/agent`);
+      const agentsResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/user/public-profiles`
+      );
       const agentsData = await agentsResponse.json();
       setAgents(agentsData);
-
     } catch (error) {
-      console.error('Failed to load action data:', error);
+      console.error("Failed to load agents:", error);
     } finally {
-      setLoading(false);
+      setAgentsLoading(false);
     }
   };
 
@@ -94,14 +106,18 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         ...value,
         config: {
           ...value.config,
-          ...updates
-        }
+          ...updates,
+        },
       });
     }
   };
 
+  const loading = templatesLoading || listsLoading || agentsLoading;
+
   if (loading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
+    return (
+      <div className="text-center py-8 text-muted-foreground">Loading...</div>
+    );
   }
 
   if (!value) return null;
@@ -114,12 +130,12 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         <AlertDescription>
           <div className="font-medium mb-1">Property Selection</div>
           <p className="text-sm">
-            {propertySelectionSource === 'trigger' && 
-              'Properties will be selected from the trigger event.'}
-            {propertySelectionSource === 'condition' && 
-              'Properties will be filtered by the conditions you defined.'}
-            {propertySelectionSource === 'manual' && 
-              'You can manually select properties below.'}
+            {propertySelectionSource === "trigger" &&
+              "Properties will be selected from the trigger event."}
+            {propertySelectionSource === "condition" &&
+              "Properties will be filtered by the conditions you defined."}
+            {propertySelectionSource === "manual" &&
+              "You can manually select properties below."}
           </p>
         </AlertDescription>
       </Alert>
@@ -140,9 +156,9 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground mt-1">
-          {value.config.campaignType === 'single_property' 
-            ? 'Send one email per property' 
-            : 'Include multiple properties in one email'}
+          {value.config.campaignType === "single_property"
+            ? "Send one email per property"
+            : "Include multiple properties in one email"}
         </p>
       </div>
 
@@ -151,10 +167,13 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <div className="font-medium mb-1">Manual Property Selection Required</div>
+            <div className="font-medium mb-1">
+              Manual Property Selection Required
+            </div>
             <p className="text-sm">
-              Your workflow doesn't filter properties via trigger or conditions. 
-              You'll need to manually specify property IDs, or add property conditions to filter automatically.
+              Your workflow doesn't filter properties via trigger or conditions.
+              You'll need to manually specify property IDs, or add property
+              conditions to filter automatically.
             </p>
           </AlertDescription>
         </Alert>
@@ -186,7 +205,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
       <div>
         <Label>Description</Label>
         <Textarea
-          value={value.config.description || ''}
+          value={value.config.description || ""}
           onChange={(e) => updateConfig({ description: e.target.value })}
           placeholder="Optional campaign description"
           rows={2}
@@ -205,9 +224,9 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             <SelectValue placeholder="Select email list" />
           </SelectTrigger>
           <SelectContent>
-            {emailLists.map(list => (
-              <SelectItem key={list._id} value={list._id}>
-                {list.name} ({list.totalEmails || 0} contacts)
+            {emailLists.map((list) => (
+              <SelectItem key={list.id} value={list.id}>
+                {list.name} ({list.totalContacts || 0} contacts)
               </SelectItem>
             ))}
           </SelectContent>
@@ -225,13 +244,15 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             <SelectValue placeholder="Select template" />
           </SelectTrigger>
           <SelectContent>
-            {emailTemplates.map(template => (
-              <SelectItem key={template._id} value={template._id}>
+            {templates.map((template) => (
+              <SelectItem key={template.id} value={template.id}>
                 <div className="flex items-center justify-between w-full">
                   <span>{template.name}</span>
-                  <Badge variant="outline" className="ml-2 text-xs">
-                    {template.category}
-                  </Badge>
+                  {template.category && (
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {template.category}
+                    </Badge>
+                  )}
                 </div>
               </SelectItem>
             ))}
@@ -244,7 +265,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         <div>
           <Label>Select Agent (Optional)</Label>
           <Select
-            value={value.config.selectedAgent || ''}
+            value={value.config.selectedAgent || ""}
             onValueChange={(val) => updateConfig({ selectedAgent: val })}
           >
             <SelectTrigger className="mt-1">
@@ -252,7 +273,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">No Agent</SelectItem>
-              {agents.map(agent => (
+              {agents.map((agent) => (
                 <SelectItem key={agent._id} value={agent._id}>
                   {agent.firstName} {agent.lastName} - {agent.email}
                 </SelectItem>
@@ -279,14 +300,22 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </SelectContent>
         </Select>
 
-        {value.config.schedule === 'scheduled' && (
+        {value.config.schedule === "scheduled" && (
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Date</Label>
               <Input
                 type="date"
-                value={value.config.scheduledDate ? new Date(value.config.scheduledDate).toISOString().split('T')[0] : ''}
-                onChange={(e) => updateConfig({ scheduledDate: new Date(e.target.value) })}
+                value={
+                  value.config.scheduledDate
+                    ? new Date(value.config.scheduledDate)
+                        .toISOString()
+                        .split("T")[0]
+                    : ""
+                }
+                onChange={(e) =>
+                  updateConfig({ scheduledDate: new Date(e.target.value) })
+                }
                 className="mt-1"
               />
             </div>
@@ -294,10 +323,18 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
               <Label className="text-xs">Time</Label>
               <Input
                 type="time"
-                value={value.config.scheduledDate ? new Date(value.config.scheduledDate).toTimeString().slice(0, 5) : ''}
+                value={
+                  value.config.scheduledDate
+                    ? new Date(value.config.scheduledDate)
+                        .toTimeString()
+                        .slice(0, 5)
+                    : ""
+                }
                 onChange={(e) => {
-                  const date = value.config.scheduledDate ? new Date(value.config.scheduledDate) : new Date();
-                  const [hours, minutes] = e.target.value.split(':');
+                  const date = value.config.scheduledDate
+                    ? new Date(value.config.scheduledDate)
+                    : new Date();
+                  const [hours, minutes] = e.target.value.split(":");
                   date.setHours(parseInt(hours), parseInt(minutes));
                   updateConfig({ scheduledDate: date });
                 }}
@@ -307,7 +344,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </div>
         )}
 
-        {value.config.schedule === 'time_delay' && (
+        {value.config.schedule === "time_delay" && (
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Delay Amount</Label>
@@ -315,25 +352,29 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
                 type="number"
                 min="1"
                 value={value.config.delay?.amount || 1}
-                onChange={(e) => updateConfig({ 
-                  delay: { 
-                    ...value.config.delay, 
-                    amount: parseInt(e.target.value) 
-                  } 
-                })}
+                onChange={(e) =>
+                  updateConfig({
+                    delay: {
+                      ...value.config.delay,
+                      amount: parseInt(e.target.value),
+                    },
+                  })
+                }
                 className="mt-1"
               />
             </div>
             <div>
               <Label className="text-xs">Unit</Label>
               <Select
-                value={value.config.delay?.unit || 'hours'}
-                onValueChange={(val) => updateConfig({ 
-                  delay: { 
-                    ...value.config.delay, 
-                    unit: val 
-                  } 
-                })}
+                value={value.config.delay?.unit || "hours"}
+                onValueChange={(val) =>
+                  updateConfig({
+                    delay: {
+                      ...value.config.delay,
+                      unit: val,
+                    },
+                  })
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -350,7 +391,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
       </div>
 
       {/* Multi-Property Specific Configuration */}
-      {value.config.campaignType === 'multi_property' && (
+      {value.config.campaignType === "multi_property" && (
         <div className="border rounded-lg p-4 space-y-4">
           <div className="flex items-center space-x-2">
             <Mail className="h-4 w-4" />
@@ -361,13 +402,17 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             <div>
               <Label>Sort Strategy</Label>
               <Select
-                value={value.config.multiPropertyConfig?.sortStrategy || 'price_asc'}
-                onValueChange={(val) => updateConfig({
-                  multiPropertyConfig: {
-                    ...value.config.multiPropertyConfig,
-                    sortStrategy: val
-                  }
-                })}
+                value={
+                  value.config.multiPropertyConfig?.sortStrategy || "price_asc"
+                }
+                onValueChange={(val) =>
+                  updateConfig({
+                    multiPropertyConfig: {
+                      ...value.config.multiPropertyConfig,
+                      sortStrategy: val,
+                    },
+                  })
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -389,12 +434,14 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
                 min="1"
                 max="20"
                 value={value.config.multiPropertyConfig?.maxProperties || 10}
-                onChange={(e) => updateConfig({
-                  multiPropertyConfig: {
-                    ...value.config.multiPropertyConfig,
-                    maxProperties: parseInt(e.target.value)
-                  }
-                })}
+                onChange={(e) =>
+                  updateConfig({
+                    multiPropertyConfig: {
+                      ...value.config.multiPropertyConfig,
+                      maxProperties: parseInt(e.target.value),
+                    },
+                  })
+                }
                 className="mt-1"
               />
             </div>
@@ -408,13 +455,17 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
               </p>
             </div>
             <Switch
-              checked={value.config.multiPropertyConfig?.financingEnabled || false}
-              onCheckedChange={(checked) => updateConfig({
-                multiPropertyConfig: {
-                  ...value.config.multiPropertyConfig,
-                  financingEnabled: checked
-                }
-              })}
+              checked={
+                value.config.multiPropertyConfig?.financingEnabled || false
+              }
+              onCheckedChange={(checked) =>
+                updateConfig({
+                  multiPropertyConfig: {
+                    ...value.config.multiPropertyConfig,
+                    financingEnabled: checked,
+                  },
+                })
+              }
             />
           </div>
 
@@ -422,19 +473,26 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             <div>
               <Label>Plan Strategy</Label>
               <Select
-                value={value.config.multiPropertyConfig?.planStrategy || 'lowest_payment'}
-                onValueChange={(val) => updateConfig({
-                  multiPropertyConfig: {
-                    ...value.config.multiPropertyConfig,
-                    planStrategy: val
-                  }
-                })}
+                value={
+                  value.config.multiPropertyConfig?.planStrategy ||
+                  "lowest_payment"
+                }
+                onValueChange={(val) =>
+                  updateConfig({
+                    multiPropertyConfig: {
+                      ...value.config.multiPropertyConfig,
+                      planStrategy: val,
+                    },
+                  })
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lowest_payment">Lowest Monthly Payment</SelectItem>
+                  <SelectItem value="lowest_payment">
+                    Lowest Monthly Payment
+                  </SelectItem>
                   <SelectItem value="shortest_term">Shortest Term</SelectItem>
                   <SelectItem value="manual">Manual Selection</SelectItem>
                 </SelectContent>
@@ -450,12 +508,30 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         <AlertDescription>
           <div className="font-medium text-blue-900 mb-1">Action Summary</div>
           <p className="text-sm text-blue-800">
-            This workflow will create a <strong>{value.config.campaignType === 'single_property' ? 'single' : 'multi'}-property</strong> campaign 
-            {' '}using the <strong>{emailTemplates.find(t => t._id === value.config.emailTemplate)?.name || 'selected'}</strong> template
-            {' '}and send to the <strong>{emailLists.find(l => l._id === value.config.emailList)?.name || 'selected'}</strong> email list
-            {value.config.schedule === 'immediate' ? ' immediately' : 
-             value.config.schedule === 'scheduled' ? ' at the scheduled time' :
-             ` after a ${value.config.delay?.amount} ${value.config.delay?.unit} delay`}.
+            This workflow will create a{" "}
+            <strong>
+              {value.config.campaignType === "single_property"
+                ? "single"
+                : "multi"}
+              -property
+            </strong>{" "}
+            campaign using the{" "}
+            <strong>
+              {templates.find((t) => t.id === value.config.emailTemplate)
+                ?.name || "selected"}
+            </strong>{" "}
+            template and send to the{" "}
+            <strong>
+              {emailLists.find((l) => l.id === value.config.emailList)?.name ||
+                "selected"}
+            </strong>{" "}
+            email list
+            {value.config.schedule === "immediate"
+              ? " immediately"
+              : value.config.schedule === "scheduled"
+                ? " at the scheduled time"
+                : ` after a ${value.config.delay?.amount} ${value.config.delay?.unit} delay`}
+            .
           </p>
         </AlertDescription>
       </Alert>
