@@ -226,6 +226,7 @@ export interface SendCampaignAction {
     name: string;
     subject: string;
     description?: string;
+    campaignCounter?: number; 
     
     // Multi-property specific
     multiPropertyConfig?: {
