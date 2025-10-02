@@ -254,7 +254,7 @@ export type AutomationAction = SendCampaignAction;
 // ============================================
 
 export interface Automation {
-  id: string;
+  _id: string;
   name: string;
   description: string;
   isActive: boolean;

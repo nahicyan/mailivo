@@ -219,7 +219,7 @@ export default function AutomationsPage() {
             </TableHeader>
             <TableBody>
               {filteredAutomations.map((automation) => (
-                <TableRow key={automation.id}>
+                <TableRow key={automation._id}>
                   <TableCell>
                     <div className={`w-2 h-2 rounded-full ${getStatusColor(automation.isActive)}`} />
                   </TableCell>
@@ -278,12 +278,12 @@ export default function AutomationsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => router.push(`/dashboard/automations/${automation.id}/edit`)}>
+                        <DropdownMenuItem onClick={() => router.push(`/dashboard/automations/${automation._id}/edit`)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem onClick={() => handleToggle(automation.id, !automation.isActive)}>
+                        <DropdownMenuItem onClick={() => handleToggle(automation._id, !automation.isActive)}>
                           {automation.isActive ? (
                             <>
                               <Pause className="h-4 w-4 mr-2" />
@@ -297,14 +297,14 @@ export default function AutomationsPage() {
                           )}
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem onClick={() => handleDuplicate(automation.id)}>
+                        <DropdownMenuItem onClick={() => handleDuplicate(automation._id)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
 
                         <DropdownMenuSeparator />
 
-                        <DropdownMenuItem onClick={() => handleDelete(automation.id)} className="text-red-600">
+                        <DropdownMenuItem onClick={() => handleDelete(automation._id)} className="text-red-600">
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
