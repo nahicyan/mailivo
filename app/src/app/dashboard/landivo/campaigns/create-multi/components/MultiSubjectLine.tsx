@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { EmojiTextEditor, EmojiTextEditorRef } from '@/components/EmojiText/emoji-text-editor';
 import { useSubjectTemplates } from '@/hooks/useSubjectTemplates';
 import { TemplateManagementModal } from '@/components/subject-templates/TemplateManagementModal';
+import { richTextToPlainText } from '@/utils/text-converter';
 
 interface Props {
     formData: any;
@@ -19,6 +20,7 @@ interface Props {
 }
 
 interface PropertyData {
+    title: string; 
     county: string;
     city: string;
     state: string;
@@ -107,6 +109,7 @@ export function MultiSubjectLine({ formData, setFormData, errors, properties }: 
         
         // Replace other property variables
         const replacements: Record<string, any> = {
+            title: data.title ? richTextToPlainText(data.title) : '',
             county: data.county || '',
             city: data.city || '',
             state: data.state || '',

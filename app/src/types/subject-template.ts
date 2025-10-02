@@ -27,6 +27,7 @@ export interface UpdateSubjectTemplateRequest {
 // Property variables available for templates
 export const PROPERTY_VARIABLES = [
   { key: 'address', label: 'Address (Formatted)', example: 'Cedar Hill, TX 75105' },
+  { key: 'title', label: 'Property Title', example: '🏡 Beautiful 0.5 Acre Lot' },
   { key: 'zoning', label: 'Zoning', example: 'Residential' },
   { key: 'restrictions', label: 'Restrictions', example: 'No Known Restrictions' },
   { key: 'direction', label: 'Direction', example: 'North' },
