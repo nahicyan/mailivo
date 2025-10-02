@@ -1,37 +1,32 @@
 // app/src/app/dashboard/automations/page.tsx
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, Play, Pause, Copy, Trash2, Edit, MoreVertical, TrendingUp, Calendar, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Play, Pause, Copy, Trash2, Edit, MoreVertical, TrendingUp, Calendar, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
-import { toast } from 'sonner';
-import { Automation } from '@mailivo/shared-types';
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "sonner";
+import { Automation } from "@mailivo/shared-types";
+import { useAutomation } from "@/hooks/useAutomation";
 
 export default function AutomationsPage() {
   const router = useRouter();
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
+  const { getAllAutomations, toggleAutomation, duplicateAutomation, deleteAutomation } = useAutomation();
 
   useEffect(() => {
     loadAutomations();
@@ -40,20 +35,15 @@ export default function AutomationsPage() {
   const loadAutomations = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filterActive !== null) {
-        params.append('isActive', String(filterActive));
-      }
+      const filters = filterActive !== null ? { isActive: filterActive } : undefined;
+      const data = await getAllAutomations(filters);
 
-      const response = await fetch(`/api/mailivo-automations?${params.toString()}`);
-      const data = await response.json();
-      
       if (data.success) {
         setAutomations(data.data);
       }
     } catch (error) {
-      console.error('Failed to load automations:', error);
-      toast.error('Failed to load automations');
+      console.error("Failed to load automations:", error);
+      toast.error("Failed to load automations");
     } finally {
       setLoading(false);
     }
@@ -61,18 +51,8 @@ export default function AutomationsPage() {
 
   const handleToggle = async (automationId: string, isActive: boolean) => {
     try {
-      const response = await fetch(`/api/mailivo-automations/${automationId}/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to toggle automation');
-      }
-
-      toast.success(`Automation ${isActive ? 'activated' : 'deactivated'}`);
+      await toggleAutomation(automationId);
+      toast.success(`Automation ${isActive ? "activated" : "deactivated"}`);
       loadAutomations();
     } catch (error: any) {
       toast.error(error.message);
@@ -81,15 +61,8 @@ export default function AutomationsPage() {
 
   const handleDuplicate = async (automationId: string) => {
     try {
-      const response = await fetch(`/api/mailivo-automations/${automationId}/duplicate`, {
-        method: 'POST'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to duplicate automation');
-      }
-
-      toast.success('Automation duplicated');
+      await duplicateAutomation(automationId);
+      toast.success("Automation duplicated");
       loadAutomations();
     } catch (error: any) {
       toast.error(error.message);
@@ -97,46 +70,39 @@ export default function AutomationsPage() {
   };
 
   const handleDelete = async (automationId: string) => {
-    if (!confirm('Are you sure you want to delete this automation?')) {
+    if (!confirm("Are you sure you want to delete this automation?")) {
       return;
     }
-
     try {
-      const response = await fetch(`/api/mailivo-automations/${automationId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete automation');
-      }
-
-      toast.success('Automation deleted');
+      await deleteAutomation(automationId);
+      toast.success("Automation deleted");
       loadAutomations();
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
-  const filteredAutomations = automations.filter(automation =>
-    automation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    automation.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAutomations = automations.filter(
+    (automation) =>
+      automation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      automation.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getTriggerLabel = (type: string) => {
     const labels: Record<string, string> = {
-      property_uploaded: 'Property Upload',
-      time_based: 'Time Based',
-      property_viewed: 'Property View',
-      property_updated: 'Property Update',
-      campaign_status_changed: 'Campaign Status',
-      email_tracking_status: 'Email Tracking',
-      unsubscribe: 'Unsubscribe'
+      property_uploaded: "Property Upload",
+      time_based: "Time Based",
+      property_viewed: "Property View",
+      property_updated: "Property Update",
+      campaign_status_changed: "Campaign Status",
+      email_tracking_status: "Email Tracking",
+      unsubscribe: "Unsubscribe",
     };
     return labels[type] || type;
   };
 
   const getStatusColor = (isActive: boolean) => {
-    return isActive ? 'bg-green-500' : 'bg-gray-400';
+    return isActive ? "bg-green-500" : "bg-gray-400";
   };
 
   if (loading) {
@@ -153,11 +119,9 @@ export default function AutomationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Automations</h1>
-          <p className="text-muted-foreground">
-            Automate campaign creation with triggers and conditions
-          </p>
+          <p className="text-muted-foreground">Automate campaign creation with triggers and conditions</p>
         </div>
-        <Button onClick={() => router.push('/dashboard/automations/create')}>
+        <Button onClick={() => router.push("/dashboard/automations/create")}>
           <Plus className="h-4 w-4 mr-2" />
           Create Automation
         </Button>
@@ -181,9 +145,7 @@ export default function AutomationsPage() {
             <Play className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {automations.filter(a => a.isActive).length}
-            </div>
+            <div className="text-2xl font-bold">{automations.filter((a) => a.isActive).length}</div>
           </CardContent>
         </Card>
 
@@ -193,9 +155,7 @@ export default function AutomationsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {automations.reduce((sum, a) => sum + (a.stats?.totalRuns || 0), 0)}
-            </div>
+            <div className="text-2xl font-bold">{automations.reduce((sum, a) => sum + (a.stats?.totalRuns || 0), 0)}</div>
           </CardContent>
         </Card>
       </div>
@@ -208,27 +168,15 @@ export default function AutomationsPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-sm"
         />
-        
+
         <div className="flex space-x-2">
-          <Button
-            variant={filterActive === null ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterActive(null)}
-          >
+          <Button variant={filterActive === null ? "default" : "outline"} size="sm" onClick={() => setFilterActive(null)}>
             All
           </Button>
-          <Button
-            variant={filterActive === true ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterActive(true)}
-          >
+          <Button variant={filterActive === true ? "default" : "outline"} size="sm" onClick={() => setFilterActive(true)}>
             Active
           </Button>
-          <Button
-            variant={filterActive === false ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilterActive(false)}
-          >
+          <Button variant={filterActive === false ? "default" : "outline"} size="sm" onClick={() => setFilterActive(false)}>
             Inactive
           </Button>
         </div>
@@ -243,11 +191,11 @@ export default function AutomationsPage() {
               <div>
                 <h3 className="text-lg font-medium">No automations found</h3>
                 <p className="text-sm text-muted-foreground">
-                  {searchQuery ? 'Try adjusting your search' : 'Create your first automation to get started'}
+                  {searchQuery ? "Try adjusting your search" : "Create your first automation to get started"}
                 </p>
               </div>
               {!searchQuery && (
-                <Button onClick={() => router.push('/dashboard/automations/create')}>
+                <Button onClick={() => router.push("/dashboard/automations/create")}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Automation
                 </Button>
@@ -279,18 +227,12 @@ export default function AutomationsPage() {
                   <TableCell>
                     <div>
                       <div className="font-medium">{automation.name}</div>
-                      {automation.description && (
-                        <div className="text-sm text-muted-foreground line-clamp-1">
-                          {automation.description}
-                        </div>
-                      )}
+                      {automation.description && <div className="text-sm text-muted-foreground line-clamp-1">{automation.description}</div>}
                     </div>
                   </TableCell>
 
                   <TableCell>
-                    <Badge variant="outline">
-                      {getTriggerLabel(automation.trigger.type)}
-                    </Badge>
+                    <Badge variant="outline">{getTriggerLabel(automation.trigger.type)}</Badge>
                   </TableCell>
 
                   <TableCell>
@@ -298,7 +240,7 @@ export default function AutomationsPage() {
                       {automation.conditions.length > 0 ? (
                         automation.conditions.map((cond, idx) => (
                           <Badge key={idx} variant="secondary" className="text-xs">
-                            {cond.category.replace('_', ' ')}
+                            {cond.category.replace("_", " ")}
                           </Badge>
                         ))
                       ) : (
@@ -316,9 +258,7 @@ export default function AutomationsPage() {
                       {automation.stats && automation.stats.totalRuns > 0 && (
                         <div className="flex items-center space-x-2">
                           <span className="text-muted-foreground">Success:</span>
-                          <span className="font-medium text-green-600">
-                            {automation.stats.successfulRuns}
-                          </span>
+                          <span className="font-medium text-green-600">{automation.stats.successfulRuns}</span>
                         </div>
                       )}
                     </div>
@@ -326,9 +266,7 @@ export default function AutomationsPage() {
 
                   <TableCell>
                     <div className="text-sm text-muted-foreground">
-                      {automation.lastRunAt 
-                        ? new Date(automation.lastRunAt).toLocaleDateString()
-                        : 'Never'}
+                      {automation.lastRunAt ? new Date(automation.lastRunAt).toLocaleDateString() : "Never"}
                     </div>
                   </TableCell>
 
@@ -340,16 +278,12 @@ export default function AutomationsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/dashboard/automations/${automation.id}/edit`)}
-                        >
+                        <DropdownMenuItem onClick={() => router.push(`/dashboard/automations/${automation.id}/edit`)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
 
-                        <DropdownMenuItem
-                          onClick={() => handleToggle(automation.id, !automation.isActive)}
-                        >
+                        <DropdownMenuItem onClick={() => handleToggle(automation.id, !automation.isActive)}>
                           {automation.isActive ? (
                             <>
                               <Pause className="h-4 w-4 mr-2" />
@@ -370,10 +304,7 @@ export default function AutomationsPage() {
 
                         <DropdownMenuSeparator />
 
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(automation.id)}
-                          className="text-red-600"
-                        >
+                        <DropdownMenuItem onClick={() => handleDelete(automation.id)} className="text-red-600">
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>

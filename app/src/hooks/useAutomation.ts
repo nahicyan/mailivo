@@ -1,24 +1,44 @@
 // app/src/hooks/useAutomation.ts
-import { useState } from 'react';
-import { api } from '@/lib/api';
-import type { Automation } from '@mailivo/shared-types';
+import { useState } from "react";
+import { api } from "@/lib/api";
+import type { Automation } from "@mailivo/shared-types";
 
 export const useAutomation = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getAllAutomations = async (filters?: { isActive?: boolean }) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (filters?.isActive !== undefined) {
+        params.append("isActive", String(filters.isActive));
+      }
+      const response = await api.get(`/automation?${params.toString()}`);
+      return response.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || "Failed to load automations";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const createAutomation = async (automation: Partial<Automation>, activate: boolean = false) => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const response = await api.post('/automation', {
+      const response = await api.post("/automation", {
         ...automation,
-        isActive: activate
+        isActive: activate,
       });
       return response.data;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to create automation';
+      const errorMessage = err.response?.data?.message || err.message || "Failed to create automation";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -29,12 +49,12 @@ export const useAutomation = () => {
   const updateAutomation = async (id: string, automation: Partial<Automation>) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await api.put(`/automation/${id}`, automation);
       return response.data;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to update automation';
+      const errorMessage = err.response?.data?.message || err.message || "Failed to update automation";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -45,11 +65,11 @@ export const useAutomation = () => {
   const deleteAutomation = async (id: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       await api.delete(`/automation/${id}`);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to delete automation';
+      const errorMessage = err.response?.data?.message || err.message || "Failed to delete automation";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -60,12 +80,28 @@ export const useAutomation = () => {
   const toggleAutomation = async (id: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await api.post(`/automation/${id}/toggle`);
       return response.data;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to toggle automation';
+      const errorMessage = err.response?.data?.message || err.message || "Failed to toggle automation";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const duplicateAutomation = async (id: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post(`/automation/${id}/duplicate`);
+      return response.data;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || "Failed to duplicate automation";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -76,12 +112,12 @@ export const useAutomation = () => {
   const validateAutomation = async (automation: Partial<Automation>) => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const response = await api.post('/automation/validate', automation);
+      const response = await api.post("/automation/validate", automation);
       return response.data;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to validate automation';
+      const errorMessage = err.response?.data?.message || err.message || "Failed to validate automation";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -90,12 +126,14 @@ export const useAutomation = () => {
   };
 
   return {
+    getAllAutomations,
     createAutomation,
     updateAutomation,
     deleteAutomation,
     toggleAutomation,
+    duplicateAutomation,
     validateAutomation,
     loading,
-    error
+    error,
   };
 };

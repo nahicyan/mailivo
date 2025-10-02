@@ -1,13 +1,13 @@
 // api/src/services/templateRendering.service.ts
-import axios from 'axios';
-import { EmailTemplate } from '../models/EmailTemplate.model';
-import { logger } from '../utils/logger';
-import { getComponent, componentRegistry } from '@landivo/email-template';
-import { render } from '@react-email/render';
-import { emailImageService } from './emailImageService';
-import { linkTrackingService } from './linkTracking.service';
-import { EmailTracking } from '../models/EmailTracking.model';
-import React from 'react';
+import axios from "axios";
+import { EmailTemplate } from "../models/EmailTemplate.model";
+import { logger } from "../utils/logger";
+import { getComponent, componentRegistry } from "@landivo/email-template";
+import { render } from "@react-email/render";
+import { emailImageService } from "./emailImageService";
+import { linkTrackingService } from "./linkTracking.service";
+import { EmailTracking } from "../models/EmailTracking.model";
+import React from "react";
 
 // Add AgentData interface
 interface AgentData {
@@ -68,30 +68,36 @@ interface ContactData {
 interface CampaignData {
   selectedAgent?: string; // Add selectedAgent field
   agentData?: AgentData; // Add agentData field
-  selectedPlan?: {
-    planNumber: number;
-    planName: string;
-    downPayment: number;
-    loanAmount: number;
-    interestRate: number;
-    monthlyPayment: number;
-  } | Array<{
-    propertyId: string;
-    planNumber: number;
-    planName: string;
-    downPayment: number;
-    loanAmount: number;
-    interestRate: number;
-    monthlyPayment: number;
-    isAvailable: boolean;
-  }> | null;
-  imageSelections?: Record<string, {
-    name?: string;
-    propertyId?: string;  // For multi-property
-    imageIndex: number;
-    imageUrl?: string;    // For multi-property
-    order: number;
-  }>;
+  selectedPlan?:
+    | {
+        planNumber: number;
+        planName: string;
+        downPayment: number;
+        loanAmount: number;
+        interestRate: number;
+        monthlyPayment: number;
+      }
+    | Array<{
+        propertyId: string;
+        planNumber: number;
+        planName: string;
+        downPayment: number;
+        loanAmount: number;
+        interestRate: number;
+        monthlyPayment: number;
+        isAvailable: boolean;
+      }>
+    | null;
+  imageSelections?: Record<
+    string,
+    {
+      name?: string;
+      propertyId?: string; // For multi-property
+      imageIndex: number;
+      imageUrl?: string; // For multi-property
+      order: number;
+    }
+  >;
   [key: string]: any;
 }
 
@@ -125,19 +131,22 @@ interface ProcessedMultiPropertyData {
     monthlyPayment: number;
     isAvailable: boolean;
   }>;
-  imageSelections: Record<string, {
-    propertyId: string;
-    imageIndex: number;
-    imageUrl?: string;
-    order: number;
-  }>;
+  imageSelections: Record<
+    string,
+    {
+      propertyId: string;
+      imageIndex: number;
+      imageUrl?: string;
+      order: number;
+    }
+  >;
 }
 
 class TemplateRenderingService {
   private readonly landivoApiUrl: string;
 
   constructor() {
-    this.landivoApiUrl = process.env.LANDIVO_API_URL || 'https://api.landivo.com';
+    this.landivoApiUrl = process.env.LANDIVO_API_URL || "https://api.landivo.com";
   }
 
   // Add method to fetch agent data
@@ -146,19 +155,19 @@ class TemplateRenderingService {
       // Use the correct endpoint for fetching a specific profile by ID
       const response = await axios.get(`${this.landivoApiUrl}/user/public-profile/${agentId}`);
       const agent = response.data;
-      
+
       if (agent) {
         return {
           id: agent.id,
-          firstName: agent.firstName || '',
-          lastName: agent.lastName || '',
-          email: agent.email || '',
+          firstName: agent.firstName || "",
+          lastName: agent.lastName || "",
+          email: agent.email || "",
           phone: agent.phone || null,
-          profileRole: agent.profileRole || '',
-          avatarUrl: agent.avatarUrl || null
+          profileRole: agent.profileRole || "",
+          avatarUrl: agent.avatarUrl || null,
         };
       }
-      
+
       logger.warn(`Agent not found: ${agentId}`);
       return null;
     } catch (error: any) {
@@ -168,9 +177,9 @@ class TemplateRenderingService {
   }
 
   async renderTemplate(
-    templateId: string, 
-    property: string | string[], 
-    contactData: ContactData, 
+    templateId: string,
+    property: string | string[],
+    contactData: ContactData,
     campaignSubject?: string,
     campaignData?: CampaignData
   ): Promise<{
@@ -198,25 +207,12 @@ class TemplateRenderingService {
       const isMultiProperty = Array.isArray(property);
 
       if (isMultiProperty) {
-        return await this.renderMultiPropertyTemplate(
-          template,
-          property as string[],
-          contactData,
-          campaignSubject,
-          enrichedCampaignData
-        );
+        return await this.renderMultiPropertyTemplate(template, property as string[], contactData, campaignSubject, enrichedCampaignData);
       } else {
-        return await this.renderSinglePropertyTemplate(
-          template,
-          property as string,
-          contactData,
-          campaignSubject,
-          enrichedCampaignData
-        );
+        return await this.renderSinglePropertyTemplate(template, property as string, contactData, campaignSubject, enrichedCampaignData);
       }
-
     } catch (error: any) {
-      logger.error('Template rendering failed:', error);
+      logger.error("Template rendering failed:", error);
       throw new Error(`Template rendering failed: ${error.message}`);
     }
   }
@@ -252,7 +248,7 @@ class TemplateRenderingService {
     return {
       subject,
       htmlContent,
-      textContent
+      textContent,
     };
   }
 
@@ -268,29 +264,28 @@ class TemplateRenderingService {
     textContent: string;
   }> {
     // Fetch all properties
-    const propertyPromises = propertyIds.map(id => this.fetchPropertyData(id));
+    const propertyPromises = propertyIds.map((id) => this.fetchPropertyData(id));
     const propertyResults = await Promise.allSettled(propertyPromises);
 
     // Process successful property fetches
     const properties: ProcessedPropertyData[] = [];
     propertyResults.forEach((result, index) => {
-      if (result.status === 'fulfilled' && result.value) {
+      if (result.status === "fulfilled" && result.value) {
         properties.push(this.processPropertyData(result.value));
       } else {
-        logger.warn(`Failed to fetch property ${propertyIds[index]}:`, 
-          result.status === 'rejected' ? result.reason : 'Property not found');
+        logger.warn(`Failed to fetch property ${propertyIds[index]}:`, result.status === "rejected" ? result.reason : "Property not found");
       }
     });
 
     if (properties.length === 0) {
-      throw new Error('No properties could be loaded for multi-property campaign');
+      throw new Error("No properties could be loaded for multi-property campaign");
     }
 
     // Process multi-property campaign data
     const multiPropertyData: ProcessedMultiPropertyData = {
       properties,
       selectedPlans: this.processMultiPropertyPlans(campaignData?.selectedPlan as any, propertyIds),
-      imageSelections: this.processMultiPropertyImages(campaignData?.imageSelections || {})
+      imageSelections: this.processMultiPropertyImages(campaignData?.imageSelections || {}),
     };
 
     // Generate HTML content using React Email with campaign data
@@ -305,7 +300,7 @@ class TemplateRenderingService {
     return {
       subject,
       htmlContent,
-      textContent
+      textContent,
     };
   }
 
@@ -325,20 +320,18 @@ class TemplateRenderingService {
     if (!selectedPlan || !Array.isArray(selectedPlan)) {
       return [];
     }
-    return selectedPlan.filter(plan => propertyIds.includes(plan.propertyId));
+    return selectedPlan.filter((plan) => propertyIds.includes(plan.propertyId));
   }
 
-  private processMultiPropertyImages(
-    imageSelections: Record<string, any>
-  ): Record<string, any> {
+  private processMultiPropertyImages(imageSelections: Record<string, any>): Record<string, any> {
     const processed: Record<string, any> = {};
-    
+
     Object.entries(imageSelections).forEach(([key, selection]) => {
       if (selection.propertyId) {
         processed[key] = selection;
       }
     });
-    
+
     return processed;
   }
 
@@ -359,179 +352,140 @@ class TemplateRenderingService {
 
     try {
       if (propertyData.imageUrls) {
-        const images = Array.isArray(propertyData.imageUrls)
-          ? propertyData.imageUrls
-          : JSON.parse(propertyData.imageUrls);
+        const images = Array.isArray(propertyData.imageUrls) ? propertyData.imageUrls : JSON.parse(propertyData.imageUrls);
         primaryImageUrl = images.length > 0 ? `${this.landivoApiUrl}/${images[0]}` : undefined;
       }
     } catch (error: any) {
-      logger.warn('Failed to parse property images:', error);
+      logger.warn("Failed to parse property images:", error);
     }
 
     return {
       ...propertyData,
       primaryImageUrl,
-      formattedPrice: propertyData.askingPrice?.toLocaleString() || '0',
-      formattedSqft: propertyData.sqft?.toLocaleString() || '0',
-      formattedMonthlyPayment: propertyData.monthlyPaymentOne?.toLocaleString() || '0',
+      formattedPrice: propertyData.askingPrice?.toLocaleString() || "0",
+      formattedSqft: propertyData.sqft?.toLocaleString() || "0",
+      formattedMonthlyPayment: propertyData.monthlyPaymentOne?.toLocaleString() || "0",
     };
   }
 
-  private async generateEmailHTML(
-    template: any,
-    propertyData: ProcessedPropertyData,
-    contactData: ContactData,
-    campaignData?: CampaignData
-  ): Promise<string> {
+  private async generateEmailHTML(template: any, propertyData: ProcessedPropertyData, contactData: ContactData, campaignData?: CampaignData): Promise<string> {
     try {
       // Sort components by order
       const sortedComponents = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
 
       // Create React elements for each component
-      const renderedComponents = sortedComponents.map((component: EmailComponent) =>
-        this.renderComponentToReact(component, propertyData, contactData, campaignData)
-      ).filter(Boolean);
+      const renderedComponents = sortedComponents.map((component: EmailComponent) => this.renderComponentToReact(component, propertyData, contactData, campaignData)).filter(Boolean);
 
       // Create the email structure with React Email
-      const emailElement = React.createElement(
-        'div',
-        { style: { fontFamily: 'Arial, sans-serif', backgroundColor: template.settings?.backgroundColor || '#ffffff' } },
-        ...renderedComponents
-      );
+      const emailElement = React.createElement("div", { style: { fontFamily: "Arial, sans-serif", backgroundColor: template.settings?.backgroundColor || "#ffffff" } }, ...renderedComponents);
 
-    // Render to HTML using React Email
-    let htmlContent = await render(emailElement, {
-      pretty: false,
-    });
+      // Render to HTML using React Email
+      let htmlContent = await render(emailElement, {
+        pretty: false,
+      });
 
-    // Apply link tracking if tracking ID is provided
-    if (campaignData?.trackingId) {
-      // FIX: Extract the contact ID properly
-      const contactId = typeof contactData === 'string' 
-        ? contactData 
-        : (contactData.id || contactData._id || '');
+      // Apply link tracking if tracking ID is provided
+      if (campaignData?.trackingId) {
+        // FIX: Extract the contact ID properly
+        const contactId = typeof contactData === "string" ? contactData : contactData.id || contactData._id || "";
 
-      const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(
-        htmlContent,
-        {
+        const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(htmlContent, {
           trackingId: campaignData.trackingId,
-          campaignId: campaignData.campaignId || '',
+          campaignId: campaignData.campaignId || "",
           contactId: contactId, // Use the extracted ID
-          baseUrl: process.env.API_URL || 'https://api.mailivo.landivo.com', // Match actual URL
-        }
-      );
+          baseUrl: process.env.API_URL || "https://api.mailivo.landivo.com", // Match actual URL
+        });
 
-      // FIX: Updating existing record, doesn't create new one
-      if (extractedLinks.length > 0) {
-        await EmailTracking.findOneAndUpdate(
-          { trackingId: campaignData.trackingId },
-          {
-            $set: { links: extractedLinks }
-          }
-        );
-        
-        logger.info(`Stored ${extractedLinks.length} links for tracking ${campaignData.trackingId}`);
+        // FIX: Updating existing record, doesn't create new one
+        if (extractedLinks.length > 0) {
+          await EmailTracking.findOneAndUpdate(
+            { trackingId: campaignData.trackingId },
+            {
+              $set: { links: extractedLinks },
+            }
+          );
+
+          logger.info(`Stored ${extractedLinks.length} links for tracking ${campaignData.trackingId}`);
+        }
+
+        htmlContent = transformedHtml;
       }
 
-      htmlContent = transformedHtml;
+      return htmlContent;
+    } catch (error: any) {
+      logger.error("Failed to generate HTML content:", error);
+      throw new Error(`Template rendering failed: ${error.message}`);
     }
-
-    return htmlContent;
-
-  } catch (error: any) {
-    logger.error('Failed to generate HTML content:', error);
-    throw new Error(`Template rendering failed: ${error.message}`);
   }
-}
 
-  private async generateMultiPropertyEmailHTML(
-    template: any,
-    multiPropertyData: ProcessedMultiPropertyData,
-    contactData: ContactData,
-    campaignData?: CampaignData
-  ): Promise<string> {
+  private async generateMultiPropertyEmailHTML(template: any, multiPropertyData: ProcessedMultiPropertyData, contactData: ContactData, campaignData?: CampaignData): Promise<string> {
     try {
       // Sort components by order
       const sortedComponents = template.components.sort((a: EmailComponent, b: EmailComponent) => a.order - b.order);
 
       // Create React elements for each component
-      const renderedComponents = sortedComponents.map((component: EmailComponent) =>
-        this.renderMultiPropertyComponentToReact(component, multiPropertyData, contactData, campaignData)
-      ).filter(Boolean);
+      const renderedComponents = sortedComponents
+        .map((component: EmailComponent) => this.renderMultiPropertyComponentToReact(component, multiPropertyData, contactData, campaignData))
+        .filter(Boolean);
 
       // Create the email structure with React Email
-      const emailElement = React.createElement(
-        'div',
-        { style: { fontFamily: 'Arial, sans-serif', backgroundColor: template.settings?.backgroundColor || '#ffffff' } },
-        ...renderedComponents
-      );
+      const emailElement = React.createElement("div", { style: { fontFamily: "Arial, sans-serif", backgroundColor: template.settings?.backgroundColor || "#ffffff" } }, ...renderedComponents);
 
-    // Render to HTML using React Email
-    let htmlContent = await render(emailElement, {
-      pretty: false,
-    });
+      // Render to HTML using React Email
+      let htmlContent = await render(emailElement, {
+        pretty: false,
+      });
 
-    // ADD THIS: Apply link tracking if tracking ID is provided (same as single property)
-    if (campaignData?.trackingId) {
-      // Extract the contact ID properly
-      const contactId = typeof contactData === 'string' 
-        ? contactData 
-        : (contactData.id || contactData._id || '');
+      // ADD THIS: Apply link tracking if tracking ID is provided (same as single property)
+      if (campaignData?.trackingId) {
+        // Extract the contact ID properly
+        const contactId = typeof contactData === "string" ? contactData : contactData.id || contactData._id || "";
 
-      const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(
-        htmlContent,
-        {
+        const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(htmlContent, {
           trackingId: campaignData.trackingId,
-          campaignId: campaignData.campaignId || '',
+          campaignId: campaignData.campaignId || "",
           contactId: contactId,
-          baseUrl: process.env.API_URL || 'https://api.mailivo.landivo.com',
-        }
-      );
+          baseUrl: process.env.API_URL || "https://api.mailivo.landivo.com",
+        });
 
-      // Update existing tracking record with links
-      if (extractedLinks.length > 0) {
-        await EmailTracking.findOneAndUpdate(
-          { trackingId: campaignData.trackingId },
-          {
-            $set: { links: extractedLinks }
-          }
-        );
-        
-        logger.info(`Stored ${extractedLinks.length} links for multi-property tracking ${campaignData.trackingId}`);
+        // Update existing tracking record with links
+        if (extractedLinks.length > 0) {
+          await EmailTracking.findOneAndUpdate(
+            { trackingId: campaignData.trackingId },
+            {
+              $set: { links: extractedLinks },
+            }
+          );
+
+          logger.info(`Stored ${extractedLinks.length} links for multi-property tracking ${campaignData.trackingId}`);
+        }
+
+        htmlContent = transformedHtml;
       }
 
-      htmlContent = transformedHtml;
+      return htmlContent;
+    } catch (error: any) {
+      logger.error("Failed to generate multi-property HTML content:", error);
+      throw new Error(`Multi-property template rendering failed: ${error.message}`);
     }
-
-    return htmlContent;
-
-  } catch (error: any) {
-    logger.error('Failed to generate multi-property HTML content:', error);
-    throw new Error(`Multi-property template rendering failed: ${error.message}`);
   }
-}
 
-  private renderComponentToReact(
-    component: EmailComponent,
-    propertyData: ProcessedPropertyData,
-    contactData: ContactData,
-    campaignData?: CampaignData
-  ): React.ReactElement | null {
+  private renderComponentToReact(component: EmailComponent, propertyData: ProcessedPropertyData, contactData: ContactData, campaignData?: CampaignData): React.ReactElement | null {
     try {
       // Handle static-image component
-      if (component.type === 'static-image') {
+      if (component.type === "static-image") {
         return emailImageService.renderImageComponent(component, propertyData, contactData);
       }
 
       // Handle agent-profile component with agent data
-      if (component.type === 'agent-profile' && campaignData?.agentData) {
+      if (component.type === "agent-profile" && campaignData?.agentData) {
         const componentMeta = getComponent(component.type);
         if (componentMeta) {
           return React.createElement(componentMeta.component, {
             key: component.id,
             ...componentMeta.defaultProps,
             ...component.props,
-            agentData: campaignData.agentData
+            agentData: campaignData.agentData,
           });
         }
       }
@@ -556,25 +510,25 @@ class TemplateRenderingService {
       };
 
       // Handle payment-calculator specific logic
-      if (component.type === 'payment-calculator' && campaignData?.selectedPlan) {
+      if (component.type === "payment-calculator" && campaignData?.selectedPlan) {
         const plan = campaignData.selectedPlan as any;
         finalProps.selectedPlan = plan.planNumber?.toString();
         logger.info(`Setting payment calculator to plan ${plan.planNumber}`, {
           componentId: component.id,
           planNumber: plan.planNumber,
-          planName: plan.planName
+          planName: plan.planName,
         });
       }
 
       // Handle property-image specific logic
-      if (component.type === 'property-image' && campaignData?.imageSelections) {
+      if (component.type === "property-image" && campaignData?.imageSelections) {
         const imageSelection = campaignData.imageSelections[component.id];
         if (imageSelection) {
           finalProps.imageIndex = imageSelection.imageIndex;
           logger.info(`Setting property image index to ${imageSelection.imageIndex}`, {
             componentId: component.id,
             imageIndex: imageSelection.imageIndex,
-            imageName: imageSelection.name
+            imageName: imageSelection.name,
           });
         }
       }
@@ -582,9 +536,8 @@ class TemplateRenderingService {
       // Create React element using the component from registry
       return React.createElement(componentMeta.component, {
         key: component.id,
-        ...finalProps
+        ...finalProps,
       });
-
     } catch (error: any) {
       logger.error(`Failed to render component ${component.type}:`, error);
       return null;
@@ -599,14 +552,14 @@ class TemplateRenderingService {
   ): React.ReactElement | null {
     try {
       // Handle agent-profile component with agent data
-      if (component.type === 'agent-profile' && campaignData?.agentData) {
+      if (component.type === "agent-profile" && campaignData?.agentData) {
         const componentMeta = getComponent(component.type);
         if (componentMeta) {
           return React.createElement(componentMeta.component, {
             key: component.id,
             ...componentMeta.defaultProps,
             ...component.props,
-            agentData: campaignData.agentData
+            agentData: campaignData.agentData,
           });
         }
       }
@@ -631,43 +584,40 @@ class TemplateRenderingService {
       };
 
       // Special handling for PropertiesRow component in multi-property emails
-      if (component.type === 'properties-row') {
+      if (component.type === "properties-row") {
         finalProps.properties = multiPropertyData.properties;
         finalProps.isEmailContext = true; // This is the key flag for email rendering
-        
+
         // Apply image selections if available
         if (multiPropertyData.imageSelections) {
-          finalProps.properties = multiPropertyData.properties.map(property => {
-            const imageSelectionKey = Object.keys(multiPropertyData.imageSelections)
-              .find(key => multiPropertyData.imageSelections[key].propertyId === property.id);
-            
+          finalProps.properties = multiPropertyData.properties.map((property) => {
+            const imageSelectionKey = Object.keys(multiPropertyData.imageSelections).find((key) => multiPropertyData.imageSelections[key].propertyId === property.id);
+
             if (imageSelectionKey) {
               const selection = multiPropertyData.imageSelections[imageSelectionKey];
-              
+
               // Parse imageUrls from property data
               let parsedImageUrls: string[] = [];
               try {
-                parsedImageUrls = typeof property.imageUrls === 'string' 
-                  ? JSON.parse(property.imageUrls)
-                  : property.imageUrls || [];
+                parsedImageUrls = typeof property.imageUrls === "string" ? JSON.parse(property.imageUrls) : property.imageUrls || [];
               } catch {
                 parsedImageUrls = [];
               }
 
               // Convert to full URLs
-              let imageUrls = parsedImageUrls.map(url => `${this.landivoApiUrl}/${url}`);
-              
+              let imageUrls = parsedImageUrls.map((url) => `${this.landivoApiUrl}/${url}`);
+
               if (selection.imageUrl) {
                 // If selection has a specific imageUrl, use it as the primary image
                 imageUrls = [selection.imageUrl, ...imageUrls];
               }
-              
+
               return {
                 ...property,
                 selectedImageIndex: selection.imageIndex || 0,
                 imageUrls,
                 images: imageUrls,
-                primaryImageUrl: selection.imageUrl
+                primaryImageUrl: selection.imageUrl,
               };
             }
             return property;
@@ -677,9 +627,7 @@ class TemplateRenderingService {
         // Apply selected plans for pricing
         if (multiPropertyData.selectedPlans) {
           finalProps.properties = finalProps.properties.map((property: any) => {
-            const plan = multiPropertyData.selectedPlans.find(
-              (p: any) => p.propertyId === property.id
-            );
+            const plan = multiPropertyData.selectedPlans.find((p: any) => p.propertyId === property.id);
             if (plan) {
               return {
                 ...property,
@@ -687,7 +635,7 @@ class TemplateRenderingService {
                 planName: plan.planName,
                 downPayment: plan.downPayment,
                 loanAmount: plan.loanAmount,
-                interestRate: plan.interestRate
+                interestRate: plan.interestRate,
               };
             }
             return property;
@@ -696,7 +644,7 @@ class TemplateRenderingService {
       }
 
       // Handle payment-calculator specific logic for multi-property
-      if (component.type === 'payment-calculator' && multiPropertyData.selectedPlans.length > 0) {
+      if (component.type === "payment-calculator" && multiPropertyData.selectedPlans.length > 0) {
         // Use the first property's plan for payment calculator
         const firstPropertyPlan = multiPropertyData.selectedPlans[0];
         finalProps.selectedPlan = firstPropertyPlan.planNumber?.toString();
@@ -704,18 +652,17 @@ class TemplateRenderingService {
         logger.info(`Setting multi-property payment calculator to plan ${firstPropertyPlan.planNumber}`, {
           componentId: component.id,
           planNumber: firstPropertyPlan.planNumber,
-          planName: firstPropertyPlan.planName
+          planName: firstPropertyPlan.planName,
         });
       }
 
       // Handle property-image specific logic for multi-property
-      if (component.type === 'property-image' && multiPropertyData.imageSelections) {
+      if (component.type === "property-image" && multiPropertyData.imageSelections) {
         // Use the first property's image selection
         const firstPropertyId = multiPropertyData.properties[0]?.id;
         if (firstPropertyId) {
-          const imageSelectionKey = Object.keys(multiPropertyData.imageSelections)
-            .find(key => multiPropertyData.imageSelections[key].propertyId === firstPropertyId);
-          
+          const imageSelectionKey = Object.keys(multiPropertyData.imageSelections).find((key) => multiPropertyData.imageSelections[key].propertyId === firstPropertyId);
+
           if (imageSelectionKey) {
             const imageSelection = multiPropertyData.imageSelections[imageSelectionKey];
             finalProps.imageIndex = imageSelection.imageIndex;
@@ -723,79 +670,66 @@ class TemplateRenderingService {
             logger.info(`Setting multi-property image index to ${imageSelection.imageIndex}`, {
               componentId: component.id,
               imageIndex: imageSelection.imageIndex,
-              propertyId: firstPropertyId
+              propertyId: firstPropertyId,
             });
           }
         }
       }
 
       // For other components, use first property as context but mark as email context
-      if (component.type !== 'properties-row') {
+      if (component.type !== "properties-row") {
         finalProps.isEmailContext = true;
       }
 
       // Create React element using the component from registry
       return React.createElement(componentMeta.component, {
         key: component.id,
-        ...finalProps
+        ...finalProps,
       });
-
     } catch (error: any) {
       logger.error(`Failed to render multi-property component ${component.type}:`, error);
       return null;
     }
   }
 
-  private generateTextContent(
-    template: any,
-    propertyData: ProcessedPropertyData,
-    contactData: ContactData,
-    campaignData?: CampaignData
-  ): string {
+  private generateTextContent(template: any, propertyData: ProcessedPropertyData, contactData: ContactData, campaignData?: CampaignData): string {
     // Generate text content for single property
     const textParts = template.components
       .sort((a: EmailComponent, b: EmailComponent) => a.order - b.order)
       .map((component: EmailComponent) => {
         // Handle agent-profile text rendering
-        if (component.type === 'agent-profile' && campaignData?.agentData) {
+        if (component.type === "agent-profile" && campaignData?.agentData) {
           const agent = campaignData.agentData;
-          return `Contact ${agent.firstName} ${agent.lastName}\n${agent.profileRole || 'Agent'}\n${agent.phone || ''}\n${agent.email}`;
+          return `Contact ${agent.firstName} ${agent.lastName}\n${agent.profileRole || "Agent"}\n${agent.phone || ""}\n${agent.email}`;
         }
 
         const componentMeta = getComponent(component.type);
-        if (!componentMeta) return '';
-        
+        if (!componentMeta) return "";
+
         return this.renderComponentToText(component, componentMeta, propertyData, contactData);
       })
       .filter(Boolean);
 
-    return textParts.join('\n\n');
+    return textParts.join("\n\n");
   }
 
-  private generateMultiPropertyTextContent(
-    template: any,
-    multiPropertyData: ProcessedMultiPropertyData,
-    contactData: ContactData,
-    campaignData?: CampaignData
-  ): string {
+  private generateMultiPropertyTextContent(template: any, multiPropertyData: ProcessedMultiPropertyData, contactData: ContactData, campaignData?: CampaignData): string {
     // Generate text content for multi-property
     const textParts = template.components
       .sort((a: EmailComponent, b: EmailComponent) => a.order - b.order)
       .map((component: EmailComponent) => {
         // Handle agent-profile text rendering
-        if (component.type === 'agent-profile' && campaignData?.agentData) {
+        if (component.type === "agent-profile" && campaignData?.agentData) {
           const agent = campaignData.agentData;
-          return `Contact ${agent.firstName} ${agent.lastName}\n${agent.profileRole || 'Agent'}\n${agent.phone || ''}\n${agent.email}`;
+          return `Contact ${agent.firstName} ${agent.lastName}\n${agent.profileRole || "Agent"}\n${agent.phone || ""}\n${agent.email}`;
         }
 
         const componentMeta = getComponent(component.type);
-        if (!componentMeta) return '';
-        
-        if (component.type === 'properties-row') {
+        if (!componentMeta) return "";
+
+        if (component.type === "properties-row") {
           // Generate text for all properties
-          return multiPropertyData.properties.map(property => 
-            `${property.title} - ${property.city}, ${property.state} ${property.zip} - $${property.formattedPrice}`
-          ).join('\n');
+          return multiPropertyData.properties.map((property) => `${property.title} - ${property.city}, ${property.state} ${property.zip} - $${property.formattedPrice}`).join("\n");
         } else {
           // Use first property for other components
           return this.renderComponentToText(component, componentMeta, multiPropertyData.properties[0], contactData);
@@ -803,34 +737,37 @@ class TemplateRenderingService {
       })
       .filter(Boolean);
 
-    return textParts.join('\n\n');
+    return textParts.join("\n\n");
   }
 
   private renderComponentToText(component: any, _componentMeta: any, propertyData: any, _contactData: any): string {
     switch (component.type) {
-      case 'header':
-        return component.props.text || '';
-      case 'property-image':
+      case "header":
+        return component.props.text || "";
+      case "property-image":
         return `[Image: ${propertyData.title}]`;
-      case 'properties-row':
+      case "properties-row":
         return `Properties: ${propertyData.title} - ${propertyData.city}, ${propertyData.state}`;
-      case 'payment-calculator':
+      case "payment-calculator":
         return `Monthly Payment: $${propertyData.formattedMonthlyPayment}`;
       default:
-        return '';
+        return "";
     }
   }
 
   private generateSubject(_templateName: string, propertyData: ProcessedPropertyData, contactData: ContactData): string {
-    const firstName = contactData.firstName || contactData.first_name || '';
-    const greeting = firstName ? `${firstName}, ` : '';
+    const firstName = contactData.firstName || contactData.first_name || "";
+    const greeting = firstName ? `${firstName}, ` : "";
 
     // Simple subject generation using template name and property data
     return `${greeting}${propertyData.title} - ${propertyData.city}, ${propertyData.state}`;
   }
 
   // Public method to test component rendering
-  async testComponentRendering(componentType: string, props: Record<string, any>): Promise<{
+  async testComponentRendering(
+    componentType: string,
+    props: Record<string, any>
+  ): Promise<{
     htmlContent: string;
     textContent: string;
   }> {
@@ -845,11 +782,10 @@ class TemplateRenderingService {
       const htmlContent = await render(reactElement);
 
       // Generate text using same modular approach
-      const mockComponent = { id: 'test', type: componentType, name: 'Test', icon: '', props, order: 0 };
+      const mockComponent = { id: "test", type: componentType, name: "Test", icon: "", props, order: 0 };
       const textContent = this.renderComponentToText(mockComponent, componentMeta, {} as any, {} as any);
 
       return { htmlContent, textContent };
-
     } catch (error: any) {
       logger.error(`Failed to test render component ${componentType}:`, error);
       throw error;
