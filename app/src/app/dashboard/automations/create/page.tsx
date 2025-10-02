@@ -1,34 +1,36 @@
 // app/src/app/dashboard/automations/create/page.tsx
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Play, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from 'sonner';
-import { AutomationValidator } from '@/lib/automation-validation';
-import { Automation, ValidationResult } from '@mailivo/shared-types';
-import TriggerSelector from '@/components/automation/TriggerSelector';
-import ConditionBuilder from '@/components/automation/ConditionBuilder';
-import ActionConfigurator from '@/components/automation/ActionConfigurator';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Save, Play, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
+import { AutomationValidator } from "@/lib/automation-validation";
+import { Automation, ValidationResult } from "@mailivo/shared-types";
+import TriggerSelector from "@/components/automation/TriggerSelector";
+import ConditionBuilder from "@/components/automation/ConditionBuilder";
+import ActionConfigurator from "@/components/automation/ActionConfigurator";
+import { useAutomation } from "@/hooks/useAutomation"; // ADD THIS
 
 export default function CreateAutomationPage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
-  
+  const { createAutomation } = useAutomation(); // ADD THIS
+
   const [automation, setAutomation] = useState<Partial<Automation>>({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     isActive: false,
     trigger: undefined,
     conditions: [],
-    action: undefined
+    action: undefined,
   });
 
   // Real-time validation
@@ -39,44 +41,32 @@ export default function CreateAutomationPage() {
     }
   }, [automation]);
 
-  const handleSave = async (activate: boolean = false )=> {
+  const handleSave = async (activate: boolean = false) => {
     if (!automation.trigger || !automation.action) {
-      toast.error('Please configure trigger and action');
+      toast.error("Please configure trigger and action");
       return;
     }
 
     const validationResult = AutomationValidator.validateAutomation(automation);
-    
+
     if (!validationResult.isValid) {
-      toast.error('Please fix validation errors');
+      toast.error("Please fix validation errors");
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/automation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...automation,
-          isActive: activate
-        })
-      });
+      // REPLACE THE ENTIRE TRY BLOCK WITH THIS:
+      const data = await createAutomation(automation, activate);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to save automation');
-      }
-
-      const data = await response.json();
-      
-      toast.success(activate ? 'Automation activated!' : 'Automation saved as draft');
-      router.push('/dashboard/automations');
-      
+      toast.success(
+        activate ? "Automation activated!" : "Automation saved as draft"
+      );
+      router.push("/dashboard/automations");
     } catch (error: any) {
-      console.error('Save automation error:', error);
-      toast.error(error.message || 'Failed to save automation');
+      console.error("Save automation error:", error);
+      toast.error(error.message || "Failed to save automation");
     } finally {
       setIsSaving(false);
     }
@@ -87,11 +77,7 @@ export default function CreateAutomationPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-          >
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -127,10 +113,14 @@ export default function CreateAutomationPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <div className="font-medium mb-2">Please fix the following errors:</div>
+            <div className="font-medium mb-2">
+              Please fix the following errors:
+            </div>
             <ul className="list-disc list-inside space-y-1">
               {validation.errors.map((error, index) => (
-                <li key={index} className="text-sm">{error.message}</li>
+                <li key={index} className="text-sm">
+                  {error.message}
+                </li>
               ))}
             </ul>
           </AlertDescription>
@@ -160,7 +150,9 @@ export default function CreateAutomationPage() {
           <Input
             id="name"
             value={automation.name}
-            onChange={(e) => setAutomation({ ...automation, name: e.target.value })}
+            onChange={(e) =>
+              setAutomation({ ...automation, name: e.target.value })
+            }
             placeholder="e.g., New Property Alert to VIP Buyers"
             className="mt-1"
           />
@@ -171,7 +163,9 @@ export default function CreateAutomationPage() {
           <Textarea
             id="description"
             value={automation.description}
-            onChange={(e) => setAutomation({ ...automation, description: e.target.value })}
+            onChange={(e) =>
+              setAutomation({ ...automation, description: e.target.value })
+            }
             placeholder="Describe what this automation does..."
             rows={3}
             className="mt-1"
@@ -194,7 +188,7 @@ export default function CreateAutomationPage() {
               <CheckCircle2 className="h-5 w-5 text-green-600" />
             )}
           </div>
-          
+
           <TriggerSelector
             value={automation.trigger}
             onChange={(trigger) => setAutomation({ ...automation, trigger })}
@@ -206,7 +200,9 @@ export default function CreateAutomationPage() {
           <div className="bg-card p-6 rounded-lg border">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold">2. Add Conditions (Optional)</h3>
+                <h3 className="text-lg font-semibold">
+                  2. Add Conditions (Optional)
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Filter when this automation should run
                 </p>
@@ -215,11 +211,13 @@ export default function CreateAutomationPage() {
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
               )}
             </div>
-            
+
             <ConditionBuilder
               trigger={automation.trigger}
               conditions={automation.conditions || []}
-              onChange={(conditions) => setAutomation({ ...automation, conditions })}
+              onChange={(conditions) =>
+                setAutomation({ ...automation, conditions })
+              }
             />
           </div>
         )}
@@ -238,7 +236,7 @@ export default function CreateAutomationPage() {
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
               )}
             </div>
-            
+
             <ActionConfigurator
               trigger={automation.trigger}
               conditions={automation.conditions || []}
@@ -254,13 +252,17 @@ export default function CreateAutomationPage() {
         <Alert>
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertDescription>
-            <div className="font-medium text-green-600">Automation is ready!</div>
+            <div className="font-medium text-green-600">
+              Automation is ready!
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
-              This automation will {automation.trigger.type.replace('_', ' ')} and create a {
-                automation.action.config.campaignType === 'single_property' 
-                  ? 'single property' 
-                  : 'multi-property'
-              } campaign using the "{automation.action.config.emailTemplate}" template.
+              This automation will {automation.trigger.type.replace("_", " ")}{" "}
+              and create a{" "}
+              {automation.action.config.campaignType === "single_property"
+                ? "single property"
+                : "multi-property"}{" "}
+              campaign using the "{automation.action.config.emailTemplate}"
+              template.
             </p>
           </AlertDescription>
         </Alert>
