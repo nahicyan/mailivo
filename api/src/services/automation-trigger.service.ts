@@ -1,12 +1,11 @@
 // api/src/services/automation-trigger.service.ts
-import { MailivoAutomation } from '../models/MailivoAutomation';
-import { AutomationExecution } from '../models/AutomationExecution';
-import { automationMatcherService } from './automation-matcher.service';
-import { campaignCreatorService } from './campaign-creator.service';
-import { logger } from '../utils/logger';
+import { MailivoAutomation, AutomationExecution } from "../models/MailivoAutomation";
+import { automationMatcherService } from "./automation-matcher.service";
+import { campaignCreatorService } from "./campaign-creator.service";
+import { logger } from "../utils/logger";
 
 interface TriggerPayload {
-  type: 'property_uploaded' | 'property_updated' | 'property_viewed' | 'campaign_status_changed' | 'email_tracking_status';
+  type: "property_uploaded" | "property_updated" | "property_viewed" | "campaign_status_changed" | "email_tracking_status";
   data: any;
   source: string;
 }
@@ -24,7 +23,7 @@ class AutomationTriggerService {
   async processTrigger(payload: TriggerPayload): Promise<ProcessResult> {
     const { type, data, source } = payload;
 
-    logger.info('Processing trigger', { type, source });
+    logger.info("Processing trigger", { type, source });
 
     try {
       // 1. Validate and normalize incoming data
@@ -39,16 +38,12 @@ class AutomationTriggerService {
         return {
           executionsTriggered: 0,
           automationsMatched: 0,
-          executionIds: []
+          executionIds: [],
         };
       }
 
       // 3. For each automation, check if it matches the incoming data
-      const matchResults = await Promise.all(
-        automations.map(automation => 
-          automationMatcherService.evaluateAutomation(automation, normalizedData)
-        )
-      );
+      const matchResults = await Promise.all(automations.map((automation) => automationMatcherService.evaluateAutomation(automation, normalizedData)));
 
       // 4. Execute matching automations
       const executionIds: string[] = [];
@@ -74,11 +69,10 @@ class AutomationTriggerService {
       return {
         executionsTriggered: successCount,
         automationsMatched: matchResults.filter(Boolean).length,
-        executionIds
+        executionIds,
       };
-
     } catch (error: any) {
-      logger.error('Trigger processing failed', { error: error.message, stack: error.stack });
+      logger.error("Trigger processing failed", { error: error.message, stack: error.stack });
       throw error;
     }
   }
@@ -88,43 +82,43 @@ class AutomationTriggerService {
    */
   private normalizeIncomingData(type: string, data: any): any {
     switch (type) {
-      case 'property_uploaded':
+      case "property_uploaded":
         return {
           propertyIds: data.propertyID ? [data.propertyID] : [],
           propertyData: data,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
-      case 'property_updated':
+      case "property_updated":
         return {
           propertyIds: data.propertyID ? [data.propertyID] : [],
           propertyData: data,
-          updateType: data.updateType || 'general',
-          timestamp: new Date()
+          updateType: data.updateType || "general",
+          timestamp: new Date(),
         };
 
-      case 'property_viewed':
+      case "property_viewed":
         return {
           propertyIds: data.propertyID ? [data.propertyID] : [],
           viewerId: data.userId,
           viewCount: data.viewCount || 1,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
-      case 'campaign_status_changed':
+      case "campaign_status_changed":
         return {
           campaignId: data.campaignId,
           fromStatus: data.fromStatus,
           toStatus: data.toStatus,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
-      case 'email_tracking_status':
+      case "email_tracking_status":
         return {
           campaignId: data.campaignId,
           contactId: data.contactId,
           event: data.event,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
       default:
@@ -137,8 +131,8 @@ class AutomationTriggerService {
    */
   private async findMatchingAutomations(triggerType: string): Promise<any[]> {
     return await MailivoAutomation.find({
-      'trigger.type': triggerType,
-      isActive: true
+      "trigger.type": triggerType,
+      isActive: true,
     }).lean();
   }
 
@@ -150,87 +144,82 @@ class AutomationTriggerService {
     const execution = new AutomationExecution({
       automationId: automation._id,
       userId: automation.userId,
-      status: 'pending',
+      status: "pending",
       triggeredAt: new Date(),
       triggeredBy: {
         type: automation.trigger.type,
-        data: triggerData
+        data: triggerData,
       },
-      executionLog: []
+      executionLog: [],
     });
 
     await execution.save();
 
     try {
       // Update execution status
-      execution.status = 'running';
+      execution.status = "running";
       execution.executionLog.push({
-        step: 'trigger_received',
+        step: "trigger_received",
         timestamp: new Date(),
-        status: 'success',
-        message: 'Automation triggered successfully'
+        status: "success",
+        message: "Automation triggered successfully",
       });
       await execution.save();
 
       // Create campaign using the campaign creator service
-      const campaignResult = await campaignCreatorService.createCampaignFromAutomation(
-        automation,
-        triggerData,
-        execution.id.toString()
-      );
+      const campaignResult = await campaignCreatorService.createCampaignFromAutomation(automation, triggerData, execution.id.toString());
 
       // Update execution with success
-      execution.status = 'completed';
+      execution.status = "completed";
       execution.completedAt = new Date();
       execution.result = {
         campaignId: campaignResult.campaignId,
         recipientCount: campaignResult.recipientCount,
-        status: 'success'
+        status: "success",
       };
       execution.executionLog.push({
-        step: 'campaign_created',
+        step: "campaign_created",
         timestamp: new Date(),
-        status: 'success',
+        status: "success",
         message: `Campaign ${campaignResult.campaignId} created successfully`,
-        data: { campaignId: campaignResult.campaignId }
+        data: { campaignId: campaignResult.campaignId },
       });
 
       await execution.save();
 
       // Update automation stats
       await MailivoAutomation.findByIdAndUpdate(automation._id, {
-        $inc: { 'stats.totalRuns': 1, 'stats.successfulRuns': 1 },
+        $inc: { "stats.totalRuns": 1, "stats.successfulRuns": 1 },
         lastRunAt: new Date(),
-        'stats.lastRunStatus': 'success'
+        "stats.lastRunStatus": "success",
       });
 
       logger.info(`Automation executed successfully`, {
         automationId: automation._id,
         executionId: execution._id,
-        campaignId: campaignResult.campaignId
+        campaignId: campaignResult.campaignId,
       });
 
       return execution.id.toString();
-
     } catch (error: any) {
       // Update execution with failure
-      execution.status = 'failed';
+      execution.status = "failed";
       execution.completedAt = new Date();
       execution.error = error.message;
       execution.executionLog.push({
-        step: 'execution_failed',
+        step: "execution_failed",
         timestamp: new Date(),
-        status: 'failed',
-        message: error.message
+        status: "failed",
+        message: error.message,
       });
 
       await execution.save();
 
       // Update automation stats
       await MailivoAutomation.findByIdAndUpdate(automation._id, {
-        $inc: { 'stats.totalRuns': 1, 'stats.failedRuns': 1 },
+        $inc: { "stats.totalRuns": 1, "stats.failedRuns": 1 },
         lastRunAt: new Date(),
-        'stats.lastRunStatus': 'failed'
+        "stats.lastRunStatus": "failed",
       });
 
       throw error;

@@ -1,6 +1,6 @@
 // api/src/services/landivoEmailList.service.ts
-import axios from 'axios';
-import { logger } from '../utils/logger';
+import axios from "axios";
+import { logger } from "../utils/logger";
 
 interface LandivoEmailList {
   id: string;
@@ -34,24 +34,24 @@ class LandivoService {
   private readonly apiUrl: string;
 
   constructor() {
-    this.apiUrl = process.env.LANDIVO_API_URL || 'https://api.landivo.com';
+    this.apiUrl = process.env.LANDIVO_API_URL || "https://api.landivo.com";
   }
 
   async getAllEmailLists(): Promise<EmailListWithBuyers[]> {
     try {
-      logger.info('Fetching email lists from Landivo...');
-      
+      logger.info("Fetching email lists from Landivo...");
+
       // Fetch all EmailLists
       const emailListsResponse = await axios.get(`${this.apiUrl}/email-lists`);
       const emailLists: LandivoEmailList[] = emailListsResponse.data;
 
       // Debug log to see the actual structure
       if (emailLists.length > 0) {
-        logger.info('Sample email list structure:', JSON.stringify(emailLists[0], null, 2));
+        logger.info("Sample email list structure:", JSON.stringify(emailLists[0], null, 2));
       }
 
       if (!emailLists || emailLists.length === 0) {
-        logger.info('No email lists found in Landivo');
+        logger.info("No email lists found in Landivo");
         return [];
       }
 
@@ -67,22 +67,21 @@ class LandivoService {
             id,
             name: emailList.name,
             description: emailList.description,
-            source: emailList.source || 'manual',
+            source: emailList.source || "manual",
             criteria: emailList.criteria || {},
             createdAt: emailList.createdAt,
-            totalContacts
+            totalContacts,
           },
           buyers: buyers,
-          totalContacts: totalContacts
+          totalContacts: totalContacts,
         };
       });
 
       logger.info(`Successfully loaded ${emailListsWithBuyers.length} email lists from Landivo`);
       return emailListsWithBuyers;
-
     } catch (error) {
-      logger.error('Error fetching email lists from Landivo:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logger.error("Error fetching email lists from Landivo:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       throw new Error(`Failed to fetch email lists from Landivo: ${errorMessage}`);
     }
   }
@@ -102,12 +101,11 @@ class LandivoService {
       return {
         emailList: {
           ...emailList,
-          id: emailList.id || (emailList as any)._id
+          id: emailList.id || (emailList as any)._id,
         },
         buyers: [], // Will populate once we know the correct endpoint
-        totalContacts: 0
+        totalContacts: 0,
       };
-
     } catch (error) {
       logger.error(`Error fetching email list ${emailListId} from Landivo:`, error);
       return null;

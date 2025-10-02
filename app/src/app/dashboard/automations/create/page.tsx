@@ -16,13 +16,13 @@ import { Automation, ValidationResult } from "@mailivo/shared-types";
 import TriggerSelector from "@/components/automation/TriggerSelector";
 import ConditionBuilder from "@/components/automation/ConditionBuilder";
 import ActionConfigurator from "@/components/automation/ActionConfigurator";
-import { useAutomation } from "@/hooks/useAutomation"; // ADD THIS
+import { useAutomation } from "@/hooks/useAutomation"; 
 
 export default function CreateAutomationPage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const { createAutomation } = useAutomation(); // ADD THIS
+  const { createAutomation } = useAutomation();
 
   const [automation, setAutomation] = useState<Partial<Automation>>({
     name: "",

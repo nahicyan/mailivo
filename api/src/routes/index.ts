@@ -47,7 +47,7 @@ router.use('/api/mailcow', mailcowRoutes);
 router.use('/automation', mailivoAutomationRoutes);
 
 // Automation triggers (webhooks/external)
-router.use('/automation', automationTriggerRoutes);
+router.use('/automation-landivo', automationTriggerRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
