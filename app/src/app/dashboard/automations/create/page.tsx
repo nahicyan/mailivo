@@ -55,7 +55,7 @@ export default function CreateAutomationPage() {
     setIsSaving(true);
 
     try {
-      const response = await fetch('/api/mailivo-automations', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/automation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
