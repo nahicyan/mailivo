@@ -12,23 +12,44 @@ import userProfileRoute from './userProfileRoute';
 import analyticsRoutes from './analytics.routes';
 import mailcowRoutes from './mailcow.routes';
 import { mailivoAutomationRoutes } from './mailivo-automation.route';
+import { automationTriggerRoutes } from './automation-trigger.route';
 
 const router = Router();
 
-
+// Authentication routes
 router.use('/auth', authRoutes);
+
+// Campaign management routes
 router.use('/campaigns', campaignRoutes);
+
+// Template management routes
 router.use('/templates', templatesRoutes);
-router.use('/landivo-email-lists', landivoEmailListsRoutes);
-router.use('/landivo', landivoRoutes);
-router.use('/via', trackingRoutes); // More inviting route instead of /track
-router.use("/subject-templates", subjectTemplateRoute);
 router.use('/template-images', templateImageRoutes);
-router.use('/api/user', userProfileRoute);
+router.use("/subject-templates", subjectTemplateRoute);
+
+// Contact and email list management
+router.use('/landivo-email-lists', landivoEmailListsRoutes);
+
+// Landivo integration
+router.use('/landivo', landivoRoutes);
+
+// Tracking and analytics
+router.use('/via', trackingRoutes); // Email tracking via links
 router.use('/analytics', analyticsRoutes);
+
+// User profile
+router.use('/api/user', userProfileRoute);
+
+// Email services
 router.use('/api/mailcow', mailcowRoutes);
+
+// Automation management (dashboard)
 router.use('/automation', mailivoAutomationRoutes);
 
+// Automation triggers (webhooks/external)
+router.use('/automation', automationTriggerRoutes);
+
+// Health check
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
