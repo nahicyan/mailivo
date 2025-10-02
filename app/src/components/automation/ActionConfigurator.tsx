@@ -67,12 +67,12 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
     setLoading(true);
     try {
       // Fetch email lists from Landivo API
-      const listsResponse = await fetch(`${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/emaillist`);
+      const listsResponse = await fetch(`${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/email-lists`);
       const listsData = await listsResponse.json();
       setEmailLists(listsData);
 
       // Fetch email templates
-      const templatesResponse = await fetch('/api/email-templates');
+      const templatesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/templates`);
       const templatesData = await templatesResponse.json();
       setEmailTemplates(templatesData.data || []);
 
