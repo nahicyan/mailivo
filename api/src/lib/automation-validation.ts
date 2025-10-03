@@ -404,27 +404,40 @@ export class AutomationValidator {
    * Validate action configuration
    */
   private static validateAction(
-    action: AutomationAction,
-    state: EntitySelectionState
-  ): ValidationError[] {
-    const errors: ValidationError[] = [];
+  action: AutomationAction,
+  state: EntitySelectionState,
+  trigger: AutomationTrigger  // ADD this parameter
+): ValidationError[] {
+  const errors: ValidationError[] = [];
 
-    if (action.type !== 'send_campaign') {
-      return errors;
-    }
+  if (action.type !== 'send_campaign') {
+    return errors;
+  }
 
-    const config = action.config;
+  const config = action.config;
 
-    // Validate required fields
-    if (!config.name?.trim()) {
+  // Validate required fields
+  if (!config.name?.trim()) {
+    errors.push({
+      code: 'MISSING_CAMPAIGN_NAME',
+      message: 'Campaign name is required.',
+      field: 'action.config.name',
+      severity: 'error'
+    });
+  }
+
+  // Validate email subject for property triggers - UPDATED
+  if ((trigger.type === 'property_uploaded' || trigger.type === 'property_updated')) {
+    if (config.subject !== 'bypass' && !config.subject?.trim()) {
       errors.push({
-        code: 'MISSING_CAMPAIGN_NAME',
-        message: 'Campaign name is required.',
-        field: 'action.config.name',
+        code: 'MISSING_CAMPAIGN_SUBJECT',
+        message: 'Campaign subject is required or must be set to bypass.',
+        field: 'action.config.subject',
         severity: 'error'
       });
     }
-
+  } else {
+    // For other triggers, subject is always required
     if (!config.subject?.trim()) {
       errors.push({
         code: 'MISSING_CAMPAIGN_SUBJECT',
@@ -433,77 +446,28 @@ export class AutomationValidator {
         severity: 'error'
       });
     }
+  }
 
-    if (!config.emailList) {
+  // Validate email list
+  if (!config.emailList) {
+    errors.push({
+      code: 'MISSING_EMAIL_LIST',
+      message: 'Email list is required.',
+      field: 'action.config.emailList',
+      severity: 'error'
+    });
+  }
+
+  // Validate Match-* email lists - NEW
+  if (config.emailList?.startsWith('Match-')) {
+    if (!['Match-Title', 'Match-Area'].includes(config.emailList)) {
       errors.push({
-        code: 'MISSING_EMAIL_LIST',
-        message: 'Email list is required.',
+        code: 'INVALID_MATCH_LIST',
+        message: 'Invalid match list type. Must be Match-Title or Match-Area.',
         field: 'action.config.emailList',
         severity: 'error'
       });
     }
-
-    if (!config.emailTemplate) {
-      errors.push({
-        code: 'MISSING_EMAIL_TEMPLATE',
-        message: 'Email template is required.',
-        field: 'action.config.emailTemplate',
-        severity: 'error'
-      });
-    }
-
-    // Validate property selection logic
-    if (!state.property.selected && config.campaignType === 'single_property') {
-      errors.push({
-        code: 'NO_PROPERTY_SOURCE',
-        message: 'Single property campaign requires a property source (trigger, condition, or manual selection).',
-        field: 'action.config.propertySelection',
-        severity: 'error'
-      });
-    }
-
-    if (config.propertySelection.source === 'manual' && 
-        (!config.propertySelection.propertyIds || config.propertySelection.propertyIds.length === 0)) {
-      errors.push({
-        code: 'MISSING_MANUAL_PROPERTIES',
-        message: 'Manual property selection requires at least one property ID.',
-        field: 'action.config.propertySelection.propertyIds',
-        severity: 'error'
-      });
-    }
-
-    // Validate scheduling
-    if (config.schedule === 'scheduled' && !config.scheduledDate) {
-      errors.push({
-        code: 'MISSING_SCHEDULED_DATE',
-        message: 'Scheduled campaigns require a date.',
-        field: 'action.config.scheduledDate',
-        severity: 'error'
-      });
-    }
-
-    if (config.schedule === 'time_delay' && !config.delay) {
-      errors.push({
-        code: 'MISSING_DELAY_CONFIG',
-        message: 'Time delay scheduling requires delay configuration.',
-        field: 'action.config.delay',
-        severity: 'error'
-      });
-    }
-
-    // Validate multi-property specific configs
-    if (config.campaignType === 'multi_property') {
-      if (!config.multiPropertyConfig) {
-        errors.push({
-          code: 'MISSING_MULTI_PROPERTY_CONFIG',
-          message: 'Multi-property campaigns require multiPropertyConfig.',
-          field: 'action.config.multiPropertyConfig',
-          severity: 'error'
-        });
-      }
-    }
-
-    return errors;
   }
 
   /**

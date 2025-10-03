@@ -67,6 +67,10 @@ export class AutomationExecutor {
       this.log(execution, "execute_action", "Executing action");
       const actionResult = await this.executeAction(automation.action, resolvedEntities, automation.userId, options, automationId);
 
+      // Validate action configuration
+      const actionErrors = this.validateAction(automation.action, entityState, automation.trigger); // ADD automation.trigger
+      errors.push(...actionErrors);
+
       // Success
       execution.status = "completed";
       execution.completedAt = new Date();
@@ -331,12 +335,12 @@ export class AutomationExecutor {
 
     // Build campaign data
     const campaignData = {
-      name: campaignName,
-      subject: campaignSubject,
+      name: config.name,
+      subject: config.subject === "bypass" ? "bypass" : config.subject,
       description: config.description,
       type: config.campaignType,
       property: config.campaignType === "single_property" ? propertyIds[0] : propertyIds,
-      emailList: config.emailList,
+      emailList: config.emailList, // Now handles Match-Title, Match-Area, or list ID
       emailTemplate: config.emailTemplate,
       selectedAgent: config.selectedAgent,
       emailSchedule: config.schedule === "immediate" ? "immediate" : "scheduled",
@@ -345,12 +349,17 @@ export class AutomationExecutor {
       source: "landivo",
       status: config.schedule === "immediate" ? "active" : "draft",
       imageSelections: config.imageSelections,
+
+      // Add payment plan data
+      financingEnabled: config.campaignType === "single_property" ? config.financingEnabled : config.multiPropertyConfig?.financingEnabled,
+      planStrategy: config.campaignType === "single_property" ? config.planStrategy : config.multiPropertyConfig?.planStrategy,
+
       multiPropertyMeta:
         config.campaignType === "multi_property"
           ? {
-              type: "multi-property",
-              totalProperties: propertyIds.length,
-              ...config.multiPropertyConfig,
+              sortStrategy: config.multiPropertyConfig?.sortStrategy,
+              maxProperties: config.multiPropertyConfig?.maxProperties,
+              // ... existing multiPropertyConfig fields ...
             }
           : undefined,
     };

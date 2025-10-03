@@ -199,22 +199,17 @@ export interface SendCampaignAction {
   config: {
     campaignType: 'single_property' | 'multi_property';
     
-    // Property selection (mutually exclusive based on trigger/conditions)
     propertySelection: {
       source: 'trigger' | 'condition' | 'manual';
-      propertyIds?: string[]; // Only used when source = 'manual'
+      propertyIds?: string[];
     };
     
-    // Email list selection
-    emailList: string;
+    // Email list selection - now supports Match-Title and Match-Area
+    emailList: string; // Can be list ID, "Match-Title", or "Match-Area"
     
-    // Template selection
     emailTemplate: string;
-    
-    // Agent selection (if template requires)
     selectedAgent?: string;
     
-    // Scheduling
     schedule: 'immediate' | 'scheduled' | 'time_delay';
     scheduledDate?: Date;
     delay?: {
@@ -222,24 +217,25 @@ export interface SendCampaignAction {
       unit: 'minutes' | 'hours' | 'days';
     };
     
-    // Campaign details
     name: string;
-    subject: string;
+    subject: string; // Can be "bypass" to use Landivo data
     description?: string;
-    campaignCounter?: number; 
+    
+    // Payment plan options for single property
+    financingEnabled?: boolean;
+    planStrategy?: 'plan-1' | 'plan-2' | 'plan-3' | 'monthly-low' | 'monthly-high' | 
+                   'down-payment-low' | 'down-payment-high' | 'interest-low' | 'interest-high';
     
     // Multi-property specific
     multiPropertyConfig?: {
       sortStrategy?: 'price_asc' | 'price_desc' | 'newest' | 'oldest' | 'manual';
       maxProperties?: number;
       financingEnabled?: boolean;
-      planStrategy?: 'lowest_payment' | 'shortest_term' | 'manual';
+      planStrategy?: 'plan-1' | 'plan-2' | 'plan-3' | 'monthly-low' | 'monthly-high' | 
+                     'down-payment-low' | 'down-payment-high' | 'interest-low' | 'interest-high';
     };
     
-    // Component configuration
     componentConfig?: Record<string, any>;
-    
-    // Image selections
     imageSelections?: Record<string, {
       propertyId?: string;
       imageIndex: number;

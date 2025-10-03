@@ -121,7 +121,7 @@ export const templateController = {
         return;
       }
 
-      res.status(500).json({ error: 'Failed to create template' });
+      res.status(500).json({  error: 'Failed to create template' });
     }
   },
 

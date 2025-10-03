@@ -15,6 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { AutomationTrigger, AutomationCondition, AutomationAction } from "@mailivo/shared-types";
 import { Lock } from "lucide-react";
 import { VariableInput } from "./VariableInput";
+import { EmailSubjectToggle } from "./EmailSubjectToggle";
+import { EmailListSelector } from "./EmailListSelector";
+import { PaymentPlanSelector } from "./PaymentPlanSelector";
 
 interface ActionConfiguratorProps {
   trigger: AutomationTrigger;
@@ -29,6 +32,10 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
   const [agents, setAgents] = useState<any[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(true);
   const isPropertyUploadTrigger = trigger.type === "property_uploaded";
+  const [useFromLandivo, setUseFromLandivo] = useState(value.config.subject === "bypass");
+  const [matchAllList, setMatchAllList] = useState(value.config.emailList?.startsWith("Match-") || false);
+  // Determine if we should show the Email Subject Toggle
+  const showEmailSubjectToggle = trigger?.type === "property_uploaded" || trigger?.type === "property_updated";
 
   // Determine property selection source
   const propertySelectionSource = (() => {
@@ -116,7 +123,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </p>
         </AlertDescription>
       </Alert>
-
       {/* Campaign Type */}
       <div>
         <Label>Campaign Type *</Label>
@@ -143,7 +149,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         )}
         <p className="text-xs text-muted-foreground mt-1">{value.config.campaignType === "single_property" ? "Send one email per property" : "Include multiple properties in one email"}</p>
       </div>
-
       {/* Manual Property Selection (if applicable) */}
       {canSelectManualProperties && (
         <Alert variant="destructive">
@@ -156,29 +161,41 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </AlertDescription>
         </Alert>
       )}
-
       {/* Campaign Details */}
       <VariableInput label="Campaign Name" value={value.config.name} onChange={(val) => updateConfig({ name: val })} placeholder="e.g., New Property - {city}, {state} #{#}" />
-
-      <VariableInput label="Email Subject" value={value.config.subject} onChange={(val) => updateConfig({ subject: val })} placeholder="e.g., 🏡 New Land in {city} #{#}" />
-
+      {showEmailSubjectToggle ? (
+        <EmailSubjectToggle
+          value={useFromLandivo ? "" : value.config.subject}
+          useFromLandivo={useFromLandivo}
+          onChange={(val) => updateConfig({ subject: val })}
+          onToggleChange={(useLandivo) => {
+            setUseFromLandivo(useLandivo);
+            updateConfig({ subject: useLandivo ? "bypass" : "" });
+          }}
+        />
+      ) : (
+        <div>
+          <Label>Email Subject *</Label>
+          <Input value={value.config.subject} onChange={(e) => updateConfig({ subject: e.target.value })} placeholder="e.g., New Property Available in {city}" className="mt-1" />
+        </div>
+      )}
       {/* Email List Selection */}
-      <div>
-        <Label>Email List *</Label>
-        <Select value={value.config.emailList} onValueChange={(val) => updateConfig({ emailList: val })}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select email list" />
-          </SelectTrigger>
-          <SelectContent>
-            {emailLists.map((list) => (
-              <SelectItem key={list.id} value={list.id}>
-                {list.name} ({list.totalContacts || 0} contacts)
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
+      {showEmailSubjectToggle ? (
+        <EmailSubjectToggle
+          value={useFromLandivo ? "" : value.config.subject}
+          useFromLandivo={useFromLandivo}
+          onChange={(val) => updateConfig({ subject: val })}
+          onToggleChange={(useLandivo) => {
+            setUseFromLandivo(useLandivo);
+            updateConfig({ subject: useLandivo ? "bypass" : "" });
+          }}
+        />
+      ) : (
+        <div>
+          <Label>Email Subject *</Label>
+          <Input value={value.config.subject} onChange={(e) => updateConfig({ subject: e.target.value })} placeholder="e.g., New Property Available in {city}" className="mt-1" />
+        </div>
+      )}
       {/* Email Template Selection */}
       <div>
         <Label>Email Template *</Label>
@@ -202,7 +219,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </SelectContent>
         </Select>
       </div>
-
       {/* Agent Selection (if template requires) */}
       {agents.length > 0 && (
         <div>
@@ -222,7 +238,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </Select>
         </div>
       )}
-
       {/* Schedule Configuration */}
       <div>
         <Label>Schedule *</Label>
@@ -309,106 +324,53 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </div>
         )}
       </div>
-
       {/* Multi-Property Specific Configuration */}
       {value.config.campaignType === "multi_property" && (
-        <div className="border rounded-lg p-4 space-y-4">
-          <div className="flex items-center space-x-2">
-            <Mail className="h-4 w-4" />
-            <h4 className="font-medium">Multi-Property Settings</h4>
+        <div className="space-y-4">
+          {/* Existing Multi-Property Settings */}
+          <div className="border rounded-lg p-4 space-y-4">
+            <div className="flex items-center space-x-2">
+              <Mail className="h-4 w-4" />
+              <h4 className="font-medium">Multi-Property Settings</h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">{/* Existing sort and max properties fields */}</div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Sort Strategy</Label>
-              <Select
-                value={value.config.multiPropertyConfig?.sortStrategy || "price_asc"}
-                onValueChange={(val) =>
-                  updateConfig({
-                    multiPropertyConfig: {
-                      ...value.config.multiPropertyConfig,
-                      sortStrategy: val,
-                    },
-                  })
-                }>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="oldest">Oldest First</SelectItem>
-                  <SelectItem value="manual">Manual Order</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Max Properties</Label>
-              <Input
-                type="number"
-                min="1"
-                max="20"
-                value={value.config.multiPropertyConfig?.maxProperties || 10}
-                onChange={(e) =>
-                  updateConfig({
-                    multiPropertyConfig: {
-                      ...value.config.multiPropertyConfig,
-                      maxProperties: parseInt(e.target.value),
-                    },
-                  })
-                }
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Enable Financing</Label>
-              <p className="text-xs text-muted-foreground">Show payment plans for properties</p>
-            </div>
-            <Switch
-              checked={value.config.multiPropertyConfig?.financingEnabled || false}
-              onCheckedChange={(checked) =>
-                updateConfig({
-                  multiPropertyConfig: {
-                    ...value.config.multiPropertyConfig,
-                    financingEnabled: checked,
-                  },
-                })
-              }
-            />
-          </div>
-
-          {value.config.multiPropertyConfig?.financingEnabled && (
-            <div>
-              <Label>Plan Strategy</Label>
-              <Select
-                value={value.config.multiPropertyConfig?.planStrategy || "lowest_payment"}
-                onValueChange={(val) =>
-                  updateConfig({
-                    multiPropertyConfig: {
-                      ...value.config.multiPropertyConfig,
-                      planStrategy: val,
-                    },
-                  })
-                }>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lowest_payment">Lowest Monthly Payment</SelectItem>
-                  <SelectItem value="shortest_term">Shortest Term</SelectItem>
-                  <SelectItem value="manual">Manual Selection</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Payment Plan Selector */}
+          <PaymentPlanSelector
+            enabled={value.config.multiPropertyConfig?.financingEnabled || false}
+            planStrategy={value.config.multiPropertyConfig?.planStrategy || "plan-1"}
+            onEnabledChange={(enabled) =>
+              updateConfig({
+                multiPropertyConfig: {
+                  ...value.config.multiPropertyConfig,
+                  financingEnabled: enabled,
+                },
+              })
+            }
+            onPlanStrategyChange={(strategy) =>
+              updateConfig({
+                multiPropertyConfig: {
+                  ...value.config.multiPropertyConfig,
+                  planStrategy: strategy,
+                },
+              })
+            }
+            campaignType={value.config.campaignType}
+          />
         </div>
       )}
-
+      {/* For single property, also add payment selector */}
+      {value.config.campaignType === "single_property" && (
+        <PaymentPlanSelector
+          enabled={value.config.financingEnabled || false}
+          planStrategy={value.config.planStrategy || "plan-1"}
+          onEnabledChange={(enabled) => updateConfig({ financingEnabled: enabled })}
+          onPlanStrategyChange={(strategy) => updateConfig({ planStrategy: strategy })}
+          campaignType={value.config.campaignType}
+        />
+      )}
       {/* Summary */}
       <Alert className="bg-blue-50 border-blue-200">
         <AlertCircle className="h-4 w-4 text-blue-600" />
