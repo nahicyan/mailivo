@@ -1,9 +1,12 @@
 // api/src/services/campaign-creator.service.ts
 import { Campaign } from "../models/Campaign";
+import { EmailTracking } from "../models/EmailTracking.model";
 import { templateRenderingService } from "./templateRendering.service";
+import { linkTrackingService } from "./linkTracking.service";
 import { logger } from "../utils/logger";
 import axios from "axios";
 import Bull from "bull";
+import { nanoid } from "nanoid";
 
 const LANDIVO_API_URL = process.env.LANDIVO_API_URL || "https://api.landivo.com";
 
@@ -375,7 +378,6 @@ class CampaignCreatorService {
         recipientCount: recipients.length,
       });
 
-      // Update campaign status
       campaign.status = "sending";
       campaign.emailVolume = recipients.length;
       await campaign.save();
@@ -383,13 +385,11 @@ class CampaignCreatorService {
       let successCount = 0;
       let failCount = 0;
 
-      // Queue each email
       for (const contact of recipients) {
         try {
-          // Normalize contact data
           const email = contact.email?.trim().toLowerCase();
           if (!email || !email.includes("@")) {
-            logger.warn("Skipping contact with invalid email", { contact });
+            logger.warn("Skipping invalid email", { contact });
             failCount++;
             continue;
           }
@@ -401,7 +401,24 @@ class CampaignCreatorService {
             fullName: `${contact.firstName || ""} ${contact.lastName || ""}`.trim(),
           };
 
-          // Render template with property and contact data
+          const contactId = contact._id?.toString() || contact.id || email;
+
+          // 1. Generate trackingId upfront
+          const trackingId = `${campaign._id}_${email}_${nanoid(10)}`;
+
+          // 2. Create tracking record
+          await EmailTracking.create({
+            campaignId: campaign._id.toString(),
+            contactId,
+            contactEmail: email,
+            trackingId,
+            status: "queued",
+            links: [],
+            linkClicks: [],
+            linkStats: new Map(),
+          });
+
+          // 3. Render template
           const rendered = await templateRenderingService.renderTemplate(
             campaign.emailTemplate,
             propertyIds.length === 1 ? propertyIds[0] : propertyIds,
@@ -410,22 +427,36 @@ class CampaignCreatorService {
             campaignData
           );
 
-          // Add email job to queue
+          // 4. Transform links with tracking
+          const { transformedHtml, extractedLinks } = await linkTrackingService.transformLinks(rendered.htmlContent, {
+            trackingId,
+            campaignId: campaign._id.toString(),
+            contactId,
+            baseUrl: process.env.API_URL || "https://api.mailivo.landivo.com",
+          });
+
+          // 5. Update tracking record with links
+          if (extractedLinks.length > 0) {
+            await EmailTracking.findOneAndUpdate({ trackingId }, { $set: { links: extractedLinks } });
+            logger.info(`Stored ${extractedLinks.length} tracking links`, { trackingId });
+          }
+
+          // 6. Queue email with transformed HTML
           await emailQueue.add(
             "send-email",
             {
               campaignId: campaign._id.toString(),
-              contactId: contact._id?.toString() || contact.id || email,
+              contactId,
               email,
               personalizedContent: {
                 subject: rendered.subject,
-                htmlContent: rendered.htmlContent,
+                htmlContent: transformedHtml,
                 textContent: rendered.textContent,
               },
-              trackingId: `${campaign._id}_${email}_${Date.now()}`,
+              trackingId,
             },
             {
-              delay: successCount * 100, // Stagger by 100ms
+              delay: successCount * 100,
               attempts: 3,
               backoff: { type: "exponential", delay: 30000 },
             }
@@ -433,7 +464,7 @@ class CampaignCreatorService {
 
           successCount++;
         } catch (error: any) {
-          logger.error("Failed to queue email for contact", {
+          logger.error("Failed to queue email", {
             contact: contact.email,
             error: error.message,
           });
