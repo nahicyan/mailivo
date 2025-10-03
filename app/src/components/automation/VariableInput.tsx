@@ -63,7 +63,7 @@ export function VariableInput({ label, value, onChange, placeholder, error }: Va
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label>{label} *</Label>
+        <Label>{label}</Label>
         <div className="flex gap-2">
           <Popover open={isAddressOpen} onOpenChange={setIsAddressOpen}>
             <PopoverTrigger asChild>

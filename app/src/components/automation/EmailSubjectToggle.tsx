@@ -3,9 +3,9 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { VariableInput } from './VariableInput';
 
 interface EmailSubjectToggleProps {
   value: string;
@@ -45,11 +45,11 @@ export function EmailSubjectToggle({
           </div>
         </div>
       ) : (
-        <Input
+        <VariableInput
+          label=""
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           placeholder="e.g., New Property Available in {city}"
-          className="mt-1"
         />
       )}
     </div>
