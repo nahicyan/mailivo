@@ -63,7 +63,7 @@ export function EmailListSelector({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-2">
-            Automatically match recipients based on property {value === 'Match-Title' ? 'title' : 'area'}
+            Automatically match recipients based on List {value === 'Match-Title' ? 'title' : 'area'}
           </p>
         </div>
       ) : (

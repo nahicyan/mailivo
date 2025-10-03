@@ -67,10 +67,6 @@ export class AutomationExecutor {
       this.log(execution, "execute_action", "Executing action");
       const actionResult = await this.executeAction(automation.action, resolvedEntities, automation.userId, options, automationId);
 
-      // Validate action configuration
-      const actionErrors = this.validateAction(automation.action, entityState, automation.trigger); // ADD automation.trigger
-      errors.push(...actionErrors);
-
       // Success
       execution.status = "completed";
       execution.completedAt = new Date();
@@ -335,8 +331,8 @@ export class AutomationExecutor {
 
     // Build campaign data
     const campaignData = {
-      name: config.name,
-      subject: config.subject === "bypass" ? "bypass" : config.subject,
+      name: campaignName,
+      subject: config.subject === "bypass" ? "bypass" : campaignSubject,
       description: config.description,
       type: config.campaignType,
       property: config.campaignType === "single_property" ? propertyIds[0] : propertyIds,

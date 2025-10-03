@@ -7,7 +7,6 @@ import { useEmailLists } from "@/hooks/useEmailLists";
 import { AlertCircle, Calendar, Clock, Mail } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
@@ -32,9 +31,8 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
   const [agents, setAgents] = useState<any[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(true);
   const isPropertyUploadTrigger = trigger.type === "property_uploaded";
-  const [useFromLandivo, setUseFromLandivo] = useState(value.config.subject === "bypass");
-  const [matchAllList, setMatchAllList] = useState(value.config.emailList?.startsWith("Match-") || false);
-  // Determine if we should show the Email Subject Toggle
+  const [useFromLandivo, setUseFromLandivo] = useState(value?.config?.subject === "bypass");
+  const [matchAllList, setMatchAllList] = useState(value?.config?.emailList?.startsWith("Match-") || false);
   const showEmailSubjectToggle = trigger?.type === "property_uploaded" || trigger?.type === "property_updated";
 
   // Determine property selection source
@@ -180,22 +178,20 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         </div>
       )}
       {/* Email List Selection */}
-      {showEmailSubjectToggle ? (
-        <EmailSubjectToggle
-          value={useFromLandivo ? "" : value.config.subject}
-          useFromLandivo={useFromLandivo}
-          onChange={(val) => updateConfig({ subject: val })}
-          onToggleChange={(useLandivo) => {
-            setUseFromLandivo(useLandivo);
-            updateConfig({ subject: useLandivo ? "bypass" : "" });
-          }}
-        />
-      ) : (
-        <div>
-          <Label>Email Subject *</Label>
-          <Input value={value.config.subject} onChange={(e) => updateConfig({ subject: e.target.value })} placeholder="e.g., New Property Available in {city}" className="mt-1" />
-        </div>
-      )}
+      <EmailListSelector
+        emailLists={emailLists}
+        value={value.config.emailList}
+        matchAllList={matchAllList}
+        onChange={(val) => updateConfig({ emailList: val })}
+        onMatchAllListChange={(enabled) => {
+          setMatchAllList(enabled);
+          if (enabled) {
+            updateConfig({ emailList: "Match-Title" });
+          } else {
+            updateConfig({ emailList: emailLists[0]?.id || "" });
+          }
+        }}
+      />
       {/* Email Template Selection */}
       <div>
         <Label>Email Template *</Label>
