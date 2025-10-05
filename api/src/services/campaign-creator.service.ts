@@ -53,7 +53,16 @@ class CampaignCreatorService {
       }
 
       // 3. Resolve subject (bypass or use configured)
-      const resolvedSubject = this.resolveSubject(config.subject, triggerData);
+      // Fetch property data for interpolation
+      const propertyResponse = await axios.get(`${LANDIVO_API_URL}/residency/${propertyIds[0]}`);
+      const propertyData = propertyResponse.data;
+
+      // Interpolate subject
+      const rawSubject = config.subject === "bypass" ? triggerData.propertyData?.subject : config.subject;
+      const resolvedSubject = this.interpolatePropertyVariables(rawSubject, propertyData);
+
+      // Interpolate campaign name
+      const campaignName = this.interpolatePropertyVariables(config.name, propertyData);
 
       // 4. Enrich campaign data with payment plans and images
       const enrichedCampaignData = await this.enrichCampaignData(config, propertyIds[0]);
@@ -61,7 +70,7 @@ class CampaignCreatorService {
       // 5. Create campaign record
       const campaign = await this.createCampaignRecord({
         userId,
-        name: config.name,
+        name: campaignName,
         subject: resolvedSubject,
         description: config.description,
         propertyIds,
@@ -130,13 +139,17 @@ class CampaignCreatorService {
   }
 
   /**
-   * Resolve subject (bypass or use configured)
+   * Interpolate property variables in templates
    */
-  private resolveSubject(configuredSubject: string, triggerData: any): string {
-    if (configuredSubject?.toLowerCase() === "bypass") {
-      return triggerData.propertyData?.subject || "New Property Alert";
-    }
-    return configuredSubject;
+  private interpolatePropertyVariables(template: string, propertyData: any): string {
+    return template
+      .replace(/{streetAddress}/g, propertyData.streetAddress || "")
+      .replace(/{city}/g, propertyData.city || "")
+      .replace(/{state}/g, propertyData.state || "")
+      .replace(/{zip}/g, propertyData.zip || "")
+      .replace(/{county}/g, propertyData.county || "")
+      .replace(/{area}/g, propertyData.area || "")
+      .replace(/{#}/g, Date.now().toString().slice(-6));
   }
 
   /**
