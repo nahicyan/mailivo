@@ -81,6 +81,7 @@ export default function EditAutomationPage() {
       const updateData = {
         name: automation.name,
         description: automation.description,
+        trigger: automation.trigger, // Required for backend validation
         conditions: automation.conditions,
         action: automation.action,
       };
