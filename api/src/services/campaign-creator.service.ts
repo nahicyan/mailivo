@@ -7,6 +7,7 @@ import { logger } from "../utils/logger";
 import axios from "axios";
 import Bull from "bull";
 import { nanoid } from "nanoid";
+import { MailivoAutomation } from '../models/MailivoAutomation';
 
 const LANDIVO_API_URL = process.env.LANDIVO_API_URL || "https://api.landivo.com";
 
@@ -57,12 +58,14 @@ class CampaignCreatorService {
       const propertyResponse = await axios.get(`${LANDIVO_API_URL}/residency/${propertyIds[0]}`);
       const propertyData = propertyResponse.data;
 
-      // Interpolate subject
-      const rawSubject = config.subject === "bypass" ? triggerData.propertyData?.subject : config.subject;
-      const resolvedSubject = this.interpolatePropertyVariables(rawSubject, propertyData);
+      // Increment automation counter
+      const currentCounter = (config.campaignCounter || 0) + 1;
+      await MailivoAutomation.findByIdAndUpdate(automation._id, { $set: { "action.config.campaignCounter": currentCounter } });
 
-      // Interpolate campaign name
-      const campaignName = this.interpolatePropertyVariables(config.name, propertyData);
+      // Interpolate with counter
+      const rawSubject = config.subject === "bypass" ? triggerData.propertyData?.subject : config.subject;
+      const resolvedSubject = this.interpolatePropertyVariables(rawSubject, propertyData, currentCounter);
+      const campaignName = this.interpolatePropertyVariables(config.name, propertyData, currentCounter);
 
       // 4. Enrich campaign data with payment plans and images
       const enrichedCampaignData = await this.enrichCampaignData(config, propertyIds[0]);
@@ -141,7 +144,7 @@ class CampaignCreatorService {
   /**
    * Interpolate property variables in templates
    */
-  private interpolatePropertyVariables(template: string, propertyData: any): string {
+  private interpolatePropertyVariables(template: string, propertyData: any, counter?: number): string {
     return template
       .replace(/{streetAddress}/g, propertyData.streetAddress || "")
       .replace(/{city}/g, propertyData.city || "")
@@ -149,7 +152,7 @@ class CampaignCreatorService {
       .replace(/{zip}/g, propertyData.zip || "")
       .replace(/{county}/g, propertyData.county || "")
       .replace(/{area}/g, propertyData.area || "")
-      .replace(/{#}/g, Date.now().toString().slice(-6));
+      .replace(/{#}/g, counter ? counter.toString() : "");
   }
 
   /**
