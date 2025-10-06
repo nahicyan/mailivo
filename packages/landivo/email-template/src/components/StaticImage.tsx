@@ -131,7 +131,7 @@ export function StaticImage({
 
 // Component metadata for the template builder
 export const staticImageMetadata: EmailComponentMetadata = {
-  type: 'static-image',
+  type: 'any',
   name: 'static-image',
   displayName: 'Static Image',
   version: 'v1.0',

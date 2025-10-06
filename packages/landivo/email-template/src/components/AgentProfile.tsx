@@ -315,7 +315,7 @@ export function AgentProfile({
 
 // Component metadata for the template builder
 export const agentProfileMetadata: EmailComponentMetadata = {
-  type: 'agent-profile',
+  type: 'any',
   name: 'agent-profile',
   displayName: 'Agent Profile',
   version: 'v1.0',

@@ -196,7 +196,7 @@ export function JoinVipList({
 
 // Component metadata for the template builder
 export const joinVipListMetadata: EmailComponentMetadata = {
-  type: 'join-vip-list',
+  type: 'any',
   name: 'join-vip-list',
   displayName: 'Join VIP List',
   version: 'v1.0',

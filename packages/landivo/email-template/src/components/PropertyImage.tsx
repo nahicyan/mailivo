@@ -103,7 +103,7 @@ export function PropertyImage({
 
 // Component metadata for the template builder
 export const propertyImageMetadata: EmailComponentMetadata = {
-  type: 'property-image',
+  type: 'single',
   name: 'property-image',
   displayName: 'Property Image',
   version: 'v1.0',

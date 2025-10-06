@@ -304,7 +304,7 @@ export function TextDesign({
 
 // Component metadata for the template builder
 export const textDesignMetadata: EmailComponentMetadata = {
-  type: "text-design",
+  type: "any",
   name: "text-design",
   displayName: "Text Design",
   version: "v1.0",

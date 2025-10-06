@@ -198,7 +198,7 @@ export function PropertyButtons({
 
 // Enhanced metadata with additional configuration options
 export const propertyButtonsMetadata: EmailComponentMetadata = {
-  type: 'property-buttons',
+  type: 'single',
   name: 'property-buttons',
   displayName: 'Property Buttons',
   version: 'v1.0',

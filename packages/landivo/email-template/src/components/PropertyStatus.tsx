@@ -189,7 +189,7 @@ export function PropertyStatus({
 
 // Component metadata for the template builder
 export const propertyStatusMetadata: EmailComponentMetadata = {
-  type: 'property-status',
+  type: 'single',
   name: 'property-status',
   displayName: 'Property Status',
   version: 'v1.0',
