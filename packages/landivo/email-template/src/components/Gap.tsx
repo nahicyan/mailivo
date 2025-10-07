@@ -62,6 +62,7 @@ export function Gap({
 // Component metadata for the template builder
 export const gapMetadata: EmailComponentMetadata = {
   type: 'gap',
+  templateType: 'any',
   name: 'gap',
   displayName: 'Gap/Spacer',
   version: 'v1.0',

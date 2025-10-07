@@ -311,6 +311,7 @@ export function PaymentCalculator({
 // Component metadata for the template builder
 export const paymentCalculatorMetadata: EmailComponentMetadata = {
   type: 'payment-calculator',
+  templateType: 'single',
   name: 'payment-calculator',
   displayName: 'Payment Calclulator',
   version: 'v1.0',

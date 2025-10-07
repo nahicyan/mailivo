@@ -96,6 +96,7 @@ export function Disclaimer({
 // Component metadata for the template builder
 export const disclaimerMetadata: EmailComponentMetadata = {
   type: 'disclaimer',
+  templateType: 'any',
   name: 'disclaimer',
   displayName: 'Disclaimer',
   version: 'v1.0',

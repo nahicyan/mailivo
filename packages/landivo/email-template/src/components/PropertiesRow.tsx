@@ -526,6 +526,7 @@ export function PropertiesRow({
 // Component metadata for the template builder
 export const propertiesRowMetadata: EmailComponentMetadata = {
   type: "properties-row",
+    templateType: 'multi',
   name: "properties-row",
   displayName: "Properties Row",
   version: "v1.0",

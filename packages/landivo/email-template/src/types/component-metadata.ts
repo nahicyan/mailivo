@@ -16,6 +16,7 @@ export interface ComponentConfigField {
 
 export interface EmailComponentMetadata {
   type: string;
+  templateType: 'single' | 'multi' | 'any';
   name: string;
   displayName: string;
   version: string;

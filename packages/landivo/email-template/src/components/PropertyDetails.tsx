@@ -163,6 +163,7 @@ export function PropertyDetails({
 // Component metadata for the template builder
 export const propertyDetailsMetadata: EmailComponentMetadata = {
   type: 'property-details',
+    templateType: 'single',
   name: 'property-details',
   displayName: 'Property Details',
   version: 'v1.0',

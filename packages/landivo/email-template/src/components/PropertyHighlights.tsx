@@ -186,6 +186,7 @@ export function PropertyHighlights({
 // Component metadata for the template builder
 export const propertyHighlightsMetadata: EmailComponentMetadata = {
   type: 'property-highlights',
+    templateType: 'single',
   name: 'property-highlights',
   displayName: 'Property Highlights',
   version: 'v1.0',

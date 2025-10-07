@@ -49,6 +49,7 @@ export function Header({
 // Rest of the component metadata remains the same...
 export const headerMetadata: EmailComponentMetadata = {
   type: 'header',
+  templateType: 'any',
   name: 'header',
   displayName: 'Landivo Logo',
   version: 'v1.0',

@@ -111,6 +111,7 @@ export function BuyerGuidelines({
 // Component metadata for the template builder
 export const buyerGuidelinesMetadata: EmailComponentMetadata = {
   type: 'buyer-guidelines',
+  templateType: 'any',
   name: 'buyer-guidelines',
   displayName: 'Buyer Guidelines',
   version: 'v1.0',
