@@ -1,7 +1,7 @@
 // app/src/types/template.ts
 export interface EmailComponent {
   id: string;
-  type: 'header' | 'property-image' | 'property-highlights' | 'property-details' | 'payment-calculator' | 'buyer-guidelines' | 'footer' | 'spacer' | 'text' | 'static-image' | 'agent-profile';
+  type: 'header' | 'property-image' | 'property-highlights' | 'property-details' | 'payment-calculator' | 'buyer-guidelines' | 'footer' | 'spacer' | 'text' | 'static-image' | 'agent-profile' | 'properties-row';
   name: string;
   icon: string;
   props: Record<string, any>;
@@ -13,6 +13,7 @@ export interface EmailTemplate {
   name: string;
   description?: string;
   category: 'property' | 'newsletter' | 'announcement' | 'custom';
+  type?: 'single' | 'multi'; // ADDED: Template type for single or multi property
   components: EmailComponent[];
   settings: {
     backgroundColor?: string;

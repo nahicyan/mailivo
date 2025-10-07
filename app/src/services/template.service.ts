@@ -6,6 +6,7 @@ export interface EmailTemplate {
   name: string;
   description?: string;
   category: 'property' | 'newsletter' | 'announcement' | 'custom';
+  type?: 'single' | 'multi'; // ADDED: Template type
   components: Array<{
     id: string;
     type: string;
@@ -24,8 +25,12 @@ export interface EmailTemplate {
 }
 
 export const templateService = {
-  async list(category?: string) {
-    const { data } = await api.get('/templates', { params: { category } });
+  async list(category?: string, type?: 'single' | 'multi') {
+    const params: any = {};
+    if (category) params.category = category;
+    if (type) params.type = type; // ADDED: Support filtering by type
+    
+    const { data } = await api.get('/templates', { params });
     return data;
   },
 
@@ -34,10 +39,16 @@ export const templateService = {
     return data;
   },
 
-async create(template: Partial<EmailTemplate>) {
-    console.log('Template service sending:', template); // Debug log
+  async create(template: Partial<EmailTemplate>) {
+    console.log('Template service sending:', template);
     
-    const { data } = await api.post('/templates', template); // Don't spread or modify
+    // Ensure type field is included
+    const templateData = {
+      ...template,
+      type: template.type || 'single' // Default to single if not specified
+    };
+    
+    const { data } = await api.post('/templates', templateData);
     return data;
   },
 

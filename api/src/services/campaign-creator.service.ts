@@ -54,7 +54,6 @@ class CampaignCreatorService {
       }
 
       // 3. Resolve subject (bypass or use configured)
-      // Fetch property data for interpolation
       const propertyResponse = await axios.get(`${LANDIVO_API_URL}/residency/${propertyIds[0]}`);
       const propertyData = propertyResponse.data;
 

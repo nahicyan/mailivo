@@ -31,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { TemplateTypeDialog } from '@/components/templates/TemplateTypeDialog';
 import { EmailTemplate } from '@/types/template';
 import { 
   Plus, 
@@ -42,7 +43,9 @@ import {
   Trash2,
   FileText,
   Calendar,
-  Layers
+  Layers,
+  Building,
+  Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { templateService } from '@/services/template.service';
@@ -54,6 +57,11 @@ const CATEGORY_COLORS = {
   custom: 'bg-gray-100 text-gray-800'
 };
 
+const TYPE_COLORS = {
+  single: 'bg-blue-100 text-blue-800',
+  multi: 'bg-green-100 text-green-800'
+};
+
 export default function TemplatesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -63,6 +71,7 @@ export default function TemplatesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
+  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
 
   // Data fetching
   const { data: templatesData, isLoading, error } = useQuery({
@@ -86,10 +95,9 @@ export default function TemplatesPage() {
 
   const duplicateMutation = useMutation({
     mutationFn: async (template: EmailTemplate) => {
-      // Get the full template data and create a duplicate
       const templateData = {
         ...template,
-        id: undefined, // Remove ID so it creates new
+        id: undefined,
         name: `${template.name} (Copy)`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -107,7 +115,7 @@ export default function TemplatesPage() {
 
   // Handlers
   const handleCreateNew = () => {
-    router.push('/dashboard/landivo/campaigns/templates/create');
+    setTypeDialogOpen(true);
   };
 
   const handleEditTemplate = (template: EmailTemplate) => {
@@ -166,12 +174,12 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Email Templates</h1>
-          <p className="text-gray-600 mt-1">
-            Create and manage reusable email templates for your campaigns
+          <h1 className="text-3xl font-bold tracking-tight">Email Templates</h1>
+          <p className="text-muted-foreground mt-1">
+            Create and manage reusable email templates
           </p>
         </div>
-        <Button onClick={handleCreateNew} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={handleCreateNew}>
           <Plus className="mr-2 h-4 w-4" />
           Create Template
         </Button>
@@ -179,8 +187,8 @@ export default function TemplatesPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search templates..."
             value={searchQuery}
@@ -189,9 +197,9 @@ export default function TemplatesPage() {
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-[180px]">
             <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter by category" />
+            <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
@@ -206,16 +214,15 @@ export default function TemplatesPage() {
       {/* Templates Grid */}
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+          {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-6 bg-gray-200 rounded w-3/4" />
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="h-3 bg-gray-200 rounded"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-4 bg-gray-200 rounded" />
+                  <div className="h-4 bg-gray-200 rounded w-5/6" />
                 </div>
               </CardContent>
             </Card>
@@ -275,7 +282,7 @@ export default function TemplatesPage() {
                         <FileText className="mr-2 h-4 w-4" />
                         Preview
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => handleDeleteTemplate(template)}
                         className="text-red-600"
                       >
@@ -286,50 +293,39 @@ export default function TemplatesPage() {
                   </DropdownMenu>
                 </div>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between mb-3">
-                  <Badge 
-                    variant="secondary" 
-                    className={`${CATEGORY_COLORS[template.category]} border-0`}
-                  >
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <Badge className={CATEGORY_COLORS[template.category]}>
                     {template.category}
                   </Badge>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <Layers className="mr-1 h-3 w-3" />
-                    {template.components.length} components
-                  </div>
+                  {template.type && (
+                    <Badge className={TYPE_COLORS[template.type]} variant="outline">
+                      {template.type === 'single' ? (
+                        <><Building className="mr-1 h-3 w-3" /> Single</>
+                      ) : (
+                        <><Building2 className="mr-1 h-3 w-3" /> Multi</>
+                      )}
+                    </Badge>
+                  )}
                 </div>
-                
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center">
-                    <Calendar className="mr-1 h-3 w-3" />
-                    Updated {formatDate(template.updatedAt)}
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <Layers className="h-4 w-4" />
+                    <span>{template.components.length} components</span>
                   </div>
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => handleEditTemplate(template)}
-                    className="flex-1"
-                  >
-                    <Edit2 className="mr-1 h-3 w-3" />
-                    Edit
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => handlePreviewTemplate(template)}
-                  >
-                    <FileText className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    <span>{formatDate(template.updatedAt)}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Type Selection Dialog */}
+      <TemplateTypeDialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen} />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -345,9 +341,8 @@ export default function TemplatesPage() {
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700"
-              disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
