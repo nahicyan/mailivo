@@ -1,23 +1,24 @@
-// app/src/app/dashboard/landivo/campaigns/templates/create/page.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { TemplateBuilder } from '@/components/templates/TemplateBuilder';
-import { EmailTemplate, EmailComponent } from '@/types/template';
+import { EmailTemplate } from '@/types/template';
 import { templateService } from '@/services/template.service';
 import { toast } from 'sonner';
 
 export default function CreateTemplatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [saving, setSaving] = useState(false);
+  const templateType = (searchParams.get('type') as 'single' | 'multi') || 'single';
 
-  // Initial empty template
   const [template, setTemplate] = useState<EmailTemplate>({
     id: '',
     name: 'New Template',
     description: '',
     category: 'custom',
+    type: templateType,
     components: [],
     settings: {
       backgroundColor: '#ffffff',
@@ -31,7 +32,12 @@ export default function CreateTemplatePage() {
   const handleSave = async (updatedTemplate: EmailTemplate) => {
     setSaving(true);
     try {
-      const savedTemplate = await templateService.create(updatedTemplate);
+      // Ensure type is included
+      const templateToSave = {
+        ...updatedTemplate,
+        type: templateType
+      };
+      const savedTemplate = await templateService.create(templateToSave);
       toast.success('Template created successfully');
       router.push('/dashboard/landivo/campaigns/templates');
     } catch (error: any) {
@@ -49,6 +55,7 @@ export default function CreateTemplatePage() {
     <div className="h-screen flex flex-col">
       <TemplateBuilder
         template={template}
+        templateType={templateType}
         onSave={handleSave}
         onCancel={handleCancel}
         saving={saving}

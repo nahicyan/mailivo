@@ -1,22 +1,22 @@
 // packages/landivo/email-template/src/lib/component-registry.ts
-import { ComponentRegistry } from '../types/component-metadata';
+import { ComponentRegistry } from "../types/component-metadata";
 
 // Import all email components and their metadata
-import { gapMetadata } from '../components/Gap';
-import { headerMetadata } from '../components/Header';
-import { propertyImageMetadata } from '../components/PropertyImage';
-import { propertyStatusMetadata } from '../components/PropertyStatus';
-import { propertyHighlightsMetadata } from '../components/PropertyHighlights';
-import { propertyDetailsMetadata } from '../components/PropertyDetails'
-import { paymentCalculatorMetadata } from '../components/PaymentCalculator';
-import { buyerGuidelinesMetadata } from '../components/BuyerGuidelines';
-import { propertyButtonsMetadata } from '../components/PropertyButtons';
-import { joinVipListMetadata } from '../components/JoinVipList';
-import { disclaimerMetadata } from '../components/Disclaimer'
-import { propertiesRowMetadata } from '../components/PropertiesRow'
-import { textDesignMetadata } from '../components/TextDesign';
-import { staticImageMetadata } from '../components/StaticImage';
-import { agentProfileMetadata } from '../components/AgentProfile';
+import { gapMetadata } from "../components/Gap";
+import { headerMetadata } from "../components/Header";
+import { propertyImageMetadata } from "../components/PropertyImage";
+import { propertyStatusMetadata } from "../components/PropertyStatus";
+import { propertyHighlightsMetadata } from "../components/PropertyHighlights";
+import { propertyDetailsMetadata } from "../components/PropertyDetails";
+import { paymentCalculatorMetadata } from "../components/PaymentCalculator";
+import { buyerGuidelinesMetadata } from "../components/BuyerGuidelines";
+import { propertyButtonsMetadata } from "../components/PropertyButtons";
+import { joinVipListMetadata } from "../components/JoinVipList";
+import { disclaimerMetadata } from "../components/Disclaimer";
+import { propertiesRowMetadata } from "../components/PropertiesRow";
+import { textDesignMetadata } from "../components/TextDesign";
+import { staticImageMetadata } from "../components/StaticImage";
+import { agentProfileMetadata } from "../components/AgentProfile";
 
 // Component registry - automatically includes all imported components
 export const componentRegistry: ComponentRegistry = {
@@ -42,20 +42,24 @@ export const getComponent = (type: string) => {
   return componentRegistry[type];
 };
 
+export const getComponentsByTemplateType = (templateType: "single" | "multi") => {
+  return Object.values(componentRegistry).filter((comp) => comp.templateType === "any" || comp.templateType === templateType);
+};
+
 export const getAllComponents = () => {
   return Object.values(componentRegistry);
 };
 
 export const getComponentsByCategory = (category: string) => {
-  return Object.values(componentRegistry).filter(comp => comp.category === category);
+  return Object.values(componentRegistry).filter((comp) => comp.category === category);
 };
 
 export const getAvailableComponents = () => {
-  return Object.values(componentRegistry).filter(comp => comp.available);
+  return Object.values(componentRegistry).filter((comp) => comp.available);
 };
 
 // Helper function to check if template has agent profile components
 export const hasAgentProfileComponents = (template: any) => {
   if (!template?.components) return false;
-  return template.components.some((component: any) => component.type === 'agent-profile');
+  return template.components.some((component: any) => component.type === "agent-profile");
 };

@@ -13,6 +13,7 @@ export interface EmailTemplate {
   name: string;
   description?: string;
   category: 'property' | 'newsletter' | 'announcement' | 'custom';
+  type?: 'single' | 'multi';
   components: EmailComponent[];
   settings: {
     backgroundColor?: string;

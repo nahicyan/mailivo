@@ -6,6 +6,7 @@ export interface IEmailTemplate extends Document {
   name: string;
   description?: string;
   category: 'property' | 'newsletter' | 'announcement' | 'custom';
+  type: 'single' | 'multi';
   components: Array<{
     id: string;
     type: string;
@@ -59,6 +60,11 @@ const emailTemplateSchema = new Schema<IEmailTemplate>({
     enum: ['property', 'newsletter', 'announcement', 'custom'],
     default: 'custom',
   },
+  type: {
+  type: String,
+  enum: ['single', 'multi'],
+  required: true,
+},
   components: {
     type: [componentSchema],
     validate: {

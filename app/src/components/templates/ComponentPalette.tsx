@@ -1,30 +1,44 @@
 // app/src/components/templates/ComponentPalette.tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Square, Minus } from 'lucide-react';
-import { getAllComponents, getComponentsByCategory } from '@landivo/email-template';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Square, Minus } from "lucide-react";
+import { getAllComponents, getComponentsByCategory } from "@landivo/email-template";
 
 interface ComponentPaletteProps {
   onDragStart: (componentType: string) => void;
+  templateType?: "single" | "multi";
 }
 
-export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
-  const [activeTab, setActiveTab] = useState('content');
+export function ComponentPalette({ onDragStart, templateType = "single" }: ComponentPaletteProps) {
+  const [activeTab, setActiveTab] = useState("content");
 
   const allComponents = getAllComponents();
-  const contentComponents = getComponentsByCategory('content');
-  const layoutComponents = getComponentsByCategory('layout');
 
-  const handleDragStart = (e: React.DragEvent, componentType: string) => {
-    e.dataTransfer.setData('componentType', componentType);
+  // Filter and mark components based on templateType compatibility
+  const processedComponents = allComponents.map((component) => {
+    const isCompatible = component.templateType === "any" || component.templateType === templateType;
+    return {
+      ...component,
+      isDisabled: !isCompatible || !component.available,
+    };
+  });
+
+  const contentComponents = processedComponents.filter((c) => c.category === "content");
+  const layoutComponents = processedComponents.filter((c) => c.category === "layout");
+
+  const handleDragStart = (e: React.DragEvent, componentType: string, isDisabled: boolean) => {
+    if (isDisabled) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData("componentType", componentType);
     onDragStart(componentType);
   };
-
   const handleDragEnd = () => {
-    onDragStart('');
+    onDragStart("");
   };
 
   const renderComponentGrid = (components: any[]) => (
@@ -34,21 +48,19 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
           key={component.type}
           variant="outline"
           className={`h-16 flex flex-col items-center justify-center gap-0 text-xs relative ${
-            !component.available 
-              ? 'opacity-50 cursor-not-allowed bg-gray-50' 
-              : 'hover:bg-blue-50 hover:border-blue-300'
+            component.isDisabled ? "opacity-50 cursor-not-allowed bg-gray-100" : "hover:bg-blue-50 hover:border-blue-300"
           }`}
-          draggable={component.available}
-          onDragStart={(e) => component.available && handleDragStart(e, component.type)}
+          draggable={!component.isDisabled}
+          onDragStart={(e) => handleDragStart(e, component.type, component.isDisabled)}
           onDragEnd={handleDragEnd}
-          disabled={!component.available}
-          title={component.description}
-        >
+          disabled={component.isDisabled}
+          title={component.isDisabled && component.available ? `Not available for ${templateType} property templates` : component.description}>
           {component.icon}
-          <span className="text-sm font-light tracking-tight">{component.displayName}</span><span>{component.version}</span>
-          {!component.available && (
+          <span className="text-sm font-light tracking-tight">{component.displayName}</span>
+          <span>{component.version}</span>
+          {component.isDisabled && (
             <div className="absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center">
-              <span className="text-xs text-gray-500 font-medium">Soon</span>
+              <span className="text-xs text-gray-500 font-medium">{!component.available ? "Soon" : "N/A"}</span>fv
             </div>
           )}
         </Button>
@@ -61,9 +73,15 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="p-4 border-b border-gray-200">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="content" className="text-xs">Content</TabsTrigger>
-            <TabsTrigger value="blocks" className="text-xs">Blocks</TabsTrigger>
-            <TabsTrigger value="body" className="text-xs">Body</TabsTrigger>
+            <TabsTrigger value="content" className="text-xs">
+              Content
+            </TabsTrigger>
+            <TabsTrigger value="blocks" className="text-xs">
+              Blocks
+            </TabsTrigger>
+            <TabsTrigger value="body" className="text-xs">
+              Body
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -104,18 +122,14 @@ export function ComponentPalette({ onDragStart }: ComponentPaletteProps) {
           <TabsContent value="body" className="p-4 mt-0">
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Background Color
-                </label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Background Color</label>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded border bg-white"></div>
                   <span className="text-sm text-gray-600">#ffffff</span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Primary Color
-                </label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Primary Color</label>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded border bg-green-600"></div>
                   <span className="text-sm text-gray-600">#059669</span>

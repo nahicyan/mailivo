@@ -1,14 +1,14 @@
 // app/src/components/templates/TemplateBuilder.tsx
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { EmailTemplate, EmailComponent } from '@/types/template';
-import { getComponent } from '@landivo/email-template';
-import { TemplateToolbar } from './TemplateToolbar';
-import { EmailCanvas } from './EmailCanvas';
-import { ComponentPalette } from './ComponentPalette';
-import { PropertyPanel } from './PropertyPanel';
-import { PropertySelectionModal } from './PropertySelectionModal';
+import { useState, useCallback } from "react";
+import { EmailTemplate, EmailComponent } from "@/types/template";
+import { getComponent } from "@landivo/email-template";
+import { TemplateToolbar } from "./TemplateToolbar";
+import { EmailCanvas } from "./EmailCanvas";
+import { ComponentPalette } from "./ComponentPalette";
+import { PropertyPanel } from "./PropertyPanel";
+import { PropertySelectionModal } from "./PropertySelectionModal";
 
 interface Property {
   id: string;
@@ -26,116 +26,119 @@ interface Property {
 
 interface TemplateBuilderProps {
   template: EmailTemplate;
+  templateType?: "single" | "multi";
   onSave: (template: EmailTemplate) => void;
   onCancel: () => void;
   saving?: boolean;
 }
 
-export function TemplateBuilder({ 
-  template, 
-  onSave, 
-  onCancel, 
-  saving = false 
-}: TemplateBuilderProps) {
+export function TemplateBuilder({ template, templateType = "single", onSave, onCancel, saving = false }: TemplateBuilderProps) {
   const [currentTemplate, setCurrentTemplate] = useState<EmailTemplate>(template);
   const [selectedComponent, setSelectedComponent] = useState<EmailComponent | null>(null);
   const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [propertyModalOpen, setPropertyModalOpen] = useState(false);
 
-  const handleAddComponent = useCallback((componentType: string) => {
-    const componentMeta = getComponent(componentType);
-    if (!componentMeta) return;
+  const handleAddComponent = useCallback(
+    (componentType: string) => {
+      const componentMeta = getComponent(componentType);
+      if (!componentMeta) return;
 
-    // Count existing components of same type for naming and indexing
-    const existingOfSameType = currentTemplate.components.filter(comp => comp.type === componentType);
-    const nextIndex = existingOfSameType.length;
-    
-    // Generate incremental name
-    const baseName = componentMeta.displayName || componentMeta.name;
-    const componentName = nextIndex === 0 ? baseName : `${baseName} ${nextIndex + 1}`;
-    
-    // Start with default props from metadata
-    let componentProps = { ...componentMeta.defaultProps };
-    
-    // Auto-increment specific properties for component types that need it
-    if (componentType === 'property-image' && nextIndex > 0) {
-      componentProps.imageIndex = nextIndex;
-    }
+      // Count existing components of same type for naming and indexing
+      const existingOfSameType = currentTemplate.components.filter((comp) => comp.type === componentType);
+      const nextIndex = existingOfSameType.length;
 
-    const newComponent: EmailComponent = {
-      id: `${componentType}-${Date.now()}`,
-      type: componentType as any,
-      name: componentName,
-      icon: '📧',
-      props: componentProps,
-      order: currentTemplate.components.length
-    };
+      // Generate incremental name
+      const baseName = componentMeta.displayName || componentMeta.name;
+      const componentName = nextIndex === 0 ? baseName : `${baseName} ${nextIndex + 1}`;
 
-    setCurrentTemplate(prev => ({
-      ...prev,
-      components: [...prev.components, newComponent],
-      updatedAt: new Date().toISOString()
-    }));
+      // Start with default props from metadata
+      let componentProps = { ...componentMeta.defaultProps };
 
-    setSelectedComponent(newComponent);
-  }, [currentTemplate.components]);
+      // Auto-increment specific properties for component types that need it
+      if (componentType === "property-image" && nextIndex > 0) {
+        componentProps.imageIndex = nextIndex;
+      }
 
-  const handleUpdateComponent = useCallback((componentId: string, updates: Partial<EmailComponent>) => {
-    setCurrentTemplate(prev => ({
-      ...prev,
-      components: prev.components.map(comp =>
-        comp.id === componentId ? { ...comp, ...updates } : comp
-      ),
-      updatedAt: new Date().toISOString()
-    }));
+      const newComponent: EmailComponent = {
+        id: `${componentType}-${Date.now()}`,
+        type: componentType as any,
+        name: componentName,
+        icon: "📧",
+        props: componentProps,
+        order: currentTemplate.components.length,
+      };
 
-    if (selectedComponent?.id === componentId) {
-      setSelectedComponent(prev => prev ? { ...prev, ...updates } : null);
-    }
-  }, [selectedComponent]);
+      setCurrentTemplate((prev) => ({
+        ...prev,
+        components: [...prev.components, newComponent],
+        updatedAt: new Date().toISOString(),
+      }));
 
-  const handleDeleteComponent = useCallback((componentId: string) => {
-    setCurrentTemplate(prev => ({
-      ...prev,
-      components: prev.components.filter(comp => comp.id !== componentId),
-      updatedAt: new Date().toISOString()
-    }));
+      setSelectedComponent(newComponent);
+    },
+    [currentTemplate.components]
+  );
 
-    if (selectedComponent?.id === componentId) {
-      setSelectedComponent(null);
-    }
-  }, [selectedComponent]);
+  const handleUpdateComponent = useCallback(
+    (componentId: string, updates: Partial<EmailComponent>) => {
+      setCurrentTemplate((prev) => ({
+        ...prev,
+        components: prev.components.map((comp) => (comp.id === componentId ? { ...comp, ...updates } : comp)),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      if (selectedComponent?.id === componentId) {
+        setSelectedComponent((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+    },
+    [selectedComponent]
+  );
+
+  const handleDeleteComponent = useCallback(
+    (componentId: string) => {
+      setCurrentTemplate((prev) => ({
+        ...prev,
+        components: prev.components.filter((comp) => comp.id !== componentId),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      if (selectedComponent?.id === componentId) {
+        setSelectedComponent(null);
+      }
+    },
+    [selectedComponent]
+  );
 
   const handleReorderComponents = useCallback((components: EmailComponent[]) => {
-    setCurrentTemplate(prev => ({
+    setCurrentTemplate((prev) => ({
       ...prev,
       components: components.map((comp, index) => ({ ...comp, order: index })),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     }));
   }, []);
 
   const handleSave = () => {
     if (!currentTemplate.name.trim()) {
-      alert('Please enter a template name');
+      alert("Please enter a template name");
       return;
     }
     onSave(currentTemplate);
   };
 
   const handleTemplateNameChange = (name: string) => {
-    setCurrentTemplate(prev => ({
+    setCurrentTemplate((prev) => ({
       ...prev,
       name,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     }));
   };
 
   const handleTemplateDescriptionChange = (description: string) => {
-    setCurrentTemplate(prev => ({
+    setCurrentTemplate((prev) => ({
       ...prev,
       description,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     }));
   };
 
@@ -155,7 +158,7 @@ export function TemplateBuilder({
         selectedProperty={selectedProperty}
         saving={saving}
       />
-      
+
       <div className="flex-1 flex overflow-hidden">
         {/* Main Canvas Area */}
         <div className="flex-1 flex">
@@ -176,26 +179,20 @@ export function TemplateBuilder({
 
         {/* Right Sidebar */}
         <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
-          <ComponentPalette onDragStart={setDraggedComponent} />
+          <ComponentPalette onDragStart={setDraggedComponent} templateType={templateType} />
+        </div>
+        <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
+          <h2 className="text-sm font-semibold text-blue-900">{templateType === "single" ? "Create Single Property Template" : "Create Multi Property Template"}</h2>
         </div>
       </div>
 
       {/* Property Panel (if component selected) */}
       {selectedComponent && (
-        <PropertyPanel
-          component={selectedComponent}
-          onUpdate={(updates) => handleUpdateComponent(selectedComponent.id, updates)}
-          onClose={() => setSelectedComponent(null)}
-        />
+        <PropertyPanel component={selectedComponent} onUpdate={(updates) => handleUpdateComponent(selectedComponent.id, updates)} onClose={() => setSelectedComponent(null)} />
       )}
 
       {/* Property Selection Modal */}
-      <PropertySelectionModal
-        open={propertyModalOpen}
-        onClose={() => setPropertyModalOpen(false)}
-        onSelectProperty={setSelectedProperty}
-        selectedProperty={selectedProperty}
-      />
+      <PropertySelectionModal open={propertyModalOpen} onClose={() => setPropertyModalOpen(false)} onSelectProperty={setSelectedProperty} selectedProperty={selectedProperty} />
     </div>
   );
 }
