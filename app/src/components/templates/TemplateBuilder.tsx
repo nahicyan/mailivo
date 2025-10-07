@@ -181,9 +181,6 @@ export function TemplateBuilder({ template, templateType = "single", onSave, onC
         <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
           <ComponentPalette onDragStart={setDraggedComponent} templateType={templateType} />
         </div>
-        <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
-          <h2 className="text-sm font-semibold text-blue-900">{templateType === "single" ? "Create Single Property Template" : "Create Multi Property Template"}</h2>
-        </div>
       </div>
 
       {/* Property Panel (if component selected) */}

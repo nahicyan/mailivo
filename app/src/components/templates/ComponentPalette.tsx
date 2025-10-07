@@ -60,7 +60,7 @@ export function ComponentPalette({ onDragStart, templateType = "single" }: Compo
           <span>{component.version}</span>
           {component.isDisabled && (
             <div className="absolute inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center">
-              <span className="text-xs text-gray-500 font-medium">{!component.available ? "Soon" : "N/A"}</span>fv
+              <span className="text-xs text-gray-500 font-medium">Unavailable</span>
             </div>
           )}
         </Button>
