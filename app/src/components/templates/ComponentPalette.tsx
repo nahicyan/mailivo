@@ -87,7 +87,7 @@ export function ComponentPalette({ onDragStart, templateType = "single" }: Compo
 
         <div className="flex-1 overflow-auto">
           <TabsContent value="content" className="p-4 space-y-2 mt-0">
-            {renderComponentGrid(allComponents)}
+            {renderComponentGrid(processedComponents)}
 
             {/* Available Components Info */}
             {/* <div className="mt-6 p-3 bg-blue-50 rounded-lg">
