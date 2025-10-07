@@ -54,7 +54,7 @@ export const templateController = {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { name, components, description, category, settings } = req.body;
+      const { name, components, description, category, type, settings } = req.body;
       
       // Validate required fields
       if (!name || name.trim().length === 0) {
@@ -79,6 +79,7 @@ export const templateController = {
         name: name.trim(),
         description,
         category: category || 'custom',
+        type: type || 'single', 
         components,
         settings: settings || {},
         user_id: req.user!._id,
