@@ -1,10 +1,10 @@
 // app/src/components/automation/ActionConfigurator.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useTemplates } from "@/hooks/useTemplates";
 import { useEmailLists } from "@/hooks/useEmailLists";
-import { AlertCircle, Calendar, Clock, Mail } from "lucide-react";
+import { AlertCircle, Mail } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,8 +15,16 @@ import { VariableInput } from "./VariableInput";
 import { EmailSubjectToggle } from "./EmailSubjectToggle";
 import { EmailListSelector } from "./EmailListSelector";
 import { PaymentPlanSelector } from "./PaymentPlanSelector";
-import { getTriggerConfig } from "./trigger/types";
-import { PropertySelectionAlert, LockedCampaignTypeAlert } from "./trigger/PropertyUploadConfig";
+import {
+  useTriggerConfiguration,
+  useEmailSubjectToggle,
+  useDefaultActionConfig,
+  useFilteredTemplates,
+  useAgentLoader,
+  PropertySelectionAlert,
+  LockedCampaignTypeAlert,
+  ManualPropertySelectionAlert,
+} from "./trigger/PropertyUploadConfig";
 
 interface ActionConfiguratorProps {
   trigger: AutomationTrigger;
@@ -28,60 +36,36 @@ interface ActionConfiguratorProps {
 export default function ActionConfigurator({ trigger, conditions, value, onChange }: ActionConfiguratorProps) {
   const { data: templates = [], isLoading: templatesLoading } = useTemplates();
   const { data: emailLists = [], isLoading: listsLoading } = useEmailLists();
-  const [agents, setAgents] = useState<any[]>([]);
-  const [agentsLoading, setAgentsLoading] = useState(true);
-  const [useFromLandivo, setUseFromLandivo] = useState(value?.config?.subject === "bypass");
   const [matchAllList, setMatchAllList] = useState(value?.config?.emailList?.startsWith("Match-") || false);
 
-  // Get trigger-specific configuration
-  const triggerConfig = getTriggerConfig(trigger);
-  const propertySelectionSource = triggerConfig.getPropertySelectionSource(conditions);
-  const canSelectManualProperties = propertySelectionSource === "manual";
-  const showEmailSubjectToggle = triggerConfig.showEmailSubjectToggle();
-  const isCampaignTypeLocked = triggerConfig.isCampaignTypeLocked();
-  const lockedCampaignType = triggerConfig.getLockedCampaignType();
-  const allowedCampaignTypes = triggerConfig.getAllowedCampaignTypes();
+  // Use trigger configuration hook
+  const { canSelectManualProperties, showEmailSubjectToggle, isCampaignTypeLocked, allowedCampaignTypes } = useTriggerConfiguration(trigger, conditions, value);
 
-  useEffect(() => {
-    loadAgents();
-  }, []);
+  // Use email subject toggle hook
+  const { useFromLandivo, handleToggleChange } = useEmailSubjectToggle(value?.config?.subject);
 
-  useEffect(() => {
-    // Initialize default action if not set
-    if (!value) {
-      onChange({
-        type: "send_campaign",
-        config: {
-          campaignType: lockedCampaignType || "single_property",
-          propertySelection: {
-            source: propertySelectionSource,
-            propertyIds: [],
-          },
-          emailList: "",
-          emailTemplate: "",
-          schedule: "immediate",
-          name: "",
-          subject: "",
-        },
-      });
-    }
-  }, []);
+  // Use agent loader hook (extracted logic)
+  const { agents, agentsLoading } = useAgentLoader();
 
-  const loadAgents = async () => {
-    setAgentsLoading(true);
-    try {
-      const agentsResponse = await fetch(`${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/user/public-profiles`);
-      const agentsData = await agentsResponse.json();
-      setAgents(agentsData);
-    } catch (error) {
-      console.error("Failed to load agents:", error);
-    } finally {
-      setAgentsLoading(false);
-    }
-  };
+  // Initialize default action config
+  useDefaultActionConfig(trigger, conditions, value, onChange);
+
+  // Filter templates based on campaign type (property upload = single only)
+  const filteredTemplates = useFilteredTemplates(templates, value?.config?.campaignType || "single_property");
 
   const updateConfig = (updates: any) => {
     if (value) {
+      // If campaign type is changing, clear template if it doesn't match new type
+      if (updates.campaignType && updates.campaignType !== value.config.campaignType) {
+        const currentTemplate = templates.find((t) => t.id === value.config.emailTemplate);
+        const newTemplateType = updates.campaignType === "single_property" ? "single" : "multi";
+
+        // Clear template if it doesn't match the new campaign type
+        if (currentTemplate && currentTemplate.type !== newTemplateType) {
+          updates.emailTemplate = "";
+        }
+      }
+
       onChange({
         ...value,
         config: {
@@ -102,7 +86,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
 
   return (
     <div className="space-y-6">
-      {/* Property Selection Info - using modular component */}
+      {/* Property Selection Info */}
       <PropertySelectionAlert trigger={trigger} conditions={conditions} />
 
       {/* Campaign Type */}
@@ -124,37 +108,24 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         <p className="text-xs text-muted-foreground mt-1">{value.config.campaignType === "single_property" ? "Send one email per property" : "Include multiple properties in one email"}</p>
       </div>
 
-      {/* Manual Property Selection Warning (if applicable) */}
-      {canSelectManualProperties && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="font-medium mb-1">Manual Property Selection Required</div>
-            <p className="text-sm">
-              Your workflow doesn't filter properties via trigger or conditions. You'll need to manually specify property IDs, or add property conditions to filter automatically.
-            </p>
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Manual Property Selection Warning */}
+      {canSelectManualProperties && <ManualPropertySelectionAlert />}
 
-      {/* Campaign Details */}
+      {/* Campaign Name */}
       <VariableInput label="Campaign Name" value={value.config.name} onChange={(val) => updateConfig({ name: val })} placeholder="e.g., New Property - {city}, {state} #{#}" />
 
-      {/* Email Subject - with optional toggle based on trigger config */}
+      {/* Email Subject */}
       {showEmailSubjectToggle ? (
         <EmailSubjectToggle
           value={useFromLandivo ? "" : value.config.subject}
           useFromLandivo={useFromLandivo}
           onChange={(val) => updateConfig({ subject: val })}
-          onToggleChange={(useLandivo) => {
-            setUseFromLandivo(useLandivo);
-            updateConfig({ subject: useLandivo ? "bypass" : "" });
-          }}
+          onToggleChange={(useLandivo) => handleToggleChange(useLandivo, updateConfig)}
         />
       ) : (
-        <div className="space-y-2">
+        <div>
           <Label>Email Subject *</Label>
-          <VariableInput label="" value={value.config.subject} onChange={(val) => updateConfig({ subject: val })} placeholder="e.g., New Property Available in {city}" />
+          <Input value={value.config.subject} onChange={(e) => updateConfig({ subject: e.target.value })} placeholder="e.g., New Property Available in {city}" className="mt-1" />
         </div>
       )}
 
@@ -166,39 +137,61 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         onChange={(val) => updateConfig({ emailList: val })}
         onMatchAllListChange={(enabled) => {
           setMatchAllList(enabled);
-          if (enabled) {
-            updateConfig({ emailList: "Match-Title" });
-          } else {
-            updateConfig({ emailList: emailLists[0]?.id || "" });
-          }
+          updateConfig({ emailList: enabled ? "Match-Title" : emailLists[0]?.id || "" });
         }}
       />
 
-      {/* Email Template Selection */}
+      {/* Email Template Selection - Locked to campaign type */}
       <div>
-        <Label>Email Template *</Label>
-        <Select value={value.config.emailTemplate} onValueChange={(val) => updateConfig({ emailTemplate: val })}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select template" />
-          </SelectTrigger>
-          <SelectContent>
-            {templates.map((template) => (
-              <SelectItem key={template.id} value={template.id}>
-                <div className="flex items-center justify-between w-full">
-                  <span>{template.name}</span>
-                  {template.category && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      {template.category}
-                    </Badge>
-                  )}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center justify-between mb-1">
+          <Label>Email Template *</Label>
+          <Badge variant="secondary" className="text-xs">
+            {value.config.campaignType === "single_property" ? "Single Property" : "Multi-Property"} Only
+          </Badge>
+        </div>
+        {filteredTemplates.length === 0 ? (
+          <Alert variant="destructive" className="mt-1">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No {value.config.campaignType === "single_property" ? "single property" : "multi-property"} templates available. Please create a template first.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <Select value={value.config.emailTemplate} onValueChange={(val) => updateConfig({ emailTemplate: val })}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={`Select ${value.config.campaignType === "single_property" ? "single property" : "multi-property"} template`} />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredTemplates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <span>{template.name}</span>
+                      <div className="flex items-center gap-1">
+                        {template.type && (
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {template.type}
+                          </Badge>
+                        )}
+                        {template.category && (
+                          <Badge variant="secondary" className="text-xs">
+                            {template.category}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs text-muted-foreground">Templates filtered by campaign type • {filteredTemplates.length} available</p>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Agent Selection (if template requires) */}
+      {/* Agent Selection */}
       {agents.length > 0 && (
         <div>
           <Label>Select Agent (Optional)</Label>
@@ -306,7 +299,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         )}
       </div>
 
-      {/* Multi-Property Specific Configuration */}
+      {/* Multi-Property Configuration */}
       {value.config.campaignType === "multi_property" && (
         <div className="space-y-4">
           <div className="border rounded-lg p-4 space-y-4">
@@ -314,8 +307,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
               <Mail className="h-4 w-4" />
               <h4 className="font-medium">Multi-Property Settings</h4>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">{/* Add multi-property settings here if needed */}</div>
           </div>
 
           <PaymentPlanSelector
@@ -342,7 +333,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         </div>
       )}
 
-      {/* For single property, also add payment selector */}
+      {/* Single Property Payment Selector */}
       {value.config.campaignType === "single_property" && (
         <PaymentPlanSelector
           enabled={value.config.financingEnabled || false}
@@ -360,7 +351,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           <div className="font-medium text-blue-900 mb-1">Action Summary</div>
           <p className="text-sm text-blue-800">
             This workflow will create a <strong>{value.config.campaignType === "single_property" ? "single" : "multi"}-property</strong> campaign using the{" "}
-            <strong>{templates.find((t) => t.id === value.config.emailTemplate)?.name || "selected"}</strong> template and send to the{" "}
+            <strong>{filteredTemplates.find((t) => t.id === value.config.emailTemplate)?.name || "selected"}</strong> template and send to the{" "}
             <strong>{emailLists.find((l) => l.id === value.config.emailList)?.name || "selected"}</strong> email list
             {value.config.schedule === "immediate"
               ? " immediately"

@@ -1,7 +1,7 @@
 // app/src/components/automation/ConditionBuilder.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Plus, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { AutomationTrigger, AutomationCondition } from "@mailivo/shared-types";
-import { PROPERTY_FIELD_OPTIONS, hasFieldOptions, getFieldOptions } from "../../config/propertyFieldOptions";
+import { useDisabledCategories, DisabledCategoriesAlert } from "./trigger/PropertyUploadConfig";
 
 interface ConditionBuilderProps {
   trigger: AutomationTrigger;
@@ -97,21 +97,8 @@ const OPERATORS = {
 };
 
 export default function ConditionBuilder({ trigger, conditions, onChange }: ConditionBuilderProps) {
-  const [disabledCategories, setDisabledCategories] = useState<string[]>([]);
-
-  useEffect(() => {
-    const disabled: string[] = [];
-
-    if (["property_uploaded", "property_viewed", "property_updated"].includes(trigger.type)) {
-      disabled.push("property_data");
-    }
-
-    if (!["campaign_status_changed", "email_tracking_status"].includes(trigger.type)) {
-      disabled.push("campaign_data");
-    }
-
-    setDisabledCategories(disabled);
-  }, [trigger]);
+  // Use the hook from PropertyUploadConfig instead of local logic
+  const disabledCategories = useDisabledCategories(trigger);
 
   const addCondition = (category: string) => {
     const newCondition: AutomationCondition = {
@@ -165,124 +152,42 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
   };
 
   const getFieldType = (category: string, field: string): string => {
-    switch (category) {
-      case "property_data":
-        if (PROPERTY_FIELDS.multiSelect.includes(field)) return "multiSelect";
-        if (PROPERTY_FIELDS.boolean.includes(field)) return "boolean";
-        if (PROPERTY_FIELDS.number.includes(field)) return "number";
-        if (PROPERTY_FIELDS.date.includes(field)) return "date";
-        return "text";
+    const categoryFields: any = {
+      property_data: PROPERTY_FIELDS,
+      campaign_data: CAMPAIGN_FIELDS,
+      email_tracking: EMAIL_TRACKING_FIELDS,
+      buyer_data: BUYER_FIELDS,
+    };
 
-      case "campaign_data":
-        if (CAMPAIGN_FIELDS.multiSelect.includes(field)) return "multiSelect";
-        if (CAMPAIGN_FIELDS.number.includes(field)) return "number";
-        if (CAMPAIGN_FIELDS.date.includes(field)) return "date";
-        return "text";
+    const fields = categoryFields[category];
+    if (!fields) return "text";
 
-      case "email_tracking":
-        if (EMAIL_TRACKING_FIELDS.date.includes(field)) return "date";
-        return "text";
-
-      case "buyer_data":
-        if (BUYER_FIELDS.multiSelect.includes(field)) return "multiSelect";
-        return "text";
-
-      default:
-        return "text";
+    for (const [type, fieldList] of Object.entries(fields)) {
+      if ((fieldList as string[]).includes(field)) {
+        return type;
+      }
     }
+
+    return "text";
   };
 
-  const getAvailableFields = (category: string): string[] => {
-    switch (category) {
-      case "property_data":
-        return [...PROPERTY_FIELDS.multiSelect, ...PROPERTY_FIELDS.boolean, ...PROPERTY_FIELDS.number, ...PROPERTY_FIELDS.date];
+  const getFieldOptions = (category: string): string[] => {
+    const categoryFields: any = {
+      property_data: PROPERTY_FIELDS,
+      campaign_data: CAMPAIGN_FIELDS,
+      email_tracking: EMAIL_TRACKING_FIELDS,
+      buyer_data: BUYER_FIELDS,
+    };
 
-      case "campaign_data":
-        return [...CAMPAIGN_FIELDS.multiSelect, ...CAMPAIGN_FIELDS.number, ...CAMPAIGN_FIELDS.date];
+    const fields = categoryFields[category];
+    if (!fields) return [];
 
-      case "email_tracking":
-        return [...EMAIL_TRACKING_FIELDS.date, "linkText"];
-
-      case "buyer_data":
-        return [...BUYER_FIELDS.multiSelect];
-
-      default:
-        return [];
-    }
-  };
-
-  const renderValueInput = (condition: AutomationCondition, filter: any, conditionIndex: number, filterIndex: number, fieldType: string) => {
-    // Check if this field has predefined options
-    const fieldOptions = hasFieldOptions(filter.field) ? getFieldOptions(filter.field) : null;
-
-    // If field has predefined dropdown options, render a select
-    if (fieldOptions && fieldOptions.length > 0) {
-      return (
-        <Select value={filter.value?.toString() || ""} onValueChange={(value) => updateFilter(conditionIndex, filterIndex, { value })} disabled={!filter.operator}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent>
-            {fieldOptions.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    }
-
-    // Original input types for fields without predefined options
-    if (fieldType === "boolean") {
-      return (
-        <Select value={filter.value?.toString() || ""} onValueChange={(value) => updateFilter(conditionIndex, filterIndex, { value: value === "true" })} disabled={!filter.operator}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="true">Yes / True</SelectItem>
-            <SelectItem value="false">No / False</SelectItem>
-          </SelectContent>
-        </Select>
-      );
-    }
-
-    if (fieldType === "date") {
-      return (
-        <Input type="date" value={filter.value || ""} onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })} className="mt-1" disabled={!filter.operator} />
-      );
-    }
-
-    if (fieldType === "number") {
-      return (
-        <Input
-          type="number"
-          value={filter.value || ""}
-          onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
-          placeholder="Enter value"
-          className="mt-1"
-          disabled={!filter.operator}
-        />
-      );
-    }
-
-    // Default text input
-    return (
-      <Input
-        type="text"
-        value={filter.value || ""}
-        onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
-        placeholder="Enter value"
-        className="mt-1"
-        disabled={!filter.operator}
-      />
-    );
+    return Object.values(fields).flat() as string[];
   };
 
   const renderFilterInput = (condition: AutomationCondition, filter: any, conditionIndex: number, filterIndex: number) => {
     const fieldType = getFieldType(condition.category, filter.field);
-    const operators = OPERATORS[fieldType as keyof typeof OPERATORS] || OPERATORS.text;
+    const operators = (OPERATORS as any)[fieldType as keyof typeof OPERATORS] || OPERATORS.text;
 
     return (
       <div key={filterIndex} className="grid grid-cols-12 gap-3 items-start p-3 bg-muted/20 rounded-lg">
@@ -294,7 +199,7 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
               <SelectValue placeholder="Select field" />
             </SelectTrigger>
             <SelectContent>
-              {getAvailableFields(condition.category).map((field) => (
+              {getFieldOptions(condition.category).map((field) => (
                 <SelectItem key={field} value={field}>
                   {field}
                 </SelectItem>
@@ -311,7 +216,7 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
               <SelectValue placeholder="Select operator" />
             </SelectTrigger>
             <SelectContent>
-              {operators.map((op) => (
+              {operators.map((op: any) => (
                 <SelectItem key={op.value} value={op.value}>
                   {op.label}
                 </SelectItem>
@@ -320,15 +225,54 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
           </Select>
         </div>
 
-        {/* Value Input - Now with dropdown support */}
+        {/* Value Input */}
         <div className="col-span-5">
           <Label className="text-xs">Value</Label>
-          {renderValueInput(condition, filter, conditionIndex, filterIndex, fieldType)}
+          {fieldType === "boolean" ? (
+            <Select value={filter.value} onValueChange={(value) => updateFilter(conditionIndex, filterIndex, { value: value === "true" })} disabled={!filter.operator}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select value" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">Yes / True</SelectItem>
+                <SelectItem value="false">No / False</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : fieldType === "date" ? (
+            <div className="space-y-2">
+              <Input type="date" value={filter.value} onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })} disabled={!filter.operator} className="mt-1" />
+              {filter.operator === "between" && (
+                <Input type="date" value={filter.secondValue || ""} onChange={(e) => updateFilter(conditionIndex, filterIndex, { secondValue: e.target.value })} placeholder="End date" />
+              )}
+            </div>
+          ) : fieldType === "number" ? (
+            <div className="space-y-2">
+              <Input
+                type="number"
+                value={filter.value}
+                onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
+                disabled={!filter.operator}
+                placeholder="Enter value"
+                className="mt-1"
+              />
+              {filter.operator === "between" && (
+                <Input type="number" value={filter.secondValue || ""} onChange={(e) => updateFilter(conditionIndex, filterIndex, { secondValue: e.target.value })} placeholder="End value" />
+              )}
+            </div>
+          ) : (
+            <Input
+              value={filter.value}
+              onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
+              disabled={!filter.operator}
+              placeholder="Enter value"
+              className="mt-1"
+            />
+          )}
         </div>
 
-        {/* Remove Filter Button */}
-        <div className="col-span-1 flex items-end pb-1">
-          <Button variant="ghost" size="sm" onClick={() => removeFilter(conditionIndex, filterIndex)} className="h-9">
+        {/* Remove Button */}
+        <div className="col-span-1 flex items-end justify-end">
+          <Button variant="ghost" size="sm" onClick={() => removeFilter(conditionIndex, filterIndex)} className="mt-6">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -338,13 +282,16 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
 
   return (
     <div className="space-y-4">
-      {/* Info Alert */}
+      {/* Show alert if conditions are optional */}
       {conditions.length === 0 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Add conditions to filter when this automation runs. Without conditions, it runs for all matching triggers.</AlertDescription>
+          <AlertDescription>Conditions are optional. Without conditions, it runs for all matching triggers.</AlertDescription>
         </Alert>
       )}
+
+      {/* Show disabled categories alert */}
+      {disabledCategories.length > 0 && <DisabledCategoriesAlert />}
 
       {conditions.map((condition, conditionIndex) => (
         <div key={conditionIndex} className="border rounded-lg p-4 space-y-4">

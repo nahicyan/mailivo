@@ -8,6 +8,7 @@ export interface EmailTemplate {
   subject?: string;
   description?: string;
   category?: 'property' | 'general' | 'promotion' | 'newsletter';
+  type?: 'single' | 'multi'; // Added for campaign type filtering
   isActive?: boolean;
   components?: Array<{
     id: string;
