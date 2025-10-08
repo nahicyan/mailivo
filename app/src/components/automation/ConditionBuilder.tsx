@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { AutomationTrigger, AutomationCondition } from "@mailivo/shared-types";
-import { PROPERTY_FIELD_OPTIONS, hasFieldOptions, getFieldOptions } from "../../config/propertyFieldOptions";
+import { getTriggerConfig } from "./trigger/types";
 
 interface ConditionBuilderProps {
   trigger: AutomationTrigger;
@@ -100,16 +100,9 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
   const [disabledCategories, setDisabledCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    const disabled: string[] = [];
-
-    if (["property_uploaded", "property_viewed", "property_updated"].includes(trigger.type)) {
-      disabled.push("property_data");
-    }
-
-    if (!["campaign_status_changed", "email_tracking_status"].includes(trigger.type)) {
-      disabled.push("campaign_data");
-    }
-
+    // Use trigger config to get disabled categories
+    const triggerConfig = getTriggerConfig(trigger);
+    const disabled = triggerConfig.getDisabledConditionCategories();
     setDisabledCategories(disabled);
   }, [trigger]);
 
@@ -165,119 +158,43 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
   };
 
   const getFieldType = (category: string, field: string): string => {
-    switch (category) {
-      case "property_data":
-        if (PROPERTY_FIELDS.multiSelect.includes(field)) return "multiSelect";
-        if (PROPERTY_FIELDS.boolean.includes(field)) return "boolean";
-        if (PROPERTY_FIELDS.number.includes(field)) return "number";
-        if (PROPERTY_FIELDS.date.includes(field)) return "date";
-        return "text";
-
-      case "campaign_data":
-        if (CAMPAIGN_FIELDS.multiSelect.includes(field)) return "multiSelect";
-        if (CAMPAIGN_FIELDS.number.includes(field)) return "number";
-        if (CAMPAIGN_FIELDS.date.includes(field)) return "date";
-        return "text";
-
-      case "email_tracking":
-        if (EMAIL_TRACKING_FIELDS.date.includes(field)) return "date";
-        return "text";
-
-      case "buyer_data":
-        if (BUYER_FIELDS.multiSelect.includes(field)) return "multiSelect";
-        return "text";
-
-      default:
-        return "text";
+    if (category === "property_data") {
+      for (const [type, fields] of Object.entries(PROPERTY_FIELDS)) {
+        if (fields.includes(field)) return type;
+      }
     }
+    if (category === "campaign_data") {
+      for (const [type, fields] of Object.entries(CAMPAIGN_FIELDS)) {
+        if (fields.includes(field)) return type;
+      }
+    }
+    if (category === "email_tracking") {
+      for (const [type, fields] of Object.entries(EMAIL_TRACKING_FIELDS)) {
+        if (fields.includes(field)) return type;
+      }
+    }
+    if (category === "buyer_data") {
+      for (const [type, fields] of Object.entries(BUYER_FIELDS)) {
+        if (fields.includes(field)) return type;
+      }
+    }
+    return "text";
   };
 
-  const getAvailableFields = (category: string): string[] => {
-    switch (category) {
-      case "property_data":
-        return [...PROPERTY_FIELDS.multiSelect, ...PROPERTY_FIELDS.boolean, ...PROPERTY_FIELDS.number, ...PROPERTY_FIELDS.date];
-
-      case "campaign_data":
-        return [...CAMPAIGN_FIELDS.multiSelect, ...CAMPAIGN_FIELDS.number, ...CAMPAIGN_FIELDS.date];
-
-      case "email_tracking":
-        return [...EMAIL_TRACKING_FIELDS.date, "linkText"];
-
-      case "buyer_data":
-        return [...BUYER_FIELDS.multiSelect];
-
-      default:
-        return [];
+  const getFieldOptions = (category: string): string[] => {
+    if (category === "property_data") {
+      return Object.values(PROPERTY_FIELDS).flat();
     }
-  };
-
-  const renderValueInput = (condition: AutomationCondition, filter: any, conditionIndex: number, filterIndex: number, fieldType: string) => {
-    // Check if this field has predefined options
-    const fieldOptions = hasFieldOptions(filter.field) ? getFieldOptions(filter.field) : null;
-
-    // If field has predefined dropdown options, render a select
-    if (fieldOptions && fieldOptions.length > 0) {
-      return (
-        <Select value={filter.value?.toString() || ""} onValueChange={(value) => updateFilter(conditionIndex, filterIndex, { value })} disabled={!filter.operator}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent>
-            {fieldOptions.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
+    if (category === "campaign_data") {
+      return Object.values(CAMPAIGN_FIELDS).flat();
     }
-
-    // Original input types for fields without predefined options
-    if (fieldType === "boolean") {
-      return (
-        <Select value={filter.value?.toString() || ""} onValueChange={(value) => updateFilter(conditionIndex, filterIndex, { value: value === "true" })} disabled={!filter.operator}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select value" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="true">Yes / True</SelectItem>
-            <SelectItem value="false">No / False</SelectItem>
-          </SelectContent>
-        </Select>
-      );
+    if (category === "email_tracking") {
+      return Object.values(EMAIL_TRACKING_FIELDS).flat();
     }
-
-    if (fieldType === "date") {
-      return (
-        <Input type="date" value={filter.value || ""} onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })} className="mt-1" disabled={!filter.operator} />
-      );
+    if (category === "buyer_data") {
+      return Object.values(BUYER_FIELDS).flat();
     }
-
-    if (fieldType === "number") {
-      return (
-        <Input
-          type="number"
-          value={filter.value || ""}
-          onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
-          placeholder="Enter value"
-          className="mt-1"
-          disabled={!filter.operator}
-        />
-      );
-    }
-
-    // Default text input
-    return (
-      <Input
-        type="text"
-        value={filter.value || ""}
-        onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
-        placeholder="Enter value"
-        className="mt-1"
-        disabled={!filter.operator}
-      />
-    );
+    return [];
   };
 
   const renderFilterInput = (condition: AutomationCondition, filter: any, conditionIndex: number, filterIndex: number) => {
@@ -294,7 +211,7 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
               <SelectValue placeholder="Select field" />
             </SelectTrigger>
             <SelectContent>
-              {getAvailableFields(condition.category).map((field) => (
+              {getFieldOptions(condition.category).map((field) => (
                 <SelectItem key={field} value={field}>
                   {field}
                 </SelectItem>
@@ -320,15 +237,54 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
           </Select>
         </div>
 
-        {/* Value Input - Now with dropdown support */}
+        {/* Value Input */}
         <div className="col-span-5">
           <Label className="text-xs">Value</Label>
-          {renderValueInput(condition, filter, conditionIndex, filterIndex, fieldType)}
+          {fieldType === "boolean" ? (
+            <Select value={filter.value} onValueChange={(value) => updateFilter(conditionIndex, filterIndex, { value: value === "true" })} disabled={!filter.operator}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select value" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">Yes / True</SelectItem>
+                <SelectItem value="false">No / False</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : fieldType === "date" ? (
+            <div className="space-y-2">
+              <Input type="date" value={filter.value} onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })} disabled={!filter.operator} className="mt-1" />
+              {filter.operator === "between" && (
+                <Input type="date" value={filter.secondValue || ""} onChange={(e) => updateFilter(conditionIndex, filterIndex, { secondValue: e.target.value })} placeholder="End date" />
+              )}
+            </div>
+          ) : fieldType === "number" ? (
+            <div className="space-y-2">
+              <Input
+                type="number"
+                value={filter.value}
+                onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
+                disabled={!filter.operator}
+                placeholder="Enter value"
+                className="mt-1"
+              />
+              {filter.operator === "between" && (
+                <Input type="number" value={filter.secondValue || ""} onChange={(e) => updateFilter(conditionIndex, filterIndex, { secondValue: e.target.value })} placeholder="End value" />
+              )}
+            </div>
+          ) : (
+            <Input
+              value={filter.value}
+              onChange={(e) => updateFilter(conditionIndex, filterIndex, { value: e.target.value })}
+              disabled={!filter.operator}
+              placeholder="Enter value"
+              className="mt-1"
+            />
+          )}
         </div>
 
-        {/* Remove Filter Button */}
-        <div className="col-span-1 flex items-end pb-1">
-          <Button variant="ghost" size="sm" onClick={() => removeFilter(conditionIndex, filterIndex)} className="h-9">
+        {/* Remove Button */}
+        <div className="col-span-1 flex items-end justify-end">
+          <Button variant="ghost" size="sm" onClick={() => removeFilter(conditionIndex, filterIndex)} className="mt-6">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -338,11 +294,10 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
 
   return (
     <div className="space-y-4">
-      {/* Info Alert */}
-      {conditions.length === 0 && (
+      {disabledCategories.length > 0 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Add conditions to filter when this automation runs. Without conditions, it runs for all matching triggers.</AlertDescription>
+          <AlertDescription className="text-sm">Some condition categories are disabled because the trigger already selects those entities.</AlertDescription>
         </Alert>
       )}
 

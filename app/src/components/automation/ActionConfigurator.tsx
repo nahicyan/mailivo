@@ -152,9 +152,9 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           }}
         />
       ) : (
-        <div>
+        <div className="space-y-2">
           <Label>Email Subject *</Label>
-          <Input value={value.config.subject} onChange={(e) => updateConfig({ subject: e.target.value })} placeholder="e.g., New Property Available in {city}" className="mt-1" />
+          <VariableInput label="" value={value.config.subject} onChange={(val) => updateConfig({ subject: val })} placeholder="e.g., New Property Available in {city}" />
         </div>
       )}
 
