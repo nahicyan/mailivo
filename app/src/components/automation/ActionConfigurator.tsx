@@ -137,18 +137,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         <VariableInput label="Email Subject" value={value.config.subject} onChange={(val) => updateConfig({ subject: val })} placeholder="e.g., New Property Available in {city}" />
       )}
 
-      {/* Email List Selection */}
-      <EmailListSelector
-        emailLists={emailLists}
-        value={value.config.emailList}
-        matchAllList={matchAllList}
-        onChange={(val) => updateConfig({ emailList: val })}
-        onMatchAllListChange={(enabled) => {
-          setMatchAllList(enabled);
-          updateConfig({ emailList: enabled ? "Match-Title" : emailLists[0]?.id || "" });
-        }}
-      />
-
       {/* Email Template Selection - Locked to campaign type */}
       <div>
         <div className="flex items-center justify-between mb-1">
@@ -199,6 +187,17 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         )}
       </div>
 
+      {/* Email List Selection */}
+      <EmailListSelector
+        emailLists={emailLists}
+        value={value.config.emailList}
+        matchAllList={matchAllList}
+        onChange={(val) => updateConfig({ emailList: val })}
+        onMatchAllListChange={(enabled) => {
+          setMatchAllList(enabled);
+          updateConfig({ emailList: enabled ? "Match-Title" : emailLists[0]?.id || "" });
+        }}
+      />
       {/* Agent Selection */}
       {agents.length > 0 && (
         <div>
