@@ -62,7 +62,17 @@ export const singlePropertySteps: StepConfig = {
       component: 'EmailTemplateSelection'
     }
   ],
-  conditionalSteps: [],
+  conditionalSteps: [
+    {
+      id: 'agent-profile',
+      title: 'Agent Profile',
+      icon: User,
+      description: 'Select agent contact info',
+      component: 'AgentProfile',
+      isConditional: true,
+      conditionKey: 'showAgentProfileStep'
+    }
+  ],
   finalSteps: [
     {
       id: 'payment',
