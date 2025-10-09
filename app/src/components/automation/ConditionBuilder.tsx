@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { AutomationTrigger, AutomationCondition } from "@mailivo/shared-types";
 import { useDisabledCategories, DisabledCategoriesAlert } from "./trigger/PropertyUploadConfig";
+import { hasFieldOptions, getFieldOptions as getPropertyFieldOptions } from "@/config/propertyFieldOptions";
 
 interface ConditionBuilderProps {
   trigger: AutomationTrigger;
@@ -259,6 +260,20 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
                 <Input type="number" value={filter.secondValue || ""} onChange={(e) => updateFilter(conditionIndex, filterIndex, { secondValue: e.target.value })} placeholder="End value" />
               )}
             </div>
+          ) : hasFieldOptions(filter.field) ? (
+            // NEW: Use dropdown for fields with predefined options
+            <Select value={filter.value} onValueChange={(value) => updateFilter(conditionIndex, filterIndex, { value })} disabled={!filter.operator}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select value" />
+              </SelectTrigger>
+              <SelectContent>
+                {getPropertyFieldOptions(filter.field)?.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
             <Input
               value={filter.value}
