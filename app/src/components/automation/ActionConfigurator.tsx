@@ -15,17 +15,24 @@ import { VariableInput } from "./VariableInput";
 import { EmailSubjectToggle } from "./EmailSubjectToggle";
 import { EmailListSelector } from "./EmailListSelector";
 import { PaymentPlanSelector } from "./PaymentPlanSelector";
+import { hasAgentProfileComponents } from "@landivo/email-template";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   useTriggerConfiguration,
   useEmailSubjectToggle,
   useDefaultActionConfig,
   useFilteredTemplates,
-  useAgentLoader,
   PropertySelectionAlert,
   LockedCampaignTypeAlert,
   ManualPropertySelectionAlert,
 } from "./trigger/PropertyUploadConfig";
 import { useScheduleOptions, TimeBasedTriggerInfo, TimeBasedCampaignTypeLock } from "./trigger/TimeBasedConfig";
+
+const hasPaymentCalculatorComponents = (template: any): boolean => {
+  if (!template?.components) return false;
+  return template.components.some((component: any) => component.type === "payment-calculator");
+};
 
 interface ActionConfiguratorProps {
   trigger: AutomationTrigger;
@@ -45,9 +52,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
   // Use email subject toggle hook
   const { useFromLandivo, handleToggleChange } = useEmailSubjectToggle(value?.config?.subject);
 
-  // Use agent loader hook (extracted logic)
-  const { agents, agentsLoading } = useAgentLoader();
-
   // Use schedule options hook (time-based triggers disable "schedule for later")
   const { availableOptions: scheduleOptions } = useScheduleOptions(trigger);
 
@@ -56,6 +60,21 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
 
   // Filter templates based on campaign type (property upload = single only)
   const filteredTemplates = useFilteredTemplates(templates, value?.config?.campaignType || "single_property");
+
+  const selectedTemplate = useMemo(() => filteredTemplates.find((t) => t.id === value?.config?.emailTemplate), [filteredTemplates, value?.config?.emailTemplate]);
+  const showAgentSelection = useMemo(() => (selectedTemplate ? hasAgentProfileComponents(selectedTemplate) : false), [selectedTemplate]);
+  const showPaymentSelection = useMemo(() => (selectedTemplate ? hasPaymentCalculatorComponents(selectedTemplate) : false), [selectedTemplate]);
+  // Fetch agents for all triggers
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agentProfiles"],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/user/public-profiles`);
+      const data = await res.json();
+      return data.profiles || [];
+    },
+    enabled: showAgentSelection,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const updateConfig = (updates: any) => {
     if (value) {
@@ -80,7 +99,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
     }
   };
 
-  const loading = templatesLoading || listsLoading || agentsLoading;
+  const loading = templatesLoading || listsLoading;
 
   if (loading) {
     return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
@@ -198,17 +217,16 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           updateConfig({ emailList: enabled ? "Match-Title" : emailLists[0]?.id || "" });
         }}
       />
-      {/* Agent Selection */}
-      {agents.length > 0 && (
+      {showAgentSelection && agents.length > 0 && (
         <div>
-          <Label>Select Agent (Optional)</Label>
-          <Select value={value.config.selectedAgent || ""} onValueChange={(val) => updateConfig({ selectedAgent: val })}>
+          <Label>Select Agent</Label>
+          <Select value={value.config.selectedAgent || "landivo-default"} onValueChange={(val) => updateConfig({ selectedAgent: val })}>
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Choose an agent" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No Agent</SelectItem>
-              {agents.map((agent) => (
+              <SelectItem value="landivo-default">Same As Landivo</SelectItem>
+              {agents.map((agent: any) => (
                 <SelectItem key={agent._id} value={agent._id}>
                   {agent.firstName} {agent.lastName} - {agent.email}
                 </SelectItem>
@@ -218,6 +236,50 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         </div>
       )}
 
+      {/* Multi-Property Payment - Conditional */}
+      {value.config.campaignType === "multi_property" && showPaymentSelection && (
+        <div className="space-y-4">
+          <div className="border rounded-lg p-4 space-y-4">
+            <div className="flex items-center space-x-2">
+              <Mail className="h-4 w-4" />
+              <h4 className="font-medium">Multi-Property Settings</h4>
+            </div>
+          </div>
+
+          <PaymentPlanSelector
+            enabled={value.config.multiPropertyConfig?.financingEnabled || false}
+            planStrategy={value.config.multiPropertyConfig?.planStrategy || "plan-1"}
+            onEnabledChange={(enabled) =>
+              updateConfig({
+                multiPropertyConfig: {
+                  ...value.config.multiPropertyConfig,
+                  financingEnabled: enabled,
+                },
+              })
+            }
+            onPlanStrategyChange={(strategy) =>
+              updateConfig({
+                multiPropertyConfig: {
+                  ...value.config.multiPropertyConfig,
+                  planStrategy: strategy,
+                },
+              })
+            }
+            campaignType={value.config.campaignType}
+          />
+        </div>
+      )}
+
+      {/* Single Property Payment - Conditional */}
+      {value.config.campaignType === "single_property" && showPaymentSelection && (
+        <PaymentPlanSelector
+          enabled={value.config.financingEnabled || false}
+          planStrategy={value.config.planStrategy || "plan-1"}
+          onEnabledChange={(enabled) => updateConfig({ financingEnabled: enabled })}
+          onPlanStrategyChange={(strategy) => updateConfig({ planStrategy: strategy })}
+          campaignType={value.config.campaignType}
+        />
+      )}
       {/* Schedule Configuration */}
       <div>
         <Label>Schedule *</Label>
@@ -308,51 +370,6 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           </div>
         )}
       </div>
-
-      {/* Multi-Property Configuration */}
-      {value.config.campaignType === "multi_property" && (
-        <div className="space-y-4">
-          <div className="border rounded-lg p-4 space-y-4">
-            <div className="flex items-center space-x-2">
-              <Mail className="h-4 w-4" />
-              <h4 className="font-medium">Multi-Property Settings</h4>
-            </div>
-          </div>
-
-          <PaymentPlanSelector
-            enabled={value.config.multiPropertyConfig?.financingEnabled || false}
-            planStrategy={value.config.multiPropertyConfig?.planStrategy || "plan-1"}
-            onEnabledChange={(enabled) =>
-              updateConfig({
-                multiPropertyConfig: {
-                  ...value.config.multiPropertyConfig,
-                  financingEnabled: enabled,
-                },
-              })
-            }
-            onPlanStrategyChange={(strategy) =>
-              updateConfig({
-                multiPropertyConfig: {
-                  ...value.config.multiPropertyConfig,
-                  planStrategy: strategy,
-                },
-              })
-            }
-            campaignType={value.config.campaignType}
-          />
-        </div>
-      )}
-
-      {/* Single Property Payment Selector */}
-      {value.config.campaignType === "single_property" && (
-        <PaymentPlanSelector
-          enabled={value.config.financingEnabled || false}
-          planStrategy={value.config.planStrategy || "plan-1"}
-          onEnabledChange={(enabled) => updateConfig({ financingEnabled: enabled })}
-          onPlanStrategyChange={(strategy) => updateConfig({ planStrategy: strategy })}
-          campaignType={value.config.campaignType}
-        />
-      )}
 
       {/* Summary */}
       <Alert className="bg-blue-50 border-blue-200">

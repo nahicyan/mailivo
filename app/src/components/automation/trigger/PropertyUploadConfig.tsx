@@ -140,33 +140,6 @@ export function useDisabledCategories(trigger: AutomationTrigger): string[] {
   return disabledCategories;
 }
 
-/**
- * Hook for loading agents
- * Extracted from ActionConfigurator for reusability
- */
-export function useAgentLoader() {
-  const [agents, setAgents] = useState<any[]>([]);
-  const [agentsLoading, setAgentsLoading] = useState(true);
-
-  useEffect(() => {
-    loadAgents();
-  }, []);
-
-  const loadAgents = async () => {
-    setAgentsLoading(true);
-    try {
-      const agentsResponse = await fetch(`${process.env.NEXT_PUBLIC_LANDIVO_API_URL}/user/public-profiles`);
-      const agentsData = await agentsResponse.json();
-      setAgents(agentsData);
-    } catch (error) {
-      console.error("Failed to load agents:", error);
-    } finally {
-      setAgentsLoading(false);
-    }
-  };
-
-  return { agents, agentsLoading };
-}
 
 /**
  * UTILITY FUNCTIONS
