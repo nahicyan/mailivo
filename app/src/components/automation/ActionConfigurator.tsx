@@ -25,6 +25,7 @@ import {
   LockedCampaignTypeAlert,
   ManualPropertySelectionAlert,
 } from "./trigger/PropertyUploadConfig";
+import { useScheduleOptions, TimeBasedTriggerInfo, TimeBasedCampaignTypeLock } from "./trigger/TimeBasedConfig";
 
 interface ActionConfiguratorProps {
   trigger: AutomationTrigger;
@@ -46,6 +47,9 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
 
   // Use agent loader hook (extracted logic)
   const { agents, agentsLoading } = useAgentLoader();
+
+  // Use schedule options hook (time-based triggers disable "schedule for later")
+  const { availableOptions: scheduleOptions } = useScheduleOptions(trigger);
 
   // Initialize default action config
   useDefaultActionConfig(trigger, conditions, value, onChange);
@@ -86,6 +90,9 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
 
   return (
     <div className="space-y-6">
+      {/* Time-Based Trigger Info */}
+      {trigger.type === "time_based" && <TimeBasedTriggerInfo conditions={conditions} />}
+
       {/* Property Selection Info */}
       <PropertySelectionAlert trigger={trigger} conditions={conditions} />
 
@@ -93,7 +100,11 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
       <div>
         <Label>Campaign Type *</Label>
         {isCampaignTypeLocked ? (
-          <LockedCampaignTypeAlert trigger={trigger} />
+          trigger.type === "time_based" ? (
+            <TimeBasedCampaignTypeLock />
+          ) : (
+            <LockedCampaignTypeAlert trigger={trigger} />
+          )
         ) : (
           <Select value={value.config.campaignType} onValueChange={(val) => updateConfig({ campaignType: val })}>
             <SelectTrigger className="mt-1">
@@ -123,10 +134,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
           onToggleChange={(useLandivo) => handleToggleChange(useLandivo, updateConfig)}
         />
       ) : (
-        <div>
-          <Label>Email Subject *</Label>
-          <Input value={value.config.subject} onChange={(e) => updateConfig({ subject: e.target.value })} placeholder="e.g., New Property Available in {city}" className="mt-1" />
-        </div>
+        <VariableInput label="Email Subject" value={value.config.subject} onChange={(val) => updateConfig({ subject: val })} placeholder="e.g., New Property Available in {city}" />
       )}
 
       {/* Email List Selection */}
@@ -219,11 +227,14 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="immediate">Send Immediately</SelectItem>
-            <SelectItem value="scheduled">Schedule for Later</SelectItem>
-            <SelectItem value="time_delay">Add Time Delay</SelectItem>
+            {scheduleOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        {trigger.type === "time_based" && <p className="text-xs text-muted-foreground mt-1">Trigger schedule defines when campaigns run. Choose send timing relative to trigger.</p>}
 
         {value.config.schedule === "scheduled" && (
           <div className="mt-3 grid grid-cols-2 gap-3">

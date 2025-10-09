@@ -22,7 +22,7 @@ export interface TriggerConfig {
   /**
    * Returns the property selection message to display
    */
-  getPropertySelectionMessage(source: "trigger" | "condition" | "manual"): string;
+  getPropertySelectionMessage(source: "trigger" | "condition" | "manual", conditions?: AutomationCondition[]): string;
 
   /**
    * Determines if campaign type should be locked
@@ -61,6 +61,8 @@ export function getTriggerConfig(trigger: AutomationTrigger): TriggerConfig {
       return new PropertyViewedTriggerConfig(trigger);
     case "property_updated":
       return new PropertyUpdatedTriggerConfig(trigger);
+    case "time_based":
+      return new TimeBasedTriggerConfig(trigger);
     default:
       return new DefaultTriggerConfig(trigger);
   }
@@ -175,5 +177,54 @@ class PropertyUpdatedTriggerConfig extends DefaultTriggerConfig {
 
   getDisabledConditionCategories(): string[] {
     return ["property_data"];
+  }
+}
+
+/**
+ * Time Based trigger configuration
+ */
+class TimeBasedTriggerConfig extends DefaultTriggerConfig {
+  constructor(protected trigger: AutomationTrigger) {
+    super(trigger);
+  }
+
+  getAllowedCampaignTypes() {
+    return { singleProperty: false, multiProperty: true };
+  }
+
+  getPropertySelectionSource(conditions: AutomationCondition[]): "trigger" | "condition" | "manual" {
+    // Always return condition for time-based triggers
+    return "condition";
+  }
+
+  getPropertySelectionMessage(source: "trigger" | "condition" | "manual", conditions?: AutomationCondition[]): string {
+    // Check if there are actual property conditions
+    const hasPropertyConditions = conditions?.some((c) => c.category === "property_data");
+
+    if (hasPropertyConditions) {
+      return "Properties will be filtered by the conditions you defined.";
+    }
+
+    return "Add property conditions to filter which properties to include in scheduled campaigns.";
+  }
+
+  isCampaignTypeLocked(): boolean {
+    return true;
+  }
+
+  getLockedCampaignType(): "multi_property" {
+    return "multi_property";
+  }
+
+  showEmailSubjectToggle(): boolean {
+    return false;
+  }
+
+  getDisabledConditionCategories(): string[] {
+    return ["campaign_data"];
+  }
+
+  getLockedCampaignTypeMessage(): string {
+    return "Time-based triggers require multi-property campaigns to aggregate properties on schedule.";
   }
 }
