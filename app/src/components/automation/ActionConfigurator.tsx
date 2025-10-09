@@ -227,7 +227,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             <SelectContent>
               <SelectItem value="landivo-default">Same As Landivo</SelectItem>
               {agents.map((agent: any) => (
-                <SelectItem key={agent._id} value={agent._id}>
+                <SelectItem key={agent._id} value={agent.id}>
                   {agent.firstName} {agent.lastName} - {agent.email}
                 </SelectItem>
               ))}
