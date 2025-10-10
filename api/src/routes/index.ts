@@ -13,6 +13,7 @@ import analyticsRoutes from './analytics.routes';
 import mailcowRoutes from './mailcow.routes';
 import { mailivoAutomationRoutes } from './mailivo-automation.route';
 import { automationTriggerRoutes } from './automation-trigger.route';
+import { timeBasedAutomationRoutes } from './timeBasedAutomation.route';
 
 const router = Router();
 
@@ -48,6 +49,9 @@ router.use('/automation', mailivoAutomationRoutes);
 
 // Automation triggers (webhooks/external)
 router.use('/automation-landivo', automationTriggerRoutes);
+
+// Automation For Time Based Triggers
+router.use('/time-based-automations', timeBasedAutomationRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

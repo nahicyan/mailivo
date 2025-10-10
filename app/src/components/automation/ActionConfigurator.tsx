@@ -53,7 +53,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
   const { useFromLandivo, handleToggleChange } = useEmailSubjectToggle(value?.config?.subject);
 
   // Use schedule options hook (time-based triggers disable "schedule for later")
-  const { availableOptions: scheduleOptions } = useScheduleOptions(trigger);
+  const { availableOptions: scheduleOptions, isTimeBased } = useScheduleOptions(trigger);
 
   // Initialize default action config
   useDefaultActionConfig(trigger, conditions, value, onChange);
@@ -295,8 +295,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
             ))}
           </SelectContent>
         </Select>
-        {trigger.type === "time_based" && <p className="text-xs text-muted-foreground mt-1">Trigger schedule defines when campaigns run. Choose send timing relative to trigger.</p>}
-
+        {isTimeBased && <p className="text-xs text-muted-foreground mt-1">Trigger schedule defines when campaigns run. Choose send timing relative to trigger.</p>}
         {value.config.schedule === "scheduled" && (
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
