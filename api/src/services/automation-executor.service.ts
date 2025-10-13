@@ -3,11 +3,13 @@ import axios from "axios";
 import { MailivoAutomation, AutomationExecution, IAutomationExecution } from "../models/MailivoAutomation";
 import { Campaign } from "../models/Campaign";
 import { logger } from "../utils/logger";
+import { campaignCreatorService } from "./campaign-creator.service";
 
 interface ExecutionOptions {
   testMode?: boolean;
   mockData?: any;
   dryRun?: boolean;
+  executionId?: string;
 }
 
 export class AutomationExecutor {
@@ -65,7 +67,16 @@ export class AutomationExecutor {
 
       // Step 4: Execute action
       this.log(execution, "execute_action", "Executing action");
-      const actionResult = await this.executeAction(automation.action, resolvedEntities, automation.userId, options, automationId);
+      const actionResult = await this.executeAction(
+        automation.action,
+        resolvedEntities,
+        automation.userId,
+        {
+          ...options,
+          executionId: String(execution._id),
+        },
+        automationId
+      );
 
       // Success
       execution.status = "completed";
@@ -300,94 +311,35 @@ export class AutomationExecutor {
       throw new Error(`Unknown action type: ${action.type}`);
     }
 
-    const config = action.config;
-
-    // Determine properties for campaign
-    let propertyIds: string[] = [];
-
-    if (config.propertySelection.source === "manual") {
-      propertyIds = config.propertySelection.propertyIds || [];
-    } else if (config.propertySelection.source === "trigger" || config.propertySelection.source === "condition") {
-      propertyIds = resolvedEntities.properties.map((p: any) => p._id || p.id);
-    }
-
-    if (propertyIds.length === 0) {
-      throw new Error("No properties selected for campaign");
-    }
-
-    // Increment counter and fetch property data for variable replacement
+    // Get the full automation object
     const automation = await MailivoAutomation.findById(automationId);
     if (!automation) {
       throw new Error(`Automation ${automationId} not found`);
     }
-    const currentCounter = ((automation.action.config as any).campaignCounter || 0) + 1;
-    await MailivoAutomation.findByIdAndUpdate(automationId, {
-      "action.config.campaignCounter": currentCounter,
-    });
 
-    // Fetch property data for variables
-    const propertyData = propertyIds[0] ? await this.fetchPropertyData(propertyIds[0]) : {};
-
-    // Replace variables in name and subject
-    const campaignName = this.replaceVariables(config.name, propertyData, currentCounter);
-    const campaignSubject = this.replaceVariables(config.subject, propertyData, currentCounter);
-
-    // Build campaign data
-    const campaignData = {
-      name: campaignName,
-      subject: config.subject === "bypass" ? "bypass" : campaignSubject,
-      description: config.description,
-      type: config.campaignType === "multi_property" ? "multi-property" : "single",
-      property: config.campaignType === "single_property" ? propertyIds[0] : propertyIds,
-      emailList: config.emailList, // Now handles Match-Title, Match-Area, or list ID
-      emailTemplate: config.emailTemplate,
-      selectedAgent: config.selectedAgent,
-      emailSchedule: config.schedule === "immediate" ? "immediate" : "scheduled",
-      scheduledDate: config.scheduledDate,
-      emailVolume: resolvedEntities.buyers?.length || 0,
-      source: "landivo",
-      status: config.schedule === "immediate" ? "active" : "draft",
-      imageSelections: config.imageSelections,
-      userId: automation.userId,
-      htmlContent: `<html><body><h1>${campaignName}</h1><p>Campaign created by automation</p></body></html>`,
-      // Add payment plan data
-      financingEnabled: config.campaignType === "single_property" ? config.financingEnabled : config.multiPropertyConfig?.financingEnabled,
-      planStrategy: config.campaignType === "single_property" ? config.planStrategy : config.multiPropertyConfig?.planStrategy,
-
-      multiPropertyMeta:
-        config.campaignType === "multi_property"
-          ? {
-              sortStrategy: config.multiPropertyConfig?.sortStrategy,
-              maxProperties: config.multiPropertyConfig?.maxProperties,
-              // ... existing multiPropertyConfig fields ...
-            }
-          : undefined,
+    // Build trigger data from resolved entities
+    const triggerData = {
+      propertyIds: resolvedEntities.properties?.map((p: any) => p._id?.toString() || p.id) || [],
+      propertyData: resolvedEntities.properties?.[0] || null,
     };
 
-    // Create campaign
+    // Test mode handling
     if (options.dryRun || options.testMode) {
-      logger.info("[TEST MODE] Would create campaign:", campaignData);
+      logger.info("[TEST MODE] Would create campaign via campaign-creator service", {
+        automationId,
+        triggerData,
+      });
       return {
         campaignId: "test-campaign-id",
-        recipientCount: campaignData.emailVolume,
+        recipientCount: 0,
         status: "test",
       };
     }
 
-    const campaign = new Campaign(campaignData);
-    await campaign.save();
+    // Use campaign creator service (same flow as propertyUpload)
+    const result = await campaignCreatorService.createCampaignFromAutomation(automation, triggerData, options.executionId || "manual-execution");
 
-    // If immediate, send campaign
-    if (config.schedule === "immediate") {
-      // Trigger campaign send (existing send logic)
-      // This would call your existing campaign send service
-    }
-
-    return {
-      campaignId: campaign.id.toString(),
-      recipientCount: campaign.emailVolume,
-      status: campaign.status,
-    };
+    return result;
   }
 
   // Helper methods
@@ -479,43 +431,5 @@ export class AutomationExecutor {
       status,
       message,
     });
-  }
-  /**
-   * Replace variables in template strings
-   */
-  private replaceVariables(template: string, propertyData: any, counter: number): string {
-    let result = template;
-
-    const vars: Record<string, any> = {
-      title: propertyData.title || "",
-      streetAddress: propertyData.streetAddress || "",
-      city: propertyData.city || "",
-      county: propertyData.county || "",
-      state: propertyData.state || "",
-      zip: propertyData.zip || "",
-    };
-
-    Object.keys(vars).forEach((key) => {
-      const regex = new RegExp(`\\{${key}\\}`, "g");
-      result = result.replace(regex, vars[key]);
-    });
-
-    // Replace counter variable
-    result = result.replace(/\{#\}/g, counter.toString());
-
-    return result;
-  }
-
-  /**
-   * Fetch property data from Landivo API
-   */
-  private async fetchPropertyData(propertyId: string): Promise<any> {
-    try {
-      const response = await axios.get(`${this.LANDIVO_API_URL}/residency/${propertyId}`);
-      return response.data;
-    } catch (error: any) {
-      logger.error(`Failed to fetch property data: ${propertyId}`, error);
-      return {};
-    }
   }
 }
