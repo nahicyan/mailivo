@@ -31,6 +31,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAutomation } from '@/hooks/useAutomation';
+import { useTemplate } from '@/hooks/useTemplates';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -40,12 +41,20 @@ export default function AutomationDetailsPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
   const [automation, setAutomation] = useState<any>(null);
+  const [emailLists, setEmailLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toggleAutomation, duplicateAutomation, deleteAutomation } = useAutomation();
 
+  // Get template ID from automation
+  const templateId = automation?.action?.config?.emailTemplate;
+  
+  // Fetch template data using the hook
+  const { data: template, isLoading: templateLoading } = useTemplate(templateId);
+
   useEffect(() => {
     fetchAutomationDetails();
+    fetchEmailLists();
   }, [id]);
 
   const fetchAutomationDetails = async () => {
@@ -54,7 +63,7 @@ export default function AutomationDetailsPage({ params }: Props) {
       const response = await api.get(`/automation/${id}`);
       
       if (response.data.success) {
-        console.log('Loaded automation:', response.data.data); // Debug log
+        console.log('Loaded automation:', response.data.data);
         setAutomation(response.data.data);
       } else {
         throw new Error('Failed to load automation');
@@ -66,6 +75,37 @@ export default function AutomationDetailsPage({ params }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchEmailLists = async () => {
+    try {
+      const response = await api.get('/landivo-email-lists');
+      const data = response.data;
+      setEmailLists(Array.isArray(data) ? data : (data.emailLists || []));
+    } catch (error) {
+      console.error('Error fetching email lists:', error);
+    }
+  };
+
+  const getTemplateName = () => {
+    if (!templateId) return 'N/A';
+    if (templateLoading) return 'Loading...';
+    if (template) {
+      return template.name || template.title || templateId;
+    }
+    console.warn("Couldn't find template name");
+    return templateId; // Fallback to ID if template not found
+  };
+
+  const getEmailListName = (listId: string) => {
+    if (!listId) return 'N/A';
+    if (!Array.isArray(emailLists) || emailLists.length === 0) {
+      return listId;
+    }
+    const list = emailLists.find(
+      (l) => l.id === listId || l._id === listId
+    );
+    return list?.name || listId;
   };
 
   const handleToggle = async () => {
@@ -456,11 +496,14 @@ export default function AutomationDetailsPage({ params }: Props) {
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Email List</Label>
-              <p className="font-medium mt-1">{action.config?.emailList || 'N/A'}</p>
+              <p className="font-medium mt-1">{getEmailListName(action.config?.emailList)}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Email Template</Label>
-              <p className="font-medium mt-1">{action.config?.emailTemplate || 'N/A'}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="font-medium">{getTemplateName()}</p>
+                {templateLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+              </div>
             </div>
           </div>
 
