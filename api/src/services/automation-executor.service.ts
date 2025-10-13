@@ -230,12 +230,15 @@ export class AutomationExecutor {
       case "between":
         return Number(entityValue) >= Number(filterValue) && Number(entityValue) <= Number(secondValue);
 
-      case "in":
-        return Array.isArray(filterValue) && filterValue.includes(entityValue);
+      case "in": {
+        const values = Array.isArray(filterValue) ? filterValue : [filterValue];
+        return values.includes(entityValue);
+      }
 
-      case "not_in":
-        return Array.isArray(filterValue) && !filterValue.includes(entityValue);
-
+      case "not_in": {
+        const values = Array.isArray(filterValue) ? filterValue : [filterValue];
+        return !values.includes(entityValue);
+      }
       case "contains":
         return String(entityValue).toLowerCase().includes(String(filterValue).toLowerCase());
 
@@ -334,7 +337,7 @@ export class AutomationExecutor {
       name: campaignName,
       subject: config.subject === "bypass" ? "bypass" : campaignSubject,
       description: config.description,
-      type: config.campaignType,
+      type: config.campaignType === "multi_property" ? "multi-property" : "single",
       property: config.campaignType === "single_property" ? propertyIds[0] : propertyIds,
       emailList: config.emailList, // Now handles Match-Title, Match-Area, or list ID
       emailTemplate: config.emailTemplate,
@@ -345,7 +348,8 @@ export class AutomationExecutor {
       source: "landivo",
       status: config.schedule === "immediate" ? "active" : "draft",
       imageSelections: config.imageSelections,
-
+      userId: automation.userId,
+      htmlContent: `<html><body><h1>${campaignName}</h1><p>Campaign created by automation</p></body></html>`,
       // Add payment plan data
       financingEnabled: config.campaignType === "single_property" ? config.financingEnabled : config.multiPropertyConfig?.financingEnabled,
       planStrategy: config.campaignType === "single_property" ? config.planStrategy : config.multiPropertyConfig?.planStrategy,
@@ -390,7 +394,7 @@ export class AutomationExecutor {
   private async fetchProperties(propertyIds: string[], userId: string): Promise<any[]> {
     try {
       if (!propertyIds || propertyIds.length === 0) {
-      const response = await axios.get(`${this.LANDIVO_API_URL}/residency/allresd`, {
+        const response = await axios.get(`${this.LANDIVO_API_URL}/residency/allresd`, {
           params: { userId },
         });
         return response.data;
