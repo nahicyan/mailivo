@@ -27,7 +27,7 @@ import {
   LockedCampaignTypeAlert,
   ManualPropertySelectionAlert,
 } from "./trigger/PropertyUploadConfig";
-import { useScheduleOptions, TimeBasedTriggerInfo, TimeBasedCampaignTypeLock } from "./trigger/TimeBasedConfig";
+import { useScheduleOptions, TimeBasedTriggerInfo, TimeBasedCampaignTypeLock, useTimeBasedActionInit } from "./trigger/TimeBasedConfig";
 
 const hasPaymentCalculatorComponents = (template: any): boolean => {
   if (!template?.components) return false;
@@ -55,8 +55,13 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
   // Use schedule options hook (time-based triggers disable "schedule for later")
   const { availableOptions: scheduleOptions, isTimeBased } = useScheduleOptions(trigger);
 
-  // Initialize default action config
-  useDefaultActionConfig(trigger, conditions, value, onChange);
+  // Time-based triggers use their own initialization
+  if (trigger.type === "time_based") {
+    useTimeBasedActionInit(trigger, conditions, value, onChange);
+  } else {
+    // All other triggers use the default/property-specific initialization
+    useDefaultActionConfig(trigger, conditions, value, onChange);
+  }
 
   // Filter templates based on campaign type (property upload = single only)
   const filteredTemplates = useFilteredTemplates(templates, value?.config?.campaignType || "single_property");
@@ -78,7 +83,7 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
 
   const updateConfig = (updates: any) => {
     if (value) {
-      // If campaign type is changing, clear template if it doesn't match new type
+      // If campaign type is changing, handle special logic
       if (updates.campaignType && updates.campaignType !== value.config.campaignType) {
         const currentTemplate = templates.find((t) => t.id === value.config.emailTemplate);
         const newTemplateType = updates.campaignType === "single_property" ? "single" : "multi";
@@ -87,14 +92,37 @@ export default function ActionConfigurator({ trigger, conditions, value, onChang
         if (currentTemplate && currentTemplate.type !== newTemplateType) {
           updates.emailTemplate = "";
         }
+
+        // Add multiPropertyConfig when switching TO multi-property
+        if (updates.campaignType === "multi_property" && !value.config.multiPropertyConfig) {
+          updates.multiPropertyConfig = {
+            sortStrategy: "newest",
+            maxProperties: 10,
+            financingEnabled: false,
+            planStrategy: "plan-1",
+          };
+        }
+      }
+
+      // Build final config
+      const finalConfig = {
+        ...value.config,
+        ...updates,
+      };
+
+      // Safety check: ensure multiPropertyConfig for multi-property campaigns
+      if (finalConfig.campaignType === "multi_property" && !finalConfig.multiPropertyConfig) {
+        finalConfig.multiPropertyConfig = {
+          sortStrategy: "newest",
+          maxProperties: 10,
+          financingEnabled: false,
+          planStrategy: "plan-1",
+        };
       }
 
       onChange({
         ...value,
-        config: {
-          ...value.config,
-          ...updates,
-        },
+        config: finalConfig,
       });
     }
   };
