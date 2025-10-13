@@ -82,6 +82,14 @@ export default function AutomationsPage() {
     }
   };
 
+  const handleRowClick = (automationId: string, event: React.MouseEvent) => {
+    // Don't navigate if clicking on the dropdown menu
+    if ((event.target as HTMLElement).closest('[role="button"]')) {
+      return;
+    }
+    router.push(`/dashboard/automations/${automationId}`);
+  };
+
   const filteredAutomations = automations.filter(
     (automation) =>
       automation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -219,7 +227,11 @@ export default function AutomationsPage() {
             </TableHeader>
             <TableBody>
               {filteredAutomations.map((automation) => (
-                <TableRow key={automation._id}>
+                <TableRow 
+                  key={automation._id}
+                  onClick={(e) => handleRowClick(automation._id, e)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   <TableCell>
                     <div className={`w-2 h-2 rounded-full ${getStatusColor(automation.isActive)}`} />
                   </TableCell>
@@ -270,7 +282,7 @@ export default function AutomationsPage() {
                     </div>
                   </TableCell>
 
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">

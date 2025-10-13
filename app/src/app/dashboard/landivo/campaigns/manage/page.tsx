@@ -1,12 +1,18 @@
 // app/src/app/dashboard/landivo/campaigns/manage/page.tsx
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,55 +22,97 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/alert-dialog';
+import { CampaignCard } from '@/components/campaigns/CampaignCard';
+import { CampaignTypeDialog } from '@/components/campaigns/CampaignTypeDialog';
+import { Campaign } from '@/types/campaign';
+import { LandivoProperty } from '@/types/landivo';
 import {
   Plus,
   Search,
   Filter,
-  MoreHorizontal,
   Mail,
+  Loader2,
   Users,
   TrendingUp,
-  Calendar,
-  Eye,
   MousePointer,
-  Edit,
-  Copy,
-  Trash2,
-  BarChart3,
-  Play,
-  Pause,
-  RefreshCw,
-  AlertTriangle,
-} from "lucide-react";
-import { CampaignTypeDialog } from "@/components/campaigns/CampaignTypeDialog";
-import { formatDate, formatNumber } from "@/lib/utils";
-import { Campaign } from "@/types/campaign";
-import { toast } from "sonner";
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { formatNumber } from '@/lib/utils';
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://api.mailivo.landivo.com";
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+interface EmailList {
+  id: string;
+  _id?: string;
+  name: string;
+  buyerCount?: number;
+  contactCount?: number;
+  recipients?: any[];
+}
+
+interface Template {
+  id: string;
+  _id?: string;
+  name?: string;
+  title?: string;
+}
+
+interface PropertyDetails {
+  address: string;
+  isMultiple: boolean;
+  count: number;
+}
+
+interface EmailListDetails {
+  name: string;
+  recipientCount: number;
+}
 
 export default function ManageCampaignsPage() {
   const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [properties, setProperties] = useState<LandivoProperty[]>([]);
+  const [emailLists, setEmailLists] = useState<EmailList[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
     null
   );
-  const [duplicating, setDuplicating] = useState<string | null>(null);
-  const [properties, setProperties] = useState<any[]>([]);
-  const [emailLists, setEmailLists] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
   const [campaignTypeDialogOpen, setCampaignTypeDialogOpen] = useState(false);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
+
+  const filteredCampaigns = campaigns.filter((campaign) => {
+    const matchesSearch = campaign.name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === 'all' || campaign.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Calculate stats
+  const totalSent = campaigns.reduce(
+    (sum, c) => sum + (c.metrics?.sent || 0),
+    0
+  );
+  const totalClicks = campaigns.reduce(
+    (sum, c) => sum + (c.metrics?.totalClicks || 0),
+    0
+  );
+  const uniqueClickers = campaigns.reduce(
+    (sum, c) => sum + (c.metrics?.clicked || 0),
+    0
+  );
+  const avgClickRate =
+    totalSent > 0 ? ((uniqueClickers / totalSent) * 100).toFixed(1) : '0';
+  const clicksPerCampaign =
+    campaigns.length > 0 ? (totalClicks / campaigns.length).toFixed(1) : '0';
+  const activeCampaigns = campaigns.filter((c) => c.status === 'active').length;
 
   useEffect(() => {
     fetchCampaigns();
@@ -77,15 +125,15 @@ export default function ManageCampaignsPage() {
     try {
       const response = await fetch(`${API_URL}/campaigns?source=landivo`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
-        credentials: "include",
+        credentials: 'include',
       });
       const data = await response.json();
       setCampaigns(data.campaigns || data);
     } catch (error) {
-      console.error("Error fetching campaigns:", error);
-      toast.error("Failed to load campaigns");
+      console.error('Error fetching campaigns:', error);
+      toast.error('Failed to load campaigns');
     } finally {
       setLoading(false);
     }
@@ -94,17 +142,16 @@ export default function ManageCampaignsPage() {
   const fetchProperties = async () => {
     try {
       const serverURL =
-        process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5000";
+        process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
       const response = await fetch(`${serverURL}/residency/allresd/`, {
-        credentials: "include",
+        credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
-        console.log("Properties data:", data); // Debug log
         setProperties(Array.isArray(data) ? data : []);
       }
     } catch (error) {
-      console.error("Error fetching properties:", error);
+      console.error('Error fetching properties:', error);
     }
   };
 
@@ -112,17 +159,16 @@ export default function ManageCampaignsPage() {
     try {
       const response = await fetch(`${API_URL}/landivo-email-lists`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
-        credentials: "include",
+        credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
-        console.log("Email lists data:", data); // Debug log
         setEmailLists(Array.isArray(data) ? data : data.emailLists || []);
       }
     } catch (error) {
-      console.error("Error fetching email lists:", error);
+      console.error('Error fetching email lists:', error);
     }
   };
 
@@ -130,46 +176,107 @@ export default function ManageCampaignsPage() {
     try {
       const response = await fetch(`${API_URL}/templates`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
-        credentials: "include",
+        credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
-        console.log("Templates data:", data); // Debug log
         setTemplates(Array.isArray(data) ? data : data.templates || []);
       }
     } catch (error) {
-      console.error("Error fetching templates:", error);
+      console.error('Error fetching templates:', error);
     }
   };
 
-  const getPropertyAddress = (propertyId: string) => {
+  // Updated to handle both string and string[] for properties
+  const getPropertyDetails = (propertyId: string | string[]): PropertyDetails => {
     if (!Array.isArray(properties)) {
-      return propertyId;
+      return {
+        address: typeof propertyId === 'string' ? propertyId : propertyId.join(', '),
+        isMultiple: Array.isArray(propertyId) && propertyId.length > 1,
+        count: Array.isArray(propertyId) ? propertyId.length : 1,
+      };
     }
-    const property = properties.find(
-      (p) => p.id === propertyId || p._id === propertyId
-    );
-    if (!property) return propertyId;
 
-    return `${property.streetAddress || ""}, ${property.city || ""}, ${property.zip || ""}`
-      .replace(/^,\s*|,\s*$/g, "")
-      .replace(/,\s*,/g, ",");
+    // Handle single property
+    if (typeof propertyId === 'string') {
+      const property = properties.find(
+        (p) => p.id === propertyId || p._id === propertyId
+      );
+      if (!property) {
+        return {
+          address: propertyId,
+          isMultiple: false,
+          count: 1,
+        };
+      }
+
+      const address = `${property.streetAddress || ''}, ${property.city || ''}, ${property.zip || ''}`
+        .replace(/^,\s*|,\s*$/g, '')
+        .replace(/,\s*,/g, ',');
+
+      return {
+        address,
+        isMultiple: false,
+        count: 1,
+      };
+    }
+
+    // Handle multiple properties
+    if (Array.isArray(propertyId)) {
+      return {
+        address: '', // Not needed for multiple properties
+        isMultiple: true,
+        count: propertyId.length,
+      };
+    }
+
+    return {
+      address: String(propertyId),
+      isMultiple: false,
+      count: 1,
+    };
   };
 
-  const getEmailListDetails = (listId: string) => {
+  // Updated to handle both string and string[] for email lists
+  const getEmailListDetails = (listId: string | string[]): EmailListDetails => {
     if (!Array.isArray(emailLists)) {
       return {
-        name: listId,
+        name: typeof listId === 'string' ? listId : `${listId.length} Lists`,
         recipientCount: 0,
       };
     }
-    const list = emailLists.find((l) => l.id === listId || l._id === listId);
+
+    // Handle single email list
+    if (typeof listId === 'string') {
+      const list = emailLists.find((l) => l.id === listId || l._id === listId);
+      return {
+        name: list?.name || listId,
+        recipientCount:
+          list?.buyerCount || list?.contactCount || list?.recipients?.length || 0,
+      };
+    }
+
+    // Handle multiple email lists
+    if (Array.isArray(listId)) {
+      const totalRecipients = listId.reduce((total, id) => {
+        const list = emailLists.find((l) => l.id === id || l._id === id);
+        return (
+          total +
+          (list?.buyerCount || list?.contactCount || list?.recipients?.length || 0)
+        );
+      }, 0);
+
+      return {
+        name: `${listId.length} Email Lists`,
+        recipientCount: totalRecipients,
+      };
+    }
+
     return {
-      name: list?.name || listId,
-      recipientCount:
-        list?.buyerCount || list?.contactCount || list?.recipients?.length || 0,
+      name: String(listId),
+      recipientCount: 0,
     };
   };
 
@@ -202,25 +309,25 @@ export default function ManageCampaignsPage() {
       const response = await fetch(
         `${API_URL}/campaigns/${campaignId}/duplicate`,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+            Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
           },
-          credentials: "include",
+          credentials: 'include',
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to duplicate campaign");
+        throw new Error(errorData.error || 'Failed to duplicate campaign');
       }
 
-      toast.success("Campaign duplicated successfully");
+      toast.success('Campaign duplicated successfully');
       fetchCampaigns();
     } catch (error) {
-      console.error("Error duplicating campaign:", error);
-      toast.error("Failed to duplicate campaign", {
-        description: error instanceof Error ? error.message : "Unknown error",
+      console.error('Error duplicating campaign:', error);
+      toast.error('Failed to duplicate campaign', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setDuplicating(null);
@@ -236,26 +343,27 @@ export default function ManageCampaignsPage() {
     if (!campaignToDelete) return;
 
     const campaignId = (campaignToDelete as any)._id || campaignToDelete.id;
+
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}`, {
-        method: "DELETE",
+        method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
-        credentials: "include",
+        credentials: 'include',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete campaign");
+        throw new Error(errorData.error || 'Failed to delete campaign');
       }
 
-      toast.success("Campaign deleted successfully");
+      toast.success('Campaign deleted successfully');
       fetchCampaigns();
     } catch (error) {
-      console.error("Error deleting campaign:", error);
-      toast.error("Failed to duplicate campaign", {
-        description: error instanceof Error ? error.message : "Unknown error",
+      console.error('Error deleting campaign:', error);
+      toast.error('Failed to delete campaign', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setDeleteDialogOpen(false);
@@ -266,65 +374,50 @@ export default function ManageCampaignsPage() {
   const handleSendCampaign = async (campaignId: string) => {
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}/send`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
-        credentials: "include",
+        credentials: 'include',
       });
 
-      if (!response.ok) throw new Error("Failed to send campaign");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send campaign');
+      }
 
-      toast.success("Campaign sending initiated");
-      fetchCampaigns(); // Refresh the list
+      toast.success('Campaign sent successfully');
+      fetchCampaigns();
     } catch (error) {
-      console.error("Error sending campaign:", error);
-      toast.error("Failed to send campaign");
+      console.error('Error sending campaign:', error);
+      toast.error('Failed to send campaign', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   };
 
   const handlePauseCampaign = async (campaignId: string) => {
     try {
       const response = await fetch(`${API_URL}/campaigns/${campaignId}/pause`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
-        credentials: "include",
+        credentials: 'include',
       });
 
-      if (!response.ok) throw new Error("Failed to pause campaign");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to pause campaign');
+      }
 
-      toast.success("Campaign paused");
-      fetchCampaigns(); // Refresh the list
+      toast.success('Campaign paused successfully');
+      fetchCampaigns();
     } catch (error) {
-      console.error("Error pausing campaign:", error);
-      toast.error("Failed to pause campaign");
-    }
-  };
-
-  const filteredCampaigns = campaigns.filter(
-    (campaign) =>
-      campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      campaign.property.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "paused":
-        return "bg-yellow-100 text-yellow-800";
-      case "completed":
-        return "bg-blue-100 text-blue-800";
-      case "draft":
-        return "bg-gray-100 text-gray-800";
-      case "sending":
-        return "bg-purple-100 text-purple-800";
-      case "sent":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      console.error('Error pausing campaign:', error);
+      toast.error('Failed to pause campaign', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   };
 
@@ -332,24 +425,13 @@ export default function ManageCampaignsPage() {
     setCampaignTypeDialogOpen(true);
   };
 
-  // Calculate stats
-  const totalSent = campaigns.reduce(
-    (sum, c) => sum + (c.metrics?.sent || 0),
-    0
-  );
-  const totalClicks = campaigns.reduce(
-    (sum, c) => sum + (c.metrics?.totalClicks || 0),
-    0
-  );
-  const uniqueClickers = campaigns.reduce(
-    (sum, c) => sum + (c.metrics?.clicked || 0),
-    0
-  );
-  const avgClickRate =
-    totalSent > 0 ? ((uniqueClickers / totalSent) * 100).toFixed(1) : "0";
-  const clicksPerCampaign =
-    campaigns.length > 0 ? (totalClicks / campaigns.length).toFixed(1) : "0";
-  const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -378,10 +460,20 @@ export default function ManageCampaignsPage() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" className="w-full sm:w-auto">
-          <Filter className="h-4 w-4 mr-2" />
-          Filter
-        </Button>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="paused">Paused</SelectItem>
+            <SelectItem value="sent">Sent</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Campaign Stats */}
@@ -449,29 +541,15 @@ export default function ManageCampaignsPage() {
 
       {/* Campaigns List */}
       <div className="space-y-4">
-        {loading ? (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-gray-200 rounded w-full"></div>
-                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : filteredCampaigns.length === 0 ? (
+        {filteredCampaigns.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
               <p className="text-muted-foreground mb-4">
                 {searchTerm
-                  ? "Try adjusting your search"
-                  : "Create your first campaign to get started"}
+                  ? 'Try adjusting your search'
+                  : 'Create your first campaign to get started'}
               </p>
               <Button onClick={handleCreateCampaign}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -494,7 +572,7 @@ export default function ManageCampaignsPage() {
               duplicating={
                 duplicating === ((campaign as any)._id || campaign.id)
               }
-              getPropertyAddress={getPropertyAddress}
+              getPropertyDetails={getPropertyDetails}
               getEmailListDetails={getEmailListDetails}
               getTemplateName={getTemplateName}
             />
@@ -523,246 +601,12 @@ export default function ManageCampaignsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/*Campaign Type Dialog */}
+
+      {/* Campaign Type Dialog */}
       <CampaignTypeDialog
         open={campaignTypeDialogOpen}
         onOpenChange={setCampaignTypeDialogOpen}
       />
     </div>
-  );
-}
-
-// Campaign Card Component
-interface CampaignCardProps {
-  campaign: Campaign;
-  onViewDetails: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDuplicate: (campaign: Campaign) => void;
-  onDelete: (campaign: Campaign) => void;
-  onViewAnalytics: (id: string) => void;
-  onSend: (id: string) => void;
-  onPause: (id: string) => void;
-  duplicating: boolean;
-  getPropertyAddress: (id: string) => string;
-  getEmailListDetails: (id: string) => { name: string; recipientCount: number };
-  getTemplateName: (id: string) => string;
-}
-
-function CampaignCard({
-  campaign,
-  onViewDetails,
-  onEdit,
-  onDuplicate,
-  onDelete,
-  onViewAnalytics,
-  onSend,
-  onPause,
-  duplicating,
-  getPropertyAddress,
-  getEmailListDetails,
-  getTemplateName,
-}: CampaignCardProps) {
-  const campaignId = (campaign as any)._id || campaign.id;
-  const openRate = campaign.metrics?.sent
-    ? (campaign.metrics.open / campaign.metrics.sent) * 100
-    : 0;
-  const clickRate =
-    campaign.metrics?.sent && campaign.metrics?.clicked
-      ? (campaign.metrics.clicked / campaign.metrics.sent) * 100
-      : 0;
-  const uniqueClickRate =
-    campaign.metrics?.sent && campaign.metrics?.clicks
-      ? ((campaign.metrics.clicks / campaign.metrics.sent) * 100).toFixed(1)
-      : "0";
-  const emailListDetails = getEmailListDetails(campaign.emailList);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "paused":
-        return "bg-yellow-100 text-yellow-800";
-      case "completed":
-        return "bg-blue-100 text-blue-800";
-      case "draft":
-        return "bg-gray-100 text-gray-800";
-      case "sending":
-        return "bg-purple-100 text-purple-800";
-      case "sent":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const canSend = campaign.status === "draft" || campaign.status === "paused";
-  const canPause = campaign.status === "active"; // || campaign.status === 'sending';
-
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Campaign Info */}
-          <div className="flex-1 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <h3 className="text-lg font-semibold">{campaign.name}</h3>
-              <Badge className={getStatusColor(campaign.status)}>
-                {campaign.status}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Property</p>
-                <p className="font-medium truncate">
-                  {getPropertyAddress(campaign.property)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Email List</p>
-                <p className="font-medium truncate">
-                  {emailListDetails.name}
-                  {emailListDetails.recipientCount > 0 && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({formatNumber(emailListDetails.recipientCount)}{" "}
-                      Recipients)
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Template</p>
-                <p className="font-medium truncate">
-                  {getTemplateName(campaign.emailTemplate)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Schedule</p>
-                <p className="font-medium">{campaign.emailSchedule}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Volume</p>
-                <p className="font-medium">
-                  {formatNumber(campaign.emailVolume || 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Sent</p>
-                <p className="font-medium text-blue-600">
-                  {formatNumber(campaign.metrics?.sent || 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Opens</p>
-                <p className="font-medium text-green-600">
-                  {formatNumber(campaign.metrics?.open || 0)} (
-                  {openRate.toFixed(1)}%)
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Clicks</p>
-                <p className="font-medium text-purple-600">
-                  {formatNumber(campaign.metrics?.totalClicks || 0)} (
-                  {clickRate.toFixed(1)}%)
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Bounces</p>
-                <p className="font-medium text-red-600">
-                  {formatNumber(campaign.metrics?.bounces || 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Delivered</p>
-                <p className="font-medium text-blue-600">
-                  {formatNumber(campaign.metrics?.successfulDeliveries || 0)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <span>Created: {formatDate(campaign.createdAt)}</span>
-              {/* <span>Mobile Opens: {formatNumber(campaign.metrics?.mobileOpen || 0)}</span>
-              <span>Did Not Open: {formatNumber(campaign.metrics?.didNotOpen || 0)}</span> */}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onViewDetails(campaignId)}
-              className="w-full sm:w-auto"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Button>
-
-            {canSend && (
-              <Button
-                size="sm"
-                onClick={() => onSend(campaignId)}
-                className="w-full sm:w-auto"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Send
-              </Button>
-            )}
-
-            {canPause && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onPause(campaignId)}
-                className="w-full sm:w-auto"
-              >
-                <Pause className="h-4 w-4 mr-2" />
-                Pause
-              </Button>
-            )}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(campaignId)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Campaign
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDuplicate(campaign)}
-                  disabled={duplicating}
-                >
-                  {duplicating ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Copy className="h-4 w-4 mr-2" />
-                  )}
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onViewAnalytics(campaignId)}>
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Analytics
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDelete(campaign)}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
