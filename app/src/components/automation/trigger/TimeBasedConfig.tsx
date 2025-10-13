@@ -5,7 +5,7 @@ import React from "react";
 import { useEffect } from "react";
 import { Lock, AlertCircle, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AutomationTrigger, AutomationCondition } from "@mailivo/shared-types";
+import { AutomationTrigger, AutomationCondition, AutomationAction } from "@mailivo/shared-types";
 
 /**
  * HOOKS
