@@ -390,7 +390,7 @@ export class AutomationExecutor {
   private async fetchProperties(propertyIds: string[], userId: string): Promise<any[]> {
     try {
       if (!propertyIds || propertyIds.length === 0) {
-        const response = await axios.get(`${this.LANDIVO_API_URL}/residency`, {
+      const response = await axios.get(`${this.LANDIVO_API_URL}/residency/allresd`, {
           params: { userId },
         });
         return response.data;
