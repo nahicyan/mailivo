@@ -390,7 +390,7 @@ export class AutomationExecutor {
   private async fetchProperties(propertyIds: string[], userId: string): Promise<any[]> {
     try {
       if (!propertyIds || propertyIds.length === 0) {
-        const response = await axios.get(`${this.LANDIVO_API_URL}/property`, {
+        const response = await axios.get(`${this.LANDIVO_API_URL}/residency`, {
           params: { userId },
         });
         return response.data;
@@ -399,7 +399,7 @@ export class AutomationExecutor {
       const properties = await Promise.all(
         propertyIds.map((id) =>
           axios
-            .get(`${this.LANDIVO_API_URL}/property/${id}`)
+            .get(`${this.LANDIVO_API_URL}/residency/${id}`)
             .then((res) => res.data)
             .catch((err) => {
               logger.error(`Failed to fetch property ${id}:`, err);
