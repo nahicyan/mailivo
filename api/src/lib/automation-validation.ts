@@ -68,13 +68,55 @@ export class AutomationValidator {
     const bestPracticeWarnings = this.generateBestPracticeWarnings(automation, entityState);
     warnings.push(...bestPracticeWarnings);
 
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    };
-  }
+    if (automation.trigger?.type === "property_uploaded") {
+      const hasPropertyFilter = automation.conditions?.some((c) => c.category === "property_data");
 
+      if (!hasPropertyFilter) {
+        warnings.push({
+          code: "NO_PROPERTY_FILTER",
+          message: "Consider filtering properties by criteria to avoid sending campaigns for all new uploads.",
+          severity: "warning",
+        });
+      }
+    }
+
+    // ADD YOUR NEW CODE RIGHT HERE:
+    if (automation.trigger?.type === "property_updated") {
+      const triggerConfig = automation.trigger.config as any;
+      const updateType = triggerConfig?.updateType || "any_update";
+
+      if (updateType === "discount") {
+        if (automation.action?.config?.campaignType !== "single_property") {
+          errors.push({
+            code: "INVALID_CAMPAIGN_TYPE",
+            message: "Property discount requires single property campaign type.",
+            severity: "error",
+          });
+        }
+
+        if (!automation.action?.config?.subject || automation.action?.config?.subject.trim() === "") {
+          errors.push({
+            code: "MISSING_SUBJECT",
+            message: "Email subject is required for discount campaigns.",
+            severity: "error",
+          });
+        }
+
+        const hasPropertyFilter = automation.conditions?.some((c) => c.category === "property_data");
+
+        if (hasPropertyFilter) {
+          warnings.push({
+            code: "PROPERTY_CONDITIONS_DISABLED",
+            message: "Property data conditions are disabled for discount updates as properties are selected from the trigger event.",
+            severity: "info",
+          });
+        }
+      }
+    }
+
+    // Then the return statement should be below
+    return { isValid: errors.length === 0, errors, warnings };
+  }
   /**
    * Build entity selection state to track which entities are selected where
    */
@@ -417,54 +459,6 @@ export class AutomationValidator {
         });
       }
     }
-    
-      const triggerConfig = automation.trigger.config as any;
-  const updateType = triggerConfig?.updateType || 'any_update';
-
-  // Discount-specific validations
-  if (updateType === 'discount') {
-    // Validate campaign type is single
-    if (automation.action?.config?.campaignType !== 'single_property') {
-      errors.push({
-        code: 'INVALID_CAMPAIGN_TYPE',
-        message: 'Property discount requires single property campaign type.',
-        severity: 'error'
-      });
-    }
-
-    // Validate subject is provided
-    if (!automation.action?.config?.subject || 
-        automation.action?.config?.subject.trim() === '') {
-      errors.push({
-        code: 'MISSING_SUBJECT',
-        message: 'Email subject is required for discount campaigns.',
-        severity: 'error'
-      });
-    }
-
-    // Info about disabled property conditions
-    const hasPropertyFilter = automation.conditions?.some(
-      c => c.category === 'property_data'
-    );
-
-    if (hasPropertyFilter) {
-      warnings.push({
-        code: 'PROPERTY_CONDITIONS_DISABLED',
-        message: 'Property data conditions are disabled for discount updates as properties are selected from the trigger event.',
-        severity: 'info'
-      });
-    }
-  }
-
-  // Validation for other update types
-  if (updateType === 'status_change') {
-    // Could add status-specific validations here
-  }
-
-  if (updateType === 'availability_change') {
-    // Could add availability-specific validations here
-  }
-}
 
     // Validate email list
     if (!config.emailList) {
