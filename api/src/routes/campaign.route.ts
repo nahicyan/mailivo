@@ -65,6 +65,8 @@ router.post('/', [
   body('emailVolume').isInt({ min: 1 }).withMessage('Email volume must be positive'),
 ], validate, campaignController.createCampaign.bind(campaignController));
 
+router.get('/subjects/:propertyId', campaignController.getPropertySubjects.bind(campaignController));
+
 router.get('/:id', campaignController.getCampaign.bind(campaignController));
 router.put('/:id', campaignController.updateCampaign.bind(campaignController));
 router.delete('/:id', campaignController.deleteCampaign.bind(campaignController));
