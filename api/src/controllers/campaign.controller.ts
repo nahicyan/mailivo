@@ -640,28 +640,22 @@ class CampaignController {
   /**
    * Get past campaign subjects for a specific property
    * GET /campaigns/subjects/:propertyId
+   * PUBLIC - No authentication required
    */
-  async getPropertySubjects(req: AuthRequest, res: Response): Promise<void> {
+  async getPropertySubjects(req: Request, res: Response): Promise<void> {
     try {
       const { propertyId } = req.params;
-      const userId = req.user?._id;
-
-      if (!userId) {
-        res.status(401).json({ error: "User not authenticated" });
-        return;
-      }
 
       if (!propertyId) {
         res.status(400).json({ error: "Property ID is required" });
         return;
       }
 
-      // Find campaigns where:
+      // Find ALL campaigns where:
       // - type is "single"
       // - property matches propertyId (handle both string and array)
       // - subject exists and is not empty
       const campaigns = await Campaign.find({
-        userId,
         type: "single",
         $or: [{ property: propertyId }, { property: { $in: [propertyId] } }],
         subject: { $exists: true, $ne: "" },
@@ -679,7 +673,7 @@ class CampaignController {
       // Remove duplicates based on subject
       const uniqueSubjects = subjects.filter((item, index, self) => index === self.findIndex((t) => t.subject === item.subject));
 
-      logger.info(`Retrieved ${uniqueSubjects.length} unique subjects for property ${propertyId}`, { userId });
+      logger.info(`Retrieved ${uniqueSubjects.length} unique subjects for property ${propertyId}`);
 
       res.json({
         success: true,
