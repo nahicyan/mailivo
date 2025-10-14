@@ -108,7 +108,7 @@ export class AutomationValidator {
           warnings.push({
             code: "PROPERTY_CONDITIONS_DISABLED",
             message: "Property data conditions are disabled for discount updates as properties are selected from the trigger event.",
-            severity: "info",
+            severity: 'warning'
           });
         }
       }

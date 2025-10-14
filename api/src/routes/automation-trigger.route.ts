@@ -8,7 +8,7 @@ const router = Router();
 // Each trigger type has its own endpoint for clarity and validation
 router.post('/propertyUpload', automationTriggerController.handlePropertyUpload);
 router.post('/propertyUpdate', automationTriggerController.handlePropertyUpdate);
-router.post('/propertyUpdate/discount', automationTriggerController.handlePropertyUpdateDiscount); 
+router.post('/propertyUpdate/discount', automationTriggerController.handlePropertyUpdate);
 router.post('/propertyView', automationTriggerController.handlePropertyView);
 router.post('/campaignStatusChange', automationTriggerController.handleCampaignStatusChange);
 router.post('/emailTrackingEvent', automationTriggerController.handleEmailTrackingEvent);

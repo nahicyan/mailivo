@@ -34,27 +34,57 @@ class AutomationTriggerController {
   }
 
   /**
-   * Handle property update trigger from Landivo
+   * Handle property update trigger from Landivo (includes discount)
    */
   async handlePropertyUpdate(req: Request, res: Response): Promise<void> {
     try {
       logger.info("Property update trigger received", { body: req.body });
 
+      // Handle "Send from Mailivo" redirect for discount
+      if (req.body.sendType === "mailivo" && req.body.source === "Property-Discount-Landivo") {
+        const redirectUrl = `${process.env.FRONTEND_URL}/dashboard/automation/trigger/property-update?propertyId=${req.body.propertyID}&updateType=discount&subject=${encodeURIComponent(req.body.subject || "")}&area=${req.body.area || ""}`;
+
+        res.status(200).json({
+          success: true,
+          message: "Redirecting to Mailivo",
+          redirectUrl,
+        });
+        return;
+      }
+
+      // Determine updateType from request
+      let updateType = "any_update"; // default
+
+      if (req.body.source === "Property-Discount-Landivo") {
+        updateType = "discount";
+      } else if (req.body.eventType === "status_change") {
+        updateType = "status_change";
+      } else if (req.body.eventType === "availability_change") {
+        updateType = "availability_change";
+      }
+
       const result = await automationTriggerService.processTrigger({
         type: "property_updated",
-        data: req.body,
+        data: {
+          ...req.body,
+          updateType,
+          eventType: updateType,
+        },
         source: "landivo",
       });
 
       res.status(200).json({
         success: true,
-        message: "Property update processed",
+        message: `Property ${updateType} processed`,
         executionsTriggered: result.executionsTriggered,
         automationsMatched: result.automationsMatched,
         executionIds: result.executionIds,
       });
     } catch (error: any) {
-      logger.error("Property update trigger failed", { error: error.message });
+      logger.error("Property update trigger failed", {
+        error: error.message,
+        stack: error.stack,
+      });
       res.status(500).json({
         success: false,
         error: error.message || "Failed to process property update trigger",
@@ -145,65 +175,6 @@ class AutomationTriggerController {
       res.status(500).json({
         success: false,
         error: error.message || "Failed to process email tracking event trigger",
-      });
-    }
-  }
-
-  /**
-   * Handle property update trigger from Landivo
-   */
-  async handlePropertyUpdate(req: Request, res: Response): Promise<void> {
-    try {
-      logger.info("Property update trigger received", { body: req.body });
-
-      // Handle "Send from Mailivo" redirect for discount
-      if (req.body.sendType === "mailivo" && req.body.source === "Property-Discount-Landivo") {
-        const redirectUrl = `${process.env.FRONTEND_URL}/dashboard/automation/trigger/property-update?propertyId=${req.body.propertyID}&updateType=discount&subject=${encodeURIComponent(req.body.subject || "")}&area=${req.body.area || ""}`;
-
-        res.status(200).json({
-          success: true,
-          message: "Redirecting to Mailivo",
-          redirectUrl,
-        });
-        return;
-      }
-
-      // Determine updateType from request
-      let updateType = "any_update"; // default
-
-      if (req.body.source === "Property-Discount-Landivo") {
-        updateType = "discount";
-      } else if (req.body.eventType === "status_change") {
-        updateType = "status_change";
-      } else if (req.body.eventType === "availability_change") {
-        updateType = "availability_change";
-      }
-
-      const result = await automationTriggerService.processTrigger({
-        type: "property_updated",
-        data: {
-          ...req.body,
-          updateType,
-          eventType: updateType,
-        },
-        source: "landivo",
-      });
-
-      res.status(200).json({
-        success: true,
-        message: `Property ${updateType} processed`,
-        executionsTriggered: result.executionsTriggered,
-        automationsMatched: result.automationsMatched,
-        executionIds: result.executionIds,
-      });
-    } catch (error: any) {
-      logger.error("Property update trigger failed", {
-        error: error.message,
-        stack: error.stack,
-      });
-      res.status(500).json({
-        success: false,
-        error: error.message || "Failed to process property update trigger",
       });
     }
   }
