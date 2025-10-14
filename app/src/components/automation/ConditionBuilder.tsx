@@ -111,7 +111,7 @@ export default function ConditionBuilder({ trigger, conditions, onChange }: Cond
           value: "" as any,
         },
       ],
-      matchAll: true,
+      matchAll: false,
     };
 
     onChange([...conditions, newCondition]);
