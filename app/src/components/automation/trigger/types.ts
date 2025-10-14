@@ -167,16 +167,57 @@ class PropertyViewedTriggerConfig extends DefaultTriggerConfig {
  * Property Updated trigger configuration
  */
 class PropertyUpdatedTriggerConfig extends DefaultTriggerConfig {
+  constructor(protected trigger: AutomationTrigger) {
+    super(trigger);
+  }
+
+  private isDiscountUpdate(): boolean {
+    const config = this.trigger.config as any;
+    return config?.updateType === "discount";
+  }
+
+  getAllowedCampaignTypes() {
+    // Discount updates require single property
+    if (this.isDiscountUpdate()) {
+      return { singleProperty: true, multiProperty: false };
+    }
+    // Other update types allow both
+    return { singleProperty: true, multiProperty: true };
+  }
+
   getPropertySelectionSource(): "trigger" {
     return "trigger";
+  }
+
+  isCampaignTypeLocked(): boolean {
+    return this.isDiscountUpdate();
+  }
+
+  getLockedCampaignType(): "single_property" | null {
+    return this.isDiscountUpdate() ? "single_property" : null;
   }
 
   showEmailSubjectToggle(): boolean {
     return true;
   }
 
+  showDiscountSubjectCreator(): boolean {
+    return this.isDiscountUpdate();
+  }
+
   getDisabledConditionCategories(): string[] {
     return ["property_data"];
+  }
+
+  getLockedCampaignTypeMessage(): string | null {
+    if (this.isDiscountUpdate()) {
+      return "Property discount requires single property campaigns.";
+    }
+    return null;
+  }
+
+  getLockedTemplateType(): "single" | null {
+    return this.isDiscountUpdate() ? "single" : null;
   }
 }
 

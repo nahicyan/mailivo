@@ -28,6 +28,21 @@ import {
   ManualPropertySelectionAlert,
 } from "./trigger/PropertyUploadConfig";
 import { useScheduleOptions, TimeBasedTriggerInfo, TimeBasedCampaignTypeLock, useTimeBasedActionInit } from "./trigger/TimeBasedConfig";
+import {
+  PropertyUpdateDiscountConfig,
+  useDiscountSubjectToggle,
+  usePastCampaigns,
+  useSubjectTemplates,
+  DiscountBypassToggle,
+  DiscountBypassBadge,
+  PastSubjectSelector,
+  DiscountPrefixSelector,
+  SubjectTemplateSelector,
+  AddressFormatSelector,
+  SubjectEditor,
+  DISCOUNT_PREFIXES,
+  ADDRESS_FORMAT_TEMPLATES,
+} from "./trigger/PropertyUpdateDiscountConfig";
 
 const hasPaymentCalculatorComponents = (template: any): boolean => {
   if (!template?.components) return false;
