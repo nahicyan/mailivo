@@ -61,6 +61,8 @@ export function getTriggerConfig(trigger: AutomationTrigger): TriggerConfig {
       return new PropertyViewedTriggerConfig(trigger);
     case "property_updated":
       return new PropertyUpdatedTriggerConfig(trigger);
+    case "closing_date":
+      return new ClosingDateTriggerConfig(trigger);
     case "time_based":
       return new TimeBasedTriggerConfig(trigger);
     default:
@@ -267,5 +269,54 @@ class TimeBasedTriggerConfig extends DefaultTriggerConfig {
 
   getLockedCampaignTypeMessage(): string {
     return "Time-based triggers require multi-property campaigns to aggregate properties on schedule.";
+  }
+}
+
+  /**
+ * Closing Date trigger configuration
+ */
+class ClosingDateTriggerConfig extends DefaultTriggerConfig {
+  getAllowedCampaignTypes() {
+    return { singleProperty: true, multiProperty: true };
+  }
+
+  getPropertySelectionSource(conditions: AutomationCondition[]): "trigger" | "condition" | "manual" {
+    // If property conditions exist, properties will be filtered by those
+    if (conditions.some((c) => c.category === "property_data")) {
+      return "condition";
+    }
+    // Otherwise, it will check all properties with closing dates
+    return "trigger";
+  }
+
+  getPropertySelectionMessage(source: "trigger" | "condition" | "manual", conditions?: AutomationCondition[]): string {
+    switch (source) {
+      case "trigger":
+        return "Properties with closing dates will be automatically selected when the reminder time is reached.";
+      case "condition":
+        return "Properties will be filtered by your conditions and checked for upcoming closing dates.";
+      case "manual":
+        return "You can manually select properties with closing dates.";
+    }
+  }
+
+  isCampaignTypeLocked(): boolean {
+    return false;
+  }
+
+  getLockedCampaignType(): "single_property" | "multi_property" | null {
+    return null;
+  }
+
+  showEmailSubjectToggle(): boolean {
+    return true;
+  }
+
+  getDisabledConditionCategories(): string[] {
+    return [];
+  }
+
+  getLockedCampaignTypeMessage(): string | null {
+    return null;
   }
 }

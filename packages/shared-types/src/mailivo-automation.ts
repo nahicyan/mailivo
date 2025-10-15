@@ -1,7 +1,15 @@
 // packages/shared-types/src/mailivo-automation.ts
 // Complete Automation System for Mailivo
 
-export type AutomationTriggerType = "property_uploaded" | "time_based" | "property_viewed" | "property_updated" | "campaign_status_changed" | "email_tracking_status" | "unsubscribe";
+export type AutomationTriggerType =
+  | "property_uploaded"
+  | "time_based"
+  | "property_viewed"
+  | "property_updated"
+  | "campaign_status_changed"
+  | "email_tracking_status"
+  | "unsubscribe"
+  | "closing_date";
 
 export type AutomationConditionCategory = "property_data" | "campaign_data" | "email_tracking" | "email_template" | "buyer_data";
 
@@ -80,6 +88,17 @@ export interface UnsubscribeTrigger {
   };
 }
 
+export interface ClosingDateTrigger {
+  type: "closing_date";
+  config: {
+    timeUnit: "months" | "weeks" | "days" | "hours";
+    timeBefore: number;
+    time: string; // HH:MM format
+    timezone?: string;
+    propertyIds?: string[];
+  };
+}
+
 export type AutomationTrigger =
   | PropertyUploadedTrigger
   | TimeBasedTrigger
@@ -87,7 +106,8 @@ export type AutomationTrigger =
   | PropertyUpdatedTrigger
   | CampaignStatusChangedTrigger
   | EmailTrackingStatusTrigger
-  | UnsubscribeTrigger;
+  | UnsubscribeTrigger
+  | ClosingDateTrigger;
 
 // ============================================
 // CONDITION CONFIGURATIONS

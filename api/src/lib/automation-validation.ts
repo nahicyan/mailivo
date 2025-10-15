@@ -80,7 +80,6 @@ export class AutomationValidator {
       }
     }
 
-    // ADD YOUR NEW CODE RIGHT HERE:
     if (automation.trigger?.type === "property_updated") {
       const triggerConfig = automation.trigger.config as any;
       const updateType = triggerConfig?.updateType || "any_update";
@@ -108,7 +107,7 @@ export class AutomationValidator {
           warnings.push({
             code: "PROPERTY_CONDITIONS_DISABLED",
             message: "Property data conditions are disabled for discount updates as properties are selected from the trigger event.",
-            severity: 'warning'
+            severity: "warning",
           });
         }
       }
@@ -342,6 +341,71 @@ export class AutomationValidator {
             code: "MISSING_TRACKING_EVENT",
             message: "Email tracking trigger requires an event type.",
             field: "trigger.config.event",
+            severity: "error",
+          });
+        }
+        break;
+
+      case "closing_date":
+        if (!trigger.config.timeUnit) {
+          errors.push({
+            code: "MISSING_TIME_UNIT",
+            message: "Time unit is required for closing date trigger.",
+            field: "trigger.config.timeUnit",
+            severity: "error",
+          });
+        }
+
+        if (!trigger.config.timeBefore || trigger.config.timeBefore < 1) {
+          errors.push({
+            code: "INVALID_TIME_BEFORE",
+            message: "Time before closing date must be at least 1.",
+            field: "trigger.config.timeBefore",
+            severity: "error",
+          });
+        }
+
+        if (!trigger.config.time) {
+          errors.push({
+            code: "MISSING_TIME_OF_DAY",
+            message: "Time of day is required for closing date trigger.",
+            field: "trigger.config.time",
+            severity: "error",
+          });
+        }
+
+        if (trigger.config.time && !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(trigger.config.time)) {
+          errors.push({
+            code: "INVALID_TIME_FORMAT",
+            message: "Time must be in HH:MM format.",
+            field: "trigger.config.time",
+            severity: "error",
+          });
+        }
+
+        if (trigger.config.timeUnit === "months" && trigger.config.timeBefore > 12) {
+          errors.push({
+            code: "EXCESSIVE_TIME_BEFORE",
+            message: "Time before closing date should not exceed 12 months.",
+            field: "trigger.config.timeBefore",
+            severity: "error",
+          });
+        }
+
+        if (trigger.config.timeUnit === "weeks" && trigger.config.timeBefore > 52) {
+          errors.push({
+            code: "EXCESSIVE_TIME_BEFORE",
+            message: "Time before closing date should not exceed 52 weeks.",
+            field: "trigger.config.timeBefore",
+            severity: "error",
+          });
+        }
+
+        if (trigger.config.timeUnit === "days" && trigger.config.timeBefore > 365) {
+          errors.push({
+            code: "EXCESSIVE_TIME_BEFORE",
+            message: "Time before closing date should not exceed 365 days.",
+            field: "trigger.config.timeBefore",
             severity: "error",
           });
         }
@@ -580,6 +644,18 @@ export class AutomationValidator {
         warnings.push({
           code: "NO_PROPERTY_FILTER",
           message: "Consider filtering properties by criteria to avoid sending campaigns for all new uploads.",
+          severity: "warning",
+        });
+      }
+    }
+    // Warn about closing date trigger without property conditions
+    if (automation.trigger?.type === "closing_date") {
+      const hasPropertyFilter = automation.conditions?.some((c) => c.category === "property_data");
+
+      if (!hasPropertyFilter) {
+        warnings.push({
+          code: "NO_PROPERTY_FILTER_CLOSING_DATE",
+          message: "Consider adding property conditions to filter which properties should send closing date reminders.",
           severity: "warning",
         });
       }

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, Clock, Eye, RefreshCw, Mail, UserX, Upload } from "lucide-react";
+import { Calendar, Clock, Eye, RefreshCw, Mail, UserX, Upload, AlertCircle } from "lucide-react";
 import { AutomationTrigger } from "@mailivo/shared-types";
 
 interface TriggerSelectorProps {
@@ -57,6 +57,12 @@ const TRIGGER_OPTIONS = [
     icon: UserX,
     description: "When someone unsubscribes",
   },
+  {
+    value: "closing_date",
+    label: "Closing Date",
+    icon: Calendar,
+    description: "Send reminders before property closing date",
+  },
 ];
 
 export default function TriggerSelector({ value, onChange }: TriggerSelectorProps) {
@@ -74,6 +80,12 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
       campaign_status_changed: { toStatus: ["sent"] },
       email_tracking_status: { event: "opened" },
       unsubscribe: {},
+      closing_date: {
+        timeUnit: "days",
+        timeBefore: 7,
+        time: "09:00",
+        timezone: "America/New_York",
+      },
     };
 
     onChange({
@@ -144,6 +156,18 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
                 <Input type="number" min="1" max="31" value={value.config.dayOfMonth || 1} onChange={(e) => updateConfig({ dayOfMonth: parseInt(e.target.value) })} className="mt-1" />
               </div>
             )}
+
+            {value.config.schedule === "specific_date" && (
+              <div>
+                <Label>Specific Date *</Label>
+                <Input
+                  type="datetime-local"
+                  value={value.config.specificDate ? new Date(value.config.specificDate).toISOString().slice(0, 16) : ""}
+                  onChange={(e) => updateConfig({ specificDate: new Date(e.target.value) })}
+                  className="mt-1"
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -151,13 +175,20 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
         return (
           <div className="space-y-4 mt-4 p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center justify-between">
-              <Label>Require Logged-In Users *</Label>
+              <Label>Require Logged-In Users</Label>
               <Switch checked={value.config.requireLoggedIn} onCheckedChange={(checked) => updateConfig({ requireLoggedIn: checked })} />
             </div>
 
             <div>
-              <Label>Trigger After X Views</Label>
-              <Input type="number" min="1" value={value.config.viewCount || 1} onChange={(e) => updateConfig({ viewCount: parseInt(e.target.value) })} className="mt-1" />
+              <Label>View Count Threshold</Label>
+              <Input
+                type="number"
+                min="1"
+                value={value.config.viewCount || 1}
+                onChange={(e) => updateConfig({ viewCount: parseInt(e.target.value) })}
+                placeholder="Number of views required"
+                className="mt-1"
+              />
             </div>
           </div>
         );
@@ -167,35 +198,35 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
           <div className="space-y-4 mt-4 p-4 bg-muted/30 rounded-lg">
             <div>
               <Label>Update Type *</Label>
-              <Select value={value.config.updateType || "any_update"} onValueChange={(val) => updateConfig({ updateType: val })}>
+              <Select value={value.config.updateType} onValueChange={(val) => updateConfig({ updateType: val })}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="status_change">
-                    <div className="flex flex-col py-1">
-                      <span className="font-medium">Status Change</span>
-                      <span className="text-xs text-muted-foreground">Property status modified (active, sold, etc.)</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="any_update">
-                    <div className="flex flex-col py-1">
-                      <span className="font-medium">Any Update</span>
-                      <span className="text-xs text-muted-foreground">Any property field modified</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="discount">
-                    <div className="flex flex-col py-1">
-                      <span className="font-medium">Discount</span>
-                      <span className="text-xs text-muted-foreground">Property price reduced</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="availability_change">
-                    <div className="flex flex-col py-1">
-                      <span className="font-medium">Availability Change</span>
-                      <span className="text-xs text-muted-foreground">Property availability status changed</span>
-                    </div>
-                  </SelectItem>
+                  <SelectItem value="any_update">Any Update</SelectItem>
+                  <SelectItem value="status_change">Status Change</SelectItem>
+                  <SelectItem value="discount">Price Discount</SelectItem>
+                  <SelectItem value="availability_change">Availability Change</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      case "campaign_status_changed":
+        return (
+          <div className="space-y-4 mt-4 p-4 bg-muted/30 rounded-lg">
+            <div>
+              <Label>Status Changed To *</Label>
+              <Select value={value.config.toStatus?.[0] || "sent"} onValueChange={(val) => updateConfig({ toStatus: [val] })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -227,6 +258,63 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
                 <Input value={value.config.linkText || ""} onChange={(e) => updateConfig({ linkText: e.target.value })} placeholder="Filter by specific link text" className="mt-1" />
               </div>
             )}
+          </div>
+        );
+
+      case "closing_date":
+        return (
+          <div className="space-y-4 mt-4 p-4 bg-muted/30 rounded-lg">
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-800">This trigger sends automated reminders to buyers before the property closing date expires.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>When To Run *</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={value.config.timeBefore || 7}
+                  onChange={(e) => updateConfig({ timeBefore: parseInt(e.target.value) })}
+                  placeholder="e.g., 7"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Time Unit *</Label>
+                <Select value={value.config.timeUnit || "days"} onValueChange={(val) => updateConfig({ timeUnit: val })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="months">Months Before</SelectItem>
+                    <SelectItem value="weeks">Weeks Before</SelectItem>
+                    <SelectItem value="days">Days Before</SelectItem>
+                    <SelectItem value="hours">Hours Before</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Time of Day *</Label>
+              <Input type="time" value={value.config.time || "09:00"} onChange={(e) => updateConfig({ time: e.target.value })} className="mt-1" />
+              <p className="text-xs text-muted-foreground mt-1">What time should the reminder be sent?</p>
+            </div>
+
+            <div className="mt-2 p-3 bg-muted rounded-md">
+              <p className="text-sm font-medium text-foreground mb-1">Summary</p>
+              <p className="text-xs text-muted-foreground">
+                Email will be sent{" "}
+                <strong>
+                  {value.config.timeBefore || 7} {value.config.timeUnit || "days"}
+                </strong>{" "}
+                before the closing date at <strong>{value.config.time || "09:00"}</strong>
+              </p>
+            </div>
           </div>
         );
 
