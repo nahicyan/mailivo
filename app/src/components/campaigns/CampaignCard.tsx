@@ -109,13 +109,6 @@ export function CampaignCard({
   const [loadingRecipients, setLoadingRecipients] = useState(false);
 
   const campaignId = (campaign as any)._id || campaign.id;
-  const openRate = campaign.metrics?.sent
-    ? (campaign.metrics.open / campaign.metrics.sent) * 100
-    : 0;
-  const clickRate =
-    campaign.metrics?.sent && campaign.metrics?.clicked
-      ? (campaign.metrics.clicked / campaign.metrics.sent) * 100
-      : 0;
   
   const propertyDetails = getPropertyDetails(campaign.property);
   const emailListDetails = getEmailListDetails(campaign.emailList);
@@ -196,6 +189,36 @@ export function CampaignCard({
   const canSend = campaign.status === 'draft' || campaign.status === 'paused';
   const canPause = campaign.status === 'active';
 
+  // Add these calculations after the existing openRate and clickRate calculations:
+
+const totalRecipients = emailListDetails.recipientCount || 0;
+
+// Calculate percentages based on total recipients
+const sentRate = totalRecipients > 0 
+  ? ((campaign.metrics?.sent || 0) / totalRecipients) * 100 
+  : 0;
+const deliveredRate = totalRecipients > 0 
+  ? ((campaign.metrics?.delivered || 0) / totalRecipients) * 100 
+  : 0;
+const openedRate = totalRecipients > 0 
+  ? ((campaign.metrics?.opened || 0) / totalRecipients) * 100 
+  : 0;
+const clickedRate = totalRecipients > 0 
+  ? ((campaign.metrics?.clicked || 0) / totalRecipients) * 100 
+  : 0;
+const bouncedRate = totalRecipients > 0 
+  ? ((campaign.metrics?.bounced || 0) / totalRecipients) * 100 
+  : 0;
+
+// Keep the old calculations for reference if needed
+const openRate = campaign.metrics?.sent
+  ? (campaign.metrics.opened / campaign.metrics.sent) * 100
+  : 0;
+const clickRate =
+  campaign.metrics?.sent && campaign.metrics?.clicked
+    ? (campaign.metrics.clicked / campaign.metrics.sent) * 100
+    : 0;
+
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
@@ -216,6 +239,7 @@ export function CampaignCard({
                 </Badge>
               </div>
 
+              {/* First row - Campaign details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Property</p>
@@ -250,23 +274,6 @@ export function CampaignCard({
                   )}
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Recipients</p>
-                  <Button
-                    variant="link"
-                    className="h-auto p-0 font-medium text-left"
-                    onClick={handleViewRecipients}
-                    disabled={loadingRecipients}
-                  >
-                    {loadingRecipients ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        {formatNumber(emailListDetails.recipientCount)} Recipients
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <div>
                   <p className="text-muted-foreground">Template</p>
                   <p className="font-medium truncate">
                     {getTemplateName(campaign.emailTemplate)}
@@ -278,47 +285,59 @@ export function CampaignCard({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
+              {/* Second row - Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Volume</p>
-                  <p className="font-medium">
-                    {formatNumber(campaign.emailVolume || 0)}
-                  </p>
+                  <p className="text-muted-foreground">Recipients</p>
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 font-medium text-left"
+                    onClick={handleViewRecipients}
+                    disabled={loadingRecipients}
+                  >
+                    {loadingRecipients ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        {formatNumber(totalRecipients)} (100%)
+                      </>
+                    )}
+                  </Button>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Sent</p>
                   <p className="font-medium text-blue-600">
-                    {formatNumber(campaign.metrics?.sent || 0)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Opens</p>
-                  <p className="font-medium text-green-600">
-                    {formatNumber(campaign.metrics?.open || 0)} (
-                    {openRate.toFixed(1)}%)
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Clicks</p>
-                  <p className="font-medium text-purple-600">
-                    {formatNumber(campaign.metrics?.totalClicks || 0)} (
-                    {clickRate.toFixed(1)}%)
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Bounces</p>
-                  <p className="font-medium text-red-600">
-                    {formatNumber(campaign.metrics?.bounces || 0)}
+                    {formatNumber(campaign.metrics?.sent || 0)} ({sentRate.toFixed(1)}%)
                   </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Delivered</p>
                   <p className="font-medium text-blue-600">
-                    {formatNumber(campaign.metrics?.successfulDeliveries || 0)}
+                    {formatNumber(campaign.metrics?.delivered || 0)} ({deliveredRate.toFixed(1)}%)
                   </p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground">Opened</p>
+                  <p className="font-medium text-green-600">
+                    {formatNumber(campaign.metrics?.opened || 0)} ({openedRate.toFixed(1)}%)
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Clicked</p>
+                  <p className="font-medium text-purple-600">
+                    {formatNumber(campaign.metrics?.clicked || 0)} ({clickedRate.toFixed(1)}%)
+                  </p>
+                </div>
+                {/* Conditionally render Bounces only if > 0 */}
+                {(campaign.metrics?.bounced || 0) > 0 && (
+                  <div>
+                    <p className="text-muted-foreground">Bounced</p>
+                    <p className="font-medium text-red-600">
+                      {formatNumber(campaign.metrics?.bounced || 0)} ({bouncedRate.toFixed(1)}%)
+                    </p>
+                  </div>
+                )}
               </div>
-
               <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                 <span>Created: {formatDate(campaign.createdAt)}</span>
               </div>
