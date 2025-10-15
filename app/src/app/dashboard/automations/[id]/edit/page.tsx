@@ -106,6 +106,7 @@ export default function EditAutomationPage() {
       campaign_status_changed: "Campaign Status",
       email_tracking_status: "Email Tracking",
       unsubscribe: "Unsubscribe",
+      closing_date: "Closing Date",
     };
     return labels[type] || type;
   };

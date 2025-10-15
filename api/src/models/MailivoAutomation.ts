@@ -72,7 +72,7 @@ const TriggerConfigSchema = new Schema({
   type: {
     type: String,
     required: true,
-    enum: ["property_uploaded", "time_based", "property_viewed", "property_updated", "campaign_status_changed", "email_tracking_status", "unsubscribe"],
+    enum: ["property_uploaded", "time_based", "property_viewed", "property_updated", "campaign_status_changed", "email_tracking_status", "unsubscribe", "closing_date"],
   },
   config: {
     type: Schema.Types.Mixed,

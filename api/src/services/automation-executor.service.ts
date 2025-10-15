@@ -153,6 +153,14 @@ export class AutomationExecutor {
           time: new Date(),
         };
 
+      case "closing_date":
+        return {
+          propertyIds: trigger.config.propertyIds || [],
+          closingDate: trigger.config.closingDate,
+          timeUnit: trigger.config.timeUnit,
+          timeBefore: trigger.config.timeBefore,
+        };
+
       default:
         return {};
     }
@@ -432,7 +440,4 @@ export class AutomationExecutor {
       message,
     });
   }
-  
-
-  
 }

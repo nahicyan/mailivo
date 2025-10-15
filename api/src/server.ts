@@ -17,6 +17,7 @@ import { mailcowSyncJob } from "./jobs/mailcowSync.job";
 import { emailStatusManager } from "./services/tracking/EmailStatusManager";
 import { trackingSyncService } from "./services/tracking/TrackingSyncService";
 import { timeBasedAutomationJob } from "./jobs/timeBasedAutomation.job";
+import { closingDateJob } from "./jobs/closingDate.job";
 
 const logger = console;
 
@@ -114,10 +115,15 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
       console.log("🎯 All services connected and ready!");
+
       // Start the campaign scheduler
       campaignSchedulerService.start();
+
       // Start time-based automation scheduler
       console.log("✅ Time-based automation scheduler initialized");
+
+      // Start closing date automation scheduler
+      console.log("✅ Closing date automation scheduler initialized");
       // The job auto-starts and survives server restarts via Redis persistence
 
       if (process.env.MAILCOW_SYNC_ENABLED === "true") {
@@ -139,8 +145,8 @@ const startServer = async () => {
         await emailStatusManager.cleanup();
         await trackingSyncService.cleanup();
         campaignSchedulerService.stop();
-        await timeBasedAutomationJob.stop(); 
-        // ... other cleanup (future close DB/Redis)
+        await timeBasedAutomationJob.stop();
+        await closingDateJob.stop();
         process.exit(0);
       } catch (err) {
         console.error("Cleanup error:", err);
