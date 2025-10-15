@@ -207,7 +207,13 @@ export class ClosingDateScheduler {
       }
 
       const closingDate = new Date(property.closingDate);
-      const reminderDate = this.calculateReminderDate(closingDate, timeUnit, timeBefore);
+      const reminderDate = this.calculateReminderDate(
+        closingDate,
+        timeUnit,
+        timeBefore,
+        time,
+        timezone
+      );
       
       // Check if today is the reminder date
       return this.isSameDay(nowInTimezone, reminderDate);
@@ -217,7 +223,13 @@ export class ClosingDateScheduler {
   /**
    * Calculate when the reminder should be sent
    */
-  private calculateReminderDate(closingDate: Date, timeUnit: string, timeBefore: number): Date {
+  private calculateReminderDate(
+    closingDate: Date,
+    timeUnit: string,
+    timeBefore: number,
+    time?: string,
+    timezone?: string
+  ): Date {
     const reminderDate = new Date(closingDate);
     
     switch (timeUnit) {
@@ -232,7 +244,19 @@ export class ClosingDateScheduler {
         break;
       case 'hours':
         reminderDate.setHours(reminderDate.getHours() - timeBefore);
-        break;
+        return reminderDate; // For hours, keep exact time
+    }
+    
+    // Set the configured time for day-based reminders
+    if (time) {
+      const [hours, minutes] = time.split(':').map(Number);
+      reminderDate.setHours(hours, minutes, 0, 0);
+      
+      // If timezone provided, adjust for it
+      if (timezone) {
+        const dateInTimezone = this.getTimeInTimezone(reminderDate, timezone);
+        return dateInTimezone;
+      }
     }
     
     return reminderDate;
@@ -325,7 +349,9 @@ export class ClosingDateScheduler {
         const reminderDate = this.calculateReminderDate(
           closingDate,
           config.timeUnit,
-          config.timeBefore
+          config.timeBefore,
+          config.time,
+          config.timezone
         );
 
         // Only include future reminders
