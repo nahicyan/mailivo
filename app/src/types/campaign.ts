@@ -10,6 +10,7 @@ export interface PaymentPlan {
   isAvailable: boolean;
 }
 
+// app/src/types/campaign.ts
 export interface Campaign {
   id: string;
   name: string;
@@ -21,7 +22,6 @@ export interface Campaign {
   emailVolume: number;
   status: "draft" | "active" | "paused" | "completed";
 
-  // Image selections
   imageSelections?: Record<
     string,
     {
@@ -31,7 +31,6 @@ export interface Campaign {
     }
   >;
 
-  // Payment plan selection
   selectedPlan?: {
     planNumber: number;
     planName: string;
@@ -41,17 +40,27 @@ export interface Campaign {
     monthlyPayment: number;
   } | null;
 
-metrics?: {
-  open: number;
-  sent: number;
-  bounces: number;
-  successfulDeliveries: number;
-  clicks: number;
-  clicked?: number;        
-  totalClicks?: number;    
-  didNotOpen: number;
-  mobileOpen: number;
-}
+  metrics?: {
+    sent: number;
+    delivered: number;          // ✓ Use this instead of successfulDeliveries
+    opened: number;              // ✓ Use this instead of open
+    clicked: number;             // ✓ Unique clicks
+    totalClicks: number;         // Total clicks (if available)
+    bounced: number;             // ✓ Use this instead of bounces
+    failed: number;
+    complained: number;
+    totalRecipients: number;
+    didNotOpen: number;
+    mobileOpen: number;
+    hardBounces: number;
+    softBounces: number;
+    deliveryRate?: number;
+    openRate?: number;
+    clickRate?: number;
+    bounceRate?: number;
+    unsubscribeRate?: number;
+  };
+  
   createdAt: string;
   updatedAt: string;
   scheduledDate?: string;
