@@ -36,6 +36,7 @@ router.use('/landivo', landivoRoutes);
 
 // Tracking and analytics
 router.use('/via', trackingRoutes); // Email tracking via links
+
 router.use('/analytics', analyticsRoutes);
 
 // User profile

@@ -34,6 +34,10 @@ import {
   MapPin,
   Users,
   Loader2,
+  Send,
+  CheckCircle2,
+  MousePointerClick,
+  AlertCircle,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -59,6 +63,27 @@ interface Recipient {
   phone?: string;
   qualified?: boolean;
   buyerType?: string;
+}
+
+interface ContactsByStatus {
+  sent: string[];
+  delivered: string[];
+  opened: string[];
+  clicked: string[];
+  bounced: string[];
+}
+
+interface ContactsByStatusResponse {
+  success: boolean;
+  campaignId: string;
+  data: ContactsByStatus;
+  counts: {
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+  };
 }
 
 interface CampaignCardProps {
@@ -88,6 +113,8 @@ function formatDate(date: string): string {
   });
 }
 
+type StatusType = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced';
+
 export function CampaignCard({
   campaign,
   onViewDetails,
@@ -108,6 +135,12 @@ export function CampaignCard({
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
 
+  // New state for status dialogs
+  const [statusDialogOpen, setStatusDialogOpen] = useState<StatusType | null>(null);
+  const [statusContacts, setStatusContacts] = useState<ContactsByStatus | null>(null);
+  const [loadingStatusContacts, setLoadingStatusContacts] = useState(false);
+  const [allContactsMap, setAllContactsMap] = useState<Map<string, Recipient>>(new Map());
+
   const campaignId = (campaign as any)._id || campaign.id;
   
   const propertyDetails = getPropertyDetails(campaign.property);
@@ -125,13 +158,99 @@ export function CampaignCard({
     ? campaign.emailList
     : [campaign.emailList];
 
-  // Fetch recipients from all email lists
+  const totalRecipients = emailListDetails.recipientCount || 0;
+
+  // Calculate percentages based on total recipients
+  const sentRate = totalRecipients > 0 
+    ? ((campaign.metrics?.sent || 0) / totalRecipients) * 100 
+    : 0;
+  const deliveredRate = totalRecipients > 0 
+    ? ((campaign.metrics?.delivered || 0) / totalRecipients) * 100 
+    : 0;
+  const openedRate = totalRecipients > 0 
+    ? ((campaign.metrics?.opened || 0) / totalRecipients) * 100 
+    : 0;
+  const clickedRate = totalRecipients > 0 
+    ? ((campaign.metrics?.clicked || 0) / totalRecipients) * 100 
+    : 0;
+  const bouncedRate = totalRecipients > 0 
+    ? ((campaign.metrics?.bounced || 0) / totalRecipients) * 100 
+    : 0;
+
+  // Fetch all recipients from email lists and create a map
+  const fetchAllRecipients = async () => {
+    try {
+      const allRecipients: Recipient[] = [];
+
+      for (const listId of emailListIds) {
+        const response = await fetch(`${API_URL}/landivo-email-lists/${listId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          },
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.buyers && Array.isArray(data.buyers)) {
+            allRecipients.push(...data.buyers);
+          }
+        }
+      }
+
+      // Create a map of contact ID to recipient
+      const contactMap = new Map<string, Recipient>();
+      allRecipients.forEach(recipient => {
+        contactMap.set(recipient.id, recipient);
+      });
+
+      setAllContactsMap(contactMap);
+      return contactMap;
+    } catch (error) {
+      console.error('Error fetching all recipients:', error);
+      return new Map<string, Recipient>();
+    }
+  };
+
+  // Fetch contacts by status from the new API
+  const fetchContactsByStatus = async () => {
+    setLoadingStatusContacts(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/via/contacts/by-status?campaignId=${campaignId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          },
+          credentials: 'include',
+        }
+      );
+
+      if (response.ok) {
+        const data: ContactsByStatusResponse = await response.json();
+        setStatusContacts(data.data);
+        
+        // Fetch all recipients if not already loaded
+        if (allContactsMap.size === 0) {
+          await fetchAllRecipients();
+        }
+      } else {
+        toast.error('Failed to load contacts by status');
+      }
+    } catch (error) {
+      console.error('Error fetching contacts by status:', error);
+      toast.error('Failed to load contacts by status');
+    } finally {
+      setLoadingStatusContacts(false);
+    }
+  };
+
+  // Fetch recipients from all email lists for the recipients dialog
   const fetchRecipients = async () => {
     setLoadingRecipients(true);
     try {
       const allRecipients: Recipient[] = [];
 
-      // Fetch recipients from each email list
       for (const listId of emailListIds) {
         const response = await fetch(`${API_URL}/landivo-email-lists/${listId}`, {
           headers: {
@@ -167,6 +286,24 @@ export function CampaignCard({
     fetchRecipients();
   };
 
+  // Handle clicking on a status metric
+  const handleStatusClick = async (status: StatusType) => {
+    if (!statusContacts) {
+      await fetchContactsByStatus();
+    }
+    setStatusDialogOpen(status);
+  };
+
+  // Get contacts for a specific status
+  const getContactsForStatus = (status: StatusType): Recipient[] => {
+    if (!statusContacts) return [];
+    
+    const contactIds = statusContacts[status] || [];
+    return contactIds
+      .map(id => allContactsMap.get(id))
+      .filter((contact): contact is Recipient => contact !== undefined);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -186,38 +323,29 @@ export function CampaignCard({
     }
   };
 
+  const getStatusIcon = (status: StatusType) => {
+    switch (status) {
+      case 'sent':
+        return <Send className="h-5 w-5" />;
+      case 'delivered':
+        return <CheckCircle2 className="h-5 w-5" />;
+      case 'opened':
+        return <Eye className="h-5 w-5" />;
+      case 'clicked':
+        return <MousePointerClick className="h-5 w-5" />;
+      case 'bounced':
+        return <AlertCircle className="h-5 w-5" />;
+      default:
+        return <Users className="h-5 w-5" />;
+    }
+  };
+
+  const getStatusTitle = (status: StatusType) => {
+    return status.charAt(0).toUpperCase() + status.slice(1) + ' Contacts';
+  };
+
   const canSend = campaign.status === 'draft' || campaign.status === 'paused';
   const canPause = campaign.status === 'active';
-
-  // Add these calculations after the existing openRate and clickRate calculations:
-
-const totalRecipients = emailListDetails.recipientCount || 0;
-
-// Calculate percentages based on total recipients
-const sentRate = totalRecipients > 0 
-  ? ((campaign.metrics?.sent || 0) / totalRecipients) * 100 
-  : 0;
-const deliveredRate = totalRecipients > 0 
-  ? ((campaign.metrics?.delivered || 0) / totalRecipients) * 100 
-  : 0;
-const openedRate = totalRecipients > 0 
-  ? ((campaign.metrics?.opened || 0) / totalRecipients) * 100 
-  : 0;
-const clickedRate = totalRecipients > 0 
-  ? ((campaign.metrics?.clicked || 0) / totalRecipients) * 100 
-  : 0;
-const bouncedRate = totalRecipients > 0 
-  ? ((campaign.metrics?.bounced || 0) / totalRecipients) * 100 
-  : 0;
-
-// Keep the old calculations for reference if needed
-const openRate = campaign.metrics?.sent
-  ? (campaign.metrics.opened / campaign.metrics.sent) * 100
-  : 0;
-const clickRate =
-  campaign.metrics?.sent && campaign.metrics?.clicked
-    ? (campaign.metrics.clicked / campaign.metrics.sent) * 100
-    : 0;
 
   return (
     <>
@@ -240,7 +368,7 @@ const clickRate =
               </div>
 
               {/* First row - Campaign details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Property</p>
                   {propertyDetails.isMultiple ? (
@@ -306,35 +434,59 @@ const clickRate =
                 </div>
                 <div>
                   <p className="text-muted-foreground">Sent</p>
-                  <p className="font-medium text-blue-600">
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 font-medium text-left text-blue-600 hover:text-blue-700"
+                    onClick={() => handleStatusClick('sent')}
+                    disabled={(campaign.metrics?.sent || 0) === 0}
+                  >
                     {formatNumber(campaign.metrics?.sent || 0)} ({sentRate.toFixed(1)}%)
-                  </p>
+                  </Button>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Delivered</p>
-                  <p className="font-medium text-blue-600">
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 font-medium text-left text-blue-600 hover:text-blue-700"
+                    onClick={() => handleStatusClick('delivered')}
+                    disabled={(campaign.metrics?.delivered || 0) === 0}
+                  >
                     {formatNumber(campaign.metrics?.delivered || 0)} ({deliveredRate.toFixed(1)}%)
-                  </p>
+                  </Button>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Opened</p>
-                  <p className="font-medium text-green-600">
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 font-medium text-left text-green-600 hover:text-green-700"
+                    onClick={() => handleStatusClick('opened')}
+                    disabled={(campaign.metrics?.opened || 0) === 0}
+                  >
                     {formatNumber(campaign.metrics?.opened || 0)} ({openedRate.toFixed(1)}%)
-                  </p>
+                  </Button>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Clicked</p>
-                  <p className="font-medium text-purple-600">
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 font-medium text-left text-purple-600 hover:text-purple-700"
+                    onClick={() => handleStatusClick('clicked')}
+                    disabled={(campaign.metrics?.clicked || 0) === 0}
+                  >
                     {formatNumber(campaign.metrics?.clicked || 0)} ({clickedRate.toFixed(1)}%)
-                  </p>
+                  </Button>
                 </div>
                 {/* Conditionally render Bounces only if > 0 */}
                 {(campaign.metrics?.bounced || 0) > 0 && (
                   <div>
                     <p className="text-muted-foreground">Bounced</p>
-                    <p className="font-medium text-red-600">
+                    <Button
+                      variant="link"
+                      className="h-auto p-0 font-medium text-left text-red-600 hover:text-red-700"
+                      onClick={() => handleStatusClick('bounced')}
+                    >
                       {formatNumber(campaign.metrics?.bounced || 0)} ({bouncedRate.toFixed(1)}%)
-                    </p>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -574,6 +726,84 @@ const clickRate =
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Contacts Dialog (Sent, Delivered, Opened, Clicked, Bounced) */}
+      <Dialog 
+        open={statusDialogOpen !== null} 
+        onOpenChange={(open) => !open && setStatusDialogOpen(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {statusDialogOpen && getStatusIcon(statusDialogOpen)}
+              {statusDialogOpen && getStatusTitle(statusDialogOpen)}
+            </DialogTitle>
+            <DialogDescription>
+              {statusDialogOpen && getContactsForStatus(statusDialogOpen).length}{' '}
+              {statusDialogOpen && getContactsForStatus(statusDialogOpen).length === 1 
+                ? 'contact' 
+                : 'contacts'}{' '}
+              {statusDialogOpen}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[500px] pr-4">
+            {loadingStatusContacts ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {statusDialogOpen && getContactsForStatus(statusDialogOpen).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No contacts found for this status
+                  </div>
+                ) : (
+                  statusDialogOpen && getContactsForStatus(statusDialogOpen).map((contact, index) => (
+                    <Card key={contact.id || index}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold">
+                                {contact.firstName?.charAt(0) || contact.email.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {contact.firstName} {contact.lastName}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {contact.email}
+                              </p>
+                              {contact.phone && (
+                                <p className="text-xs text-muted-foreground">
+                                  {contact.phone}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {contact.qualified && (
+                              <Badge variant="secondary" className="text-xs">
+                                Qualified
+                              </Badge>
+                            )}
+                            {contact.buyerType && (
+                              <Badge variant="outline" className="text-xs">
+                                {contact.buyerType}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             )}
           </ScrollArea>
