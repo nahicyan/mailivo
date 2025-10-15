@@ -35,6 +35,11 @@ import {
   Pause,
   Home,
   MapPin,
+  Send,
+  Loader2,
+  AlertCircle,
+  MousePointerClick,
+  CheckCircle2,
 } from 'lucide-react';
 import { formatDate, formatNumber } from '@/lib/utils';
 import Link from 'next/link';
@@ -57,6 +62,39 @@ interface EmailListDetails {
   count: number;
 }
 
+interface Recipient {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  qualified?: boolean;
+  buyerType?: string;
+}
+
+interface ContactsByStatus {
+  sent: string[];
+  delivered: string[];
+  opened: string[];
+  clicked: string[];
+  bounced: string[];
+}
+
+interface ContactsByStatusResponse {
+  success: boolean;
+  campaignId: string;
+  data: ContactsByStatus;
+  counts: {
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+  };
+}
+
+type StatusType = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.mailivo.landivo.com';
 
 export default function CampaignDetailsPage({ params }: Props) {
@@ -70,6 +108,12 @@ export default function CampaignDetailsPage({ params }: Props) {
   const [templates, setTemplates] = useState<any[]>([]);
   const [propertiesDialogOpen, setPropertiesDialogOpen] = useState(false);
   const [emailListsDialogOpen, setEmailListsDialogOpen] = useState(false);
+  
+  // New state for status dialogs
+  const [statusDialogOpen, setStatusDialogOpen] = useState<StatusType | null>(null);
+  const [statusContacts, setStatusContacts] = useState<ContactsByStatus | null>(null);
+  const [loadingStatusContacts, setLoadingStatusContacts] = useState(false);
+  const [allContactsMap, setAllContactsMap] = useState<Map<string, Recipient>>(new Map());
 
   useEffect(() => {
     fetchCampaignDetails();
@@ -149,6 +193,116 @@ export default function CampaignDetailsPage({ params }: Props) {
     } catch (error) {
       console.error('Error fetching templates:', error);
     }
+  };
+
+  // Fetch all recipients from email lists and create a map
+  const fetchAllRecipients = async () => {
+    try {
+      const allRecipients: Recipient[] = [];
+      const emailListIds = Array.isArray(campaign.emailList)
+        ? campaign.emailList
+        : [campaign.emailList];
+
+      for (const listId of emailListIds) {
+        const response = await fetch(`${API_URL}/landivo-email-lists/${listId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          },
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.buyers && Array.isArray(data.buyers)) {
+            allRecipients.push(...data.buyers);
+          }
+        }
+      }
+
+      // Create a map of contact ID to recipient
+      const contactMap = new Map<string, Recipient>();
+      allRecipients.forEach(recipient => {
+        contactMap.set(recipient.id, recipient);
+      });
+
+      setAllContactsMap(contactMap);
+      return contactMap;
+    } catch (error) {
+      console.error('Error fetching all recipients:', error);
+      return new Map<string, Recipient>();
+    }
+  };
+
+  // Fetch contacts by status from the API
+  const fetchContactsByStatus = async () => {
+    setLoadingStatusContacts(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/via/contacts/by-status?campaignId=${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          },
+          credentials: 'include',
+        }
+      );
+
+      if (response.ok) {
+        const data: ContactsByStatusResponse = await response.json();
+        setStatusContacts(data.data);
+        
+        // Fetch all recipients if not already loaded
+        if (allContactsMap.size === 0) {
+          await fetchAllRecipients();
+        }
+      } else {
+        toast.error('Failed to load contacts by status');
+      }
+    } catch (error) {
+      console.error('Error fetching contacts by status:', error);
+      toast.error('Failed to load contacts by status');
+    } finally {
+      setLoadingStatusContacts(false);
+    }
+  };
+
+  // Handle clicking on a status metric
+  const handleStatusClick = async (status: StatusType) => {
+    if (!statusContacts) {
+      await fetchContactsByStatus();
+    }
+    setStatusDialogOpen(status);
+  };
+
+  // Get contacts for a specific status
+  const getContactsForStatus = (status: StatusType): Recipient[] => {
+    if (!statusContacts) return [];
+    
+    const contactIds = statusContacts[status] || [];
+    return contactIds
+      .map(id => allContactsMap.get(id))
+      .filter((contact): contact is Recipient => contact !== undefined);
+  };
+
+  const getStatusIcon = (status: StatusType) => {
+    switch (status) {
+      case 'sent':
+        return <Send className="h-5 w-5" />;
+      case 'delivered':
+        return <CheckCircle2 className="h-5 w-5" />;
+      case 'opened':
+        return <Eye className="h-5 w-5" />;
+      case 'clicked':
+        return <MousePointerClick className="h-5 w-5" />;
+      case 'bounced':
+        return <AlertCircle className="h-5 w-5" />;
+      default:
+        return <Users className="h-5 w-5" />;
+    }
+  };
+
+  const getStatusTitle = (status: StatusType) => {
+    return status.charAt(0).toUpperCase() + status.slice(1) + ' Contacts';
   };
 
   // Updated to handle both string and string[] for properties
@@ -348,17 +502,27 @@ export default function CampaignDetailsPage({ params }: Props) {
     );
   }
 
-  // Calculate rates
-  const openRate = campaign.metrics?.sent > 0 ? (campaign.metrics.open / campaign.metrics.sent * 100) : 0;
-  const clickRate = campaign.metrics?.sent > 0 ? (campaign.metrics.clicks / campaign.metrics.sent * 100) : 0;
-  const deliveryRate = campaign.metrics?.sent > 0 ? (campaign.metrics.successfulDeliveries / campaign.metrics.sent * 100) : 0;
-  const bounceRate = campaign.metrics?.sent > 0 ? (campaign.metrics.bounces / campaign.metrics.sent * 100) : 0;
+  // Calculate rates based on total recipients (calculated on render, not from DB)
+  const emailListDetails = getEmailListDetails(campaign.emailList);
+  const totalRecipients = emailListDetails.recipientCount || 0;
+  
+  const sentRate = totalRecipients > 0 
+    ? ((campaign.metrics?.sent || 0) / totalRecipients) * 100 
+    : 0;
+  const deliveredRate = totalRecipients > 0 
+    ? ((campaign.metrics?.delivered || 0) / totalRecipients) * 100 
+    : 0;
+  const openedRate = totalRecipients > 0 
+    ? ((campaign.metrics?.opened || 0) / totalRecipients) * 100 
+    : 0;
+  const clickedRate = totalRecipients > 0 
+    ? ((campaign.metrics?.clicked || 0) / totalRecipients) * 100 
+    : 0;
 
   const canSend = campaign.status === 'draft' || campaign.status === 'paused';
   const canPause = campaign.status === 'active' || campaign.status === 'sending';
 
   const propertyDetails = getPropertyDetails(campaign.property);
-  const emailListDetails = getEmailListDetails(campaign.emailList);
   const isMultiCampaign = propertyDetails.isMultiple || emailListDetails.isMultiple;
 
   // Get property IDs array
@@ -426,38 +590,16 @@ export default function CampaignDetailsPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Performance Overview */}
+        {/* Performance Overview - Rate Display (NOT CLICKABLE) */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-center mb-2">
-                <Eye className="h-5 w-5 text-green-600" />
+                <Send className="h-5 w-5 text-blue-600" />
               </div>
-              <div className="text-2xl font-bold text-green-600">{openRate.toFixed(1)}%</div>
-              <p className="text-sm text-muted-foreground">Open Rate</p>
-              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.open || 0)} opened</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-center mb-2">
-                <MousePointer className="h-5 w-5 text-purple-600" />
-              </div>
-              <div className="text-2xl font-bold text-purple-600">{clickRate.toFixed(1)}%</div>
-              <p className="text-sm text-muted-foreground">Click Rate</p>
-              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.clicks || 0)} clicked</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-center mb-2">
-                <TrendingDown className="h-5 w-5 text-red-600" />
-              </div>
-              <div className="text-2xl font-bold text-red-600">{bounceRate.toFixed(1)}%</div>
-              <p className="text-sm text-muted-foreground">Bounce Rate</p>
-              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.bounces || 0)} bounced</p>
+              <div className="text-2xl font-bold text-blue-600">{sentRate.toFixed(1)}%</div>
+              <p className="text-sm text-muted-foreground">Sent Rate</p>
+              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.sent || 0)} sent</p>
             </CardContent>
           </Card>
 
@@ -466,9 +608,31 @@ export default function CampaignDetailsPage({ params }: Props) {
               <div className="flex items-center justify-center mb-2">
                 <CheckCircle className="h-5 w-5 text-blue-600" />
               </div>
-              <div className="text-2xl font-bold text-blue-600">{deliveryRate.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-blue-600">{deliveredRate.toFixed(1)}%</div>
               <p className="text-sm text-muted-foreground">Delivery Rate</p>
-              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.successfulDeliveries || 0)} delivered</p>
+              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.delivered || 0)} delivered</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-center mb-2">
+                <Eye className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="text-2xl font-bold text-green-600">{openedRate.toFixed(1)}%</div>
+              <p className="text-sm text-muted-foreground">Open Rate</p>
+              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.opened || 0)} opened</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-center mb-2">
+                <MousePointer className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="text-2xl font-bold text-purple-600">{clickedRate.toFixed(1)}%</div>
+              <p className="text-sm text-muted-foreground">Click Rate</p>
+              <p className="text-xs text-muted-foreground">{formatNumber(campaign.metrics?.clicked || 0)} clicked</p>
             </CardContent>
           </Card>
         </div>
@@ -538,8 +702,8 @@ export default function CampaignDetailsPage({ params }: Props) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Volume</Label>
-                  <p className="font-medium">{formatNumber(campaign.emailVolume || 0)}</p>
+                  <Label className="text-sm font-medium text-muted-foreground">Recipients</Label>
+                  <p className="font-medium">{formatNumber(totalRecipients)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Source</Label>
@@ -568,38 +732,53 @@ export default function CampaignDetailsPage({ params }: Props) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Total Sent</Label>
+                <div 
+                  className="cursor-pointer hover:bg-accent rounded-md p-2 transition-colors"
+                  onClick={() => handleStatusClick('sent')}
+                >
+                  <Label className="text-sm font-medium text-muted-foreground cursor-pointer">Total Sent</Label>
                   <p className="text-lg font-bold text-blue-600">{formatNumber(campaign.metrics?.sent || 0)}</p>
                 </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Total Opens</Label>
-                  <p className="text-lg font-bold text-green-600">{formatNumber(campaign.metrics?.open || 0)}</p>
+                <div 
+                  className="cursor-pointer hover:bg-accent rounded-md p-2 transition-colors"
+                  onClick={() => handleStatusClick('delivered')}
+                >
+                  <Label className="text-sm font-medium text-muted-foreground cursor-pointer">Delivered</Label>
+                  <p className="text-lg font-bold text-blue-600">{formatNumber(campaign.metrics?.delivered || 0)}</p>
                 </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Total Clicks</Label>
-                  <p className="text-lg font-bold text-purple-600">{formatNumber(campaign.metrics?.clicks || 0)}</p>
+                <div 
+                  className="cursor-pointer hover:bg-accent rounded-md p-2 transition-colors"
+                  onClick={() => handleStatusClick('opened')}
+                >
+                  <Label className="text-sm font-medium text-muted-foreground cursor-pointer">Opened</Label>
+                  <p className="text-lg font-bold text-green-600">{formatNumber(campaign.metrics?.opened || 0)}</p>
                 </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Mobile Opens</Label>
-                  <p className="text-lg font-bold text-orange-600">{formatNumber(campaign.metrics?.mobileOpen || 0)}</p>
+                <div 
+                  className="cursor-pointer hover:bg-accent rounded-md p-2 transition-colors"
+                  onClick={() => handleStatusClick('clicked')}
+                >
+                  <Label className="text-sm font-medium text-muted-foreground cursor-pointer">Clicked</Label>
+                  <p className="text-lg font-bold text-purple-600">{formatNumber(campaign.metrics?.clicked || 0)}</p>
                 </div>
               </div>
 
               <Separator />
 
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Successful Deliveries</span>
-                  <span className="font-medium">{formatNumber(campaign.metrics?.successfulDeliveries || 0)}</span>
+                <div 
+                  className="flex justify-between items-center cursor-pointer hover:bg-accent rounded-md p-2 transition-colors"
+                  onClick={() => handleStatusClick('bounced')}
+                >
+                  <span className="text-sm text-muted-foreground">Bounced</span>
+                  <span className="font-medium text-red-600">{formatNumber(campaign.metrics?.bounced || 0)}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Bounces</span>
-                  <span className="font-medium text-red-600">{formatNumber(campaign.metrics?.bounces || 0)}</span>
+                <div className="flex justify-between items-center rounded-md p-2">
+                  <span className="text-sm text-muted-foreground">Failed</span>
+                  <span className="font-medium">{formatNumber(campaign.metrics?.failed || 0)}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Did Not Open</span>
-                  <span className="font-medium">{formatNumber(campaign.metrics?.didNotOpen || 0)}</span>
+                <div className="flex justify-between items-center rounded-md p-2">
+                  <span className="text-sm text-muted-foreground">Mobile Opens</span>
+                  <span className="font-medium text-orange-600">{formatNumber(campaign.metrics?.mobileOpen || 0)}</span>
                 </div>
               </div>
             </CardContent>
@@ -741,6 +920,84 @@ export default function CampaignDetailsPage({ params }: Props) {
                 );
               })}
             </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Contacts Dialog (Sent, Delivered, Opened, Clicked, Bounced) */}
+      <Dialog 
+        open={statusDialogOpen !== null} 
+        onOpenChange={(open) => !open && setStatusDialogOpen(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {statusDialogOpen && getStatusIcon(statusDialogOpen)}
+              {statusDialogOpen && getStatusTitle(statusDialogOpen)}
+            </DialogTitle>
+            <DialogDescription>
+              {statusDialogOpen && getContactsForStatus(statusDialogOpen).length}{' '}
+              {statusDialogOpen && getContactsForStatus(statusDialogOpen).length === 1 
+                ? 'contact' 
+                : 'contacts'}{' '}
+              {statusDialogOpen}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[500px] pr-4">
+            {loadingStatusContacts ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {statusDialogOpen && getContactsForStatus(statusDialogOpen).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No contacts found for this status
+                  </div>
+                ) : (
+                  statusDialogOpen && getContactsForStatus(statusDialogOpen).map((contact, index) => (
+                    <Card key={contact.id || index}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold">
+                                {contact.firstName?.charAt(0) || contact.email.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {contact.firstName} {contact.lastName}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {contact.email}
+                              </p>
+                              {contact.phone && (
+                                <p className="text-xs text-muted-foreground">
+                                  {contact.phone}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {contact.qualified && (
+                              <Badge variant="secondary" className="text-xs">
+                                Qualified
+                              </Badge>
+                            )}
+                            {contact.buyerType && (
+                              <Badge variant="outline" className="text-xs">
+                                {contact.buyerType}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
           </ScrollArea>
         </DialogContent>
       </Dialog>

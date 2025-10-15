@@ -86,12 +86,19 @@ export default function ManageCampaignsPage() {
   const [campaignTypeDialogOpen, setCampaignTypeDialogOpen] = useState(false);
   const [duplicating, setDuplicating] = useState<string | null>(null);
 
+  // Updated filtering to use new status filters
   const filteredCampaigns = campaigns.filter((campaign) => {
     const matchesSearch = campaign.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === 'all' || campaign.status === statusFilter;
+    
+    let matchesStatus = true;
+    
+    if (statusFilter !== 'all') {
+      // Filter based on campaign status
+      matchesStatus = campaign.status === statusFilter;
+    }
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -466,12 +473,13 @@ export default function ManageCampaignsPage() {
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="paused">Paused</SelectItem>
+            <SelectItem value="all">All Campaigns</SelectItem>
             <SelectItem value="sent">Sent</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
+            <SelectItem value="opened">Opened</SelectItem>
+            <SelectItem value="clicked">Clicked</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="scheduled">Scheduled</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -547,8 +555,8 @@ export default function ManageCampaignsPage() {
               <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm
-                  ? 'Try adjusting your search'
+                {searchTerm || statusFilter !== 'all'
+                  ? 'Try adjusting your filters'
                   : 'Create your first campaign to get started'}
               </p>
               <Button onClick={handleCreateCampaign}>
