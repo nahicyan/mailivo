@@ -28,17 +28,24 @@ const TRIGGER_OPTIONS = [
     description: "Run on a schedule (daily, weekly, monthly)",
   },
   {
-    value: "property_viewed",
-    label: "Property Viewed",
-    icon: Eye,
-    description: "When a logged-in user views a property",
-  },
-  {
     value: "property_updated",
     label: "Property Updated",
     icon: RefreshCw,
     description: "When property details change",
   },
+  {
+    value: "closing_date",
+    label: "Closing Date",
+    icon: Calendar,
+    description: "Send reminders before property closing date",
+  },
+  {
+    value: "property_viewed",
+    label: "Property Viewed",
+    icon: Eye,
+    description: "When a logged-in user views a property",
+  },
+
   {
     value: "campaign_status_changed",
     label: "Campaign Status",
@@ -56,12 +63,6 @@ const TRIGGER_OPTIONS = [
     label: "Unsubscribe",
     icon: UserX,
     description: "When someone unsubscribes",
-  },
-  {
-    value: "closing_date",
-    label: "Closing Date",
-    icon: Calendar,
-    description: "Send reminders before property closing date",
   },
 ];
 
@@ -265,28 +266,30 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
         return (
           <div className="space-y-4 mt-4 p-4 bg-muted/30 rounded-lg">
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-3">
                 <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-blue-800">This trigger sends automated reminders to buyers before the property closing date expires.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>When To Run *</Label>
+            <div className="flex gap-4">
+              <div className="flex flex-col">
+                <Label className="text-sm font-medium mb-1">When To Run *</Label>
                 <Input
                   type="number"
                   min="1"
+                  max="365"
                   value={value.config.timeBefore || 7}
                   onChange={(e) => updateConfig({ timeBefore: parseInt(e.target.value) })}
-                  placeholder="e.g., 7"
-                  className="mt-1"
+                  placeholder="7"
+                  className="w-30"
                 />
               </div>
-              <div>
-                <Label>Time Unit *</Label>
+
+              <div className="flex flex-col">
+                <Label className="text-sm font-medium mb-1">Time Unit *</Label>
                 <Select value={value.config.timeUnit || "days"} onValueChange={(val) => updateConfig({ timeUnit: val })}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="w-37">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -297,15 +300,16 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex flex-col">
+                <Label className="text-sm font-medium mb-1">Time of Day *</Label>
+                <Input type="time" value={value.config.time || "09:00"} onChange={(e) => updateConfig({ time: e.target.value })} className="w-32" />
+              </div>
             </div>
 
-            <div>
-              <Label>Time of Day *</Label>
-              <Input type="time" value={value.config.time || "09:00"} onChange={(e) => updateConfig({ time: e.target.value })} className="mt-1" />
-              <p className="text-xs text-muted-foreground mt-1">What time should the reminder be sent?</p>
-            </div>
+            <p className="text-xs text-muted-foreground">What time should the reminder be sent?</p>
 
-            <div className="mt-2 p-3 bg-muted rounded-md">
+            <div className="mt-4 p-3 bg-muted rounded-md">
               <p className="text-sm font-medium text-foreground mb-1">Summary</p>
               <p className="text-xs text-muted-foreground">
                 Email will be sent{" "}
