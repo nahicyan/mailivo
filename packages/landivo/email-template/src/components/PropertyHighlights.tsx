@@ -197,7 +197,7 @@ export const propertyHighlightsMetadata: EmailComponentMetadata = {
   defaultProps: {
     className: '',
     backgroundColor: '#ffffff',
-    borderRadius: 8,
+    borderRadius: 8,  
     showBorder: true,
     itemSpacing: 16
   },
