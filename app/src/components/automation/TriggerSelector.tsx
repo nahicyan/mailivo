@@ -66,6 +66,74 @@ const TRIGGER_OPTIONS = [
   },
 ];
 
+// Common timezones grouped by region
+const TIMEZONES = [
+  // US Timezones
+  { value: "America/New_York", label: "Eastern Time (ET)", group: "US" },
+  { value: "America/Chicago", label: "Central Time (CT)", group: "US" },
+  { value: "America/Denver", label: "Mountain Time (MT)", group: "US" },
+  { value: "America/Phoenix", label: "Arizona (MST)", group: "US" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)", group: "US" },
+  { value: "America/Anchorage", label: "Alaska Time (AKT)", group: "US" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time (HST)", group: "US" },
+
+  // Canada
+  { value: "America/Toronto", label: "Toronto (ET)", group: "Canada" },
+  { value: "America/Vancouver", label: "Vancouver (PT)", group: "Canada" },
+  { value: "America/Edmonton", label: "Edmonton (MT)", group: "Canada" },
+  { value: "America/Winnipeg", label: "Winnipeg (CT)", group: "Canada" },
+  { value: "America/Halifax", label: "Halifax (AT)", group: "Canada" },
+
+  // Mexico & Central America
+  { value: "America/Mexico_City", label: "Mexico City", group: "Latin America" },
+  { value: "America/Cancun", label: "Cancun", group: "Latin America" },
+  { value: "America/Guatemala", label: "Guatemala", group: "Latin America" },
+  { value: "America/Costa_Rica", label: "Costa Rica", group: "Latin America" },
+  { value: "America/Panama", label: "Panama", group: "Latin America" },
+
+  // South America
+  { value: "America/Bogota", label: "Bogota", group: "South America" },
+  { value: "America/Lima", label: "Lima", group: "South America" },
+  { value: "America/Santiago", label: "Santiago", group: "South America" },
+  { value: "America/Buenos_Aires", label: "Buenos Aires", group: "South America" },
+  { value: "America/Sao_Paulo", label: "São Paulo", group: "South America" },
+
+  // Europe
+  { value: "Europe/London", label: "London (GMT/BST)", group: "Europe" },
+  { value: "Europe/Paris", label: "Paris (CET)", group: "Europe" },
+  { value: "Europe/Berlin", label: "Berlin (CET)", group: "Europe" },
+  { value: "Europe/Madrid", label: "Madrid (CET)", group: "Europe" },
+  { value: "Europe/Rome", label: "Rome (CET)", group: "Europe" },
+  { value: "Europe/Amsterdam", label: "Amsterdam (CET)", group: "Europe" },
+  { value: "Europe/Athens", label: "Athens (EET)", group: "Europe" },
+  { value: "Europe/Moscow", label: "Moscow (MSK)", group: "Europe" },
+
+  // Asia
+  { value: "Asia/Dubai", label: "Dubai (GST)", group: "Asia" },
+  { value: "Asia/Kolkata", label: "India (IST)", group: "Asia" },
+  { value: "Asia/Bangkok", label: "Bangkok (ICT)", group: "Asia" },
+  { value: "Asia/Singapore", label: "Singapore (SGT)", group: "Asia" },
+  { value: "Asia/Hong_Kong", label: "Hong Kong (HKT)", group: "Asia" },
+  { value: "Asia/Shanghai", label: "Shanghai (CST)", group: "Asia" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)", group: "Asia" },
+  { value: "Asia/Seoul", label: "Seoul (KST)", group: "Asia" },
+
+  // Pacific
+  { value: "Australia/Sydney", label: "Sydney (AEDT)", group: "Pacific" },
+  { value: "Australia/Melbourne", label: "Melbourne (AEDT)", group: "Pacific" },
+  { value: "Australia/Perth", label: "Perth (AWST)", group: "Pacific" },
+  { value: "Pacific/Auckland", label: "Auckland (NZDT)", group: "Pacific" },
+
+  // Africa
+  { value: "Africa/Cairo", label: "Cairo (EET)", group: "Africa" },
+  { value: "Africa/Johannesburg", label: "Johannesburg (SAST)", group: "Africa" },
+  { value: "Africa/Lagos", label: "Lagos (WAT)", group: "Africa" },
+  { value: "Africa/Nairobi", label: "Nairobi (EAT)", group: "Africa" },
+
+  // UTC
+  { value: "UTC", label: "UTC (Coordinated Universal Time)", group: "Other" },
+];
+
 export default function TriggerSelector({ value, onChange }: TriggerSelectorProps) {
   const [triggerType, setTriggerType] = useState(value?.type || "");
 
@@ -305,6 +373,36 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
                 <Label className="text-sm font-medium mb-1">Time of Day *</Label>
                 <Input type="time" value={value.config.time || "09:00"} onChange={(e) => updateConfig({ time: e.target.value })} className="w-32" />
               </div>
+
+              <div className="flex flex-col flex-1">
+                <Label className="text-sm font-medium mb-1">Timezone *</Label>
+                <Select value={value.config.timezone || "America/New_York"} onValueChange={(val) => updateConfig({ timezone: val })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {Object.entries(
+                      TIMEZONES.reduce(
+                        (acc, tz) => {
+                          if (!acc[tz.group]) acc[tz.group] = [];
+                          acc[tz.group].push(tz);
+                          return acc;
+                        },
+                        {} as Record<string, typeof TIMEZONES>
+                      )
+                    ).map(([group, timezones]) => (
+                      <React.Fragment key={group}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{group}</div>
+                        {timezones.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <p className="text-xs text-muted-foreground">What time should the reminder be sent?</p>
@@ -317,6 +415,8 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
                   {value.config.timeBefore || 7} {value.config.timeUnit || "days"}
                 </strong>{" "}
                 before the closing date at <strong>{value.config.time || "09:00"}</strong>
+                {" in "}
+                <strong>{TIMEZONES.find((tz) => tz.value === (value.config.timezone || "America/New_York"))?.label || "Eastern Time"}</strong>
               </p>
             </div>
           </div>
