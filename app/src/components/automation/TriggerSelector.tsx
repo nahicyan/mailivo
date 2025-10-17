@@ -20,49 +20,56 @@ const TRIGGER_OPTIONS = [
     label: "Property Uploaded",
     icon: Upload,
     description: "When a new property is added to Landivo",
+    disabled: false,
   },
   {
     value: "time_based",
     label: "Time Based",
     icon: Clock,
     description: "Run on a schedule (daily, weekly, monthly)",
+    disabled: false,
   },
   {
     value: "property_updated",
     label: "Property Updated",
     icon: RefreshCw,
     description: "When property details change",
+    disabled: false,
   },
   {
     value: "closing_date",
     label: "Closing Date",
     icon: Calendar,
     description: "Send reminders before property closing date",
+    disabled: false,
   },
   {
     value: "property_viewed",
     label: "Property Viewed",
     icon: Eye,
     description: "When a logged-in user views a property",
+    disabled: true, // DISABLED
   },
-
   {
     value: "campaign_status_changed",
     label: "Campaign Status",
     icon: Mail,
     description: "When campaign status changes",
+    disabled: true, // DISABLED
   },
   {
     value: "email_tracking_status",
     label: "Email Tracking",
     icon: Mail,
     description: "When email is opened, clicked, bounced, etc.",
+    disabled: true, // DISABLED
   },
   {
     value: "unsubscribe",
     label: "Unsubscribe",
     icon: UserX,
     description: "When someone unsubscribes",
+    disabled: true, // DISABLED
   },
 ];
 
@@ -145,7 +152,7 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
       property_uploaded: { immediate: true },
       time_based: { schedule: "daily", time: "09:00", timezone: "America/New_York" },
       property_viewed: { requireLoggedIn: true, viewCount: 1 },
-      property_updated: { updateType: "any_update" },
+      property_updated: { updateType: "discount" },
       campaign_status_changed: { toStatus: ["sent"] },
       email_tracking_status: { event: "opened" },
       unsubscribe: {},
@@ -272,13 +279,24 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any_update">Any Update</SelectItem>
-                  <SelectItem value="status_change">Status Change</SelectItem>
                   <SelectItem value="discount">Price Discount</SelectItem>
-                  <SelectItem value="availability_change">Availability Change</SelectItem>
+                  <SelectItem value="any_update" disabled className="opacity-50 cursor-not-allowed">
+                    Any Update
+                  </SelectItem>
+                  <SelectItem value="status_change" disabled className="opacity-50 cursor-not-allowed">
+                    Status Change
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {value.config.updateType === "discount" && (
+              <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
+                <p className="text-sm text-blue-900">
+                  <strong>Note:</strong> This will trigger when a property price is reduced. Perfect for sending "Price Drop" alerts to your buyers.
+                </p>
+              </div>
+            )}
           </div>
         );
 
@@ -439,7 +457,7 @@ export default function TriggerSelector({ value, onChange }: TriggerSelectorProp
             {TRIGGER_OPTIONS.map((option) => {
               const Icon = option.icon;
               return (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled} className={option.disabled ? "opacity-50 cursor-not-allowed" : ""}>
                   <div className="flex items-center space-x-2">
                     <Icon className="h-4 w-4" />
                     <div>

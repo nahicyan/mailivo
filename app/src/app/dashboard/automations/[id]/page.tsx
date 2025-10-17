@@ -1,37 +1,21 @@
 // app/src/app/dashboard/automations/[id]/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { use } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
-import {
-  ArrowLeft,
-  Edit,
-  Play,
-  Pause,
-  Copy,
-  Trash2,
-  AlertTriangle,
-  Mail,
-  Zap,
-  Filter,
-  Activity,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Loader2,
-} from 'lucide-react';
-import { formatDate } from '@/lib/utils';
-import Link from 'next/link';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { useAutomation } from '@/hooks/useAutomation';
-import { useTemplate } from '@/hooks/useTemplates';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { use } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Edit, Play, Pause, Copy, Trash2, AlertTriangle, Mail, Zap, Filter, Activity, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+import Link from "next/link";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { useAutomation } from "@/hooks/useAutomation";
+import { useTemplate } from "@/hooks/useTemplates";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -48,7 +32,7 @@ export default function AutomationDetailsPage({ params }: Props) {
 
   // Get template ID from automation
   const templateId = automation?.action?.config?.emailTemplate;
-  
+
   // Fetch template data using the hook
   const { data: template, isLoading: templateLoading } = useTemplate(templateId);
 
@@ -61,17 +45,17 @@ export default function AutomationDetailsPage({ params }: Props) {
     setLoading(true);
     try {
       const response = await api.get(`/automation/${id}`);
-      
+
       if (response.data.success) {
-        console.log('Loaded automation:', response.data.data);
+        console.log("Loaded automation:", response.data.data);
         setAutomation(response.data.data);
       } else {
-        throw new Error('Failed to load automation');
+        throw new Error("Failed to load automation");
       }
     } catch (error) {
-      console.error('Error fetching automation:', error);
-      setError('Failed to load automation details');
-      toast.error('Failed to load automation details');
+      console.error("Error fetching automation:", error);
+      setError("Failed to load automation details");
+      toast.error("Failed to load automation details");
     } finally {
       setLoading(false);
     }
@@ -79,17 +63,17 @@ export default function AutomationDetailsPage({ params }: Props) {
 
   const fetchEmailLists = async () => {
     try {
-      const response = await api.get('/landivo-email-lists');
+      const response = await api.get("/landivo-email-lists");
       const data = response.data;
-      setEmailLists(Array.isArray(data) ? data : (data.emailLists || []));
+      setEmailLists(Array.isArray(data) ? data : data.emailLists || []);
     } catch (error) {
-      console.error('Error fetching email lists:', error);
+      console.error("Error fetching email lists:", error);
     }
   };
 
   const getTemplateName = () => {
-    if (!templateId) return 'N/A';
-    if (templateLoading) return 'Loading...';
+    if (!templateId) return "N/A";
+    if (templateLoading) return "Loading...";
     if (template) {
       return template.name || template.title || templateId;
     }
@@ -98,118 +82,116 @@ export default function AutomationDetailsPage({ params }: Props) {
   };
 
   const getEmailListName = (listId: string) => {
-    if (!listId) return 'N/A';
+    if (!listId) return "N/A";
     if (!Array.isArray(emailLists) || emailLists.length === 0) {
       return listId;
     }
-    const list = emailLists.find(
-      (l) => l.id === listId || l._id === listId
-    );
+    const list = emailLists.find((l) => l.id === listId || l._id === listId);
     return list?.name || listId;
   };
 
   const handleToggle = async () => {
     try {
       await toggleAutomation(id);
-      toast.success(`Automation ${automation.isActive ? 'deactivated' : 'activated'}`);
+      toast.success(`Automation ${automation.isActive ? "deactivated" : "activated"}`);
       fetchAutomationDetails();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to toggle automation');
+      toast.error(error.message || "Failed to toggle automation");
     }
   };
 
   const handleDuplicate = async () => {
     try {
       await duplicateAutomation(id);
-      toast.success('Automation duplicated successfully');
-      router.push('/dashboard/automations');
+      toast.success("Automation duplicated successfully");
+      router.push("/dashboard/automations");
     } catch (error: any) {
-      toast.error(error.message || 'Failed to duplicate automation');
+      toast.error(error.message || "Failed to duplicate automation");
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this automation?')) {
+    if (!confirm("Are you sure you want to delete this automation?")) {
       return;
     }
 
     try {
       await deleteAutomation(id);
-      toast.success('Automation deleted successfully');
-      router.push('/dashboard/automations');
+      toast.success("Automation deleted successfully");
+      router.push("/dashboard/automations");
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete automation');
+      toast.error(error.message || "Failed to delete automation");
     }
   };
 
   const getTriggerLabel = (type: string) => {
     const labels: Record<string, string> = {
-      property_uploaded: 'Property Upload',
-      time_based: 'Time Based',
-      property_viewed: 'Property View',
-      property_updated: 'Property Update',
-      campaign_status_changed: 'Campaign Status',
-      email_tracking_status: 'Email Tracking',
-      unsubscribe: 'Unsubscribe',
+      property_uploaded: "Property Upload",
+      time_based: "Time Based",
+      property_viewed: "Property View",
+      property_updated: "Property Update",
+      campaign_status_changed: "Campaign Status",
+      email_tracking_status: "Email Tracking",
+      unsubscribe: "Unsubscribe",
       closing_date: "Closing Date",
     };
     return labels[type] || type;
   };
 
   const getTriggerDescription = (trigger: any) => {
-    if (!trigger) return '';
-    
+    if (!trigger) return "";
+
     switch (trigger.type) {
-      case 'property_uploaded':
-        return 'Triggers when a new property is uploaded to Landivo';
-      case 'time_based':
-        return `Runs ${trigger.config?.schedule || 'daily'}`;
-      case 'property_viewed':
-        return 'Triggers when a logged-in user views a property';
-      case 'property_updated':
-        return 'Triggers when property details are updated';
-      case 'campaign_status_changed':
-        return 'Triggers when campaign status changes';
-      case 'email_tracking_status':
-        return 'Triggers on email tracking events';
-      case 'unsubscribe':
-        return 'Triggers when a user unsubscribes';
+      case "property_uploaded":
+        return "Triggers when a new property is uploaded to Landivo";
+      case "time_based":
+        return `Runs ${trigger.config?.schedule || "daily"}`;
+      case "property_viewed":
+        return "Triggers when a logged-in user views a property";
+      case "property_updated":
+        return "Triggers when property details are updated";
+      case "campaign_status_changed":
+        return "Triggers when campaign status changes";
+      case "email_tracking_status":
+        return "Triggers on email tracking events";
+      case "unsubscribe":
+        return "Triggers when a user unsubscribes";
       default:
-        return '';
+        return "";
     }
   };
 
   const getOperatorLabel = (operator: string) => {
     const labels: Record<string, string> = {
-      equals: 'Equals',
-      not_equals: 'Not Equals',
-      contains: 'Contains',
-      not_contains: 'Does Not Contain',
-      greater_than: 'Greater Than',
-      less_than: 'Less Than',
-      between: 'Between',
-      in: 'In',
-      not_in: 'Not In',
+      equals: "Equals",
+      not_equals: "Not Equals",
+      contains: "Contains",
+      not_contains: "Does Not Contain",
+      greater_than: "Greater Than",
+      less_than: "Less Than",
+      between: "Between",
+      in: "In",
+      not_in: "Not In",
     };
     return labels[operator] || operator;
   };
 
   const getScheduleLabel = (schedule: string) => {
     const labels: Record<string, string> = {
-      immediate: 'Immediate',
-      scheduled: 'Scheduled',
-      time_delay: 'Time Delay',
+      immediate: "Immediate",
+      scheduled: "Scheduled",
+      time_delay: "Time Delay",
     };
     return labels[schedule] || schedule;
   };
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
-      property_data: 'Property Data',
-      campaign_data: 'Campaign Data',
-      email_tracking: 'Email Tracking',
-      email_template: 'Email Template',
-      buyer_data: 'Buyer Data',
+      property_data: "Property Data",
+      campaign_data: "Campaign Data",
+      email_tracking: "Email Tracking",
+      email_template: "Email Template",
+      buyer_data: "Buyer Data",
     };
     return labels[category] || category;
   };
@@ -227,9 +209,7 @@ export default function AutomationDetailsPage({ params }: Props) {
       <div className="text-center py-12">
         <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-lg font-medium mb-2">Automation Not Found</h3>
-        <p className="text-muted-foreground mb-4">
-          The automation you're looking for doesn't exist or has been deleted.
-        </p>
+        <p className="text-muted-foreground mb-4">The automation you're looking for doesn't exist or has been deleted.</p>
         <Link href="/dashboard/automations">
           <Button>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -242,11 +222,9 @@ export default function AutomationDetailsPage({ params }: Props) {
 
   // Safe access with defaults
   const stats = automation.stats || { totalRuns: 0, successfulRuns: 0, failedRuns: 0 };
-  const successRate = stats.totalRuns > 0
-    ? ((stats.successfulRuns / stats.totalRuns) * 100).toFixed(1)
-    : '0';
-  
-  const trigger = automation.trigger || { type: 'unknown', config: {} };
+  const successRate = stats.totalRuns > 0 ? ((stats.successfulRuns / stats.totalRuns) * 100).toFixed(1) : "0";
+
+  const trigger = automation.trigger || { type: "unknown", config: {} };
   const conditions = automation.conditions || [];
   const action = automation.action || { config: {} };
 
@@ -263,19 +241,11 @@ export default function AutomationDetailsPage({ params }: Props) {
             <span>Details</span>
           </div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">{automation.name || 'Unnamed Automation'}</h1>
-            <Badge className={automation.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-              {automation.isActive ? 'Active' : 'Inactive'}
-            </Badge>
-            {stats.lastRunStatus && (
-              <Badge variant={stats.lastRunStatus === 'success' ? 'default' : 'destructive'}>
-                Last: {stats.lastRunStatus}
-              </Badge>
-            )}
+            <h1 className="text-3xl font-bold">{automation.name || "Unnamed Automation"}</h1>
+            <Badge className={automation.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>{automation.isActive ? "Active" : "Inactive"}</Badge>
+            {stats.lastRunStatus && <Badge variant={stats.lastRunStatus === "success" ? "default" : "destructive"}>Last: {stats.lastRunStatus}</Badge>}
           </div>
-          {automation.description && (
-            <p className="text-muted-foreground">{automation.description}</p>
-          )}
+          {automation.description && <p className="text-muted-foreground">{automation.description}</p>}
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto flex-wrap">
@@ -368,9 +338,7 @@ export default function AutomationDetailsPage({ params }: Props) {
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="secondary">{getTriggerLabel(trigger.type)}</Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                {getTriggerDescription(trigger)}
-              </p>
+              <p className="text-sm text-muted-foreground mt-2">{getTriggerDescription(trigger)}</p>
             </div>
 
             {trigger.config && Object.keys(trigger.config).length > 0 && (
@@ -381,12 +349,8 @@ export default function AutomationDetailsPage({ params }: Props) {
                   <div className="space-y-2 bg-muted/50 p-3 rounded-md">
                     {Object.entries(trigger.config).map(([key, value]) => (
                       <div key={key} className="flex justify-between items-start text-sm">
-                        <span className="text-muted-foreground capitalize font-medium">
-                          {key.replace(/_/g, ' ')}:
-                        </span>
-                        <span className="font-mono text-xs bg-background px-2 py-1 rounded">
-                          {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                        </span>
+                        <span className="text-muted-foreground capitalize font-medium">{key.replace(/_/g, " ")}:</span>
+                        <span className="font-mono text-xs bg-background px-2 py-1 rounded">{typeof value === "object" ? JSON.stringify(value) : String(value)}</span>
                       </div>
                     ))}
                   </div>
@@ -419,7 +383,7 @@ export default function AutomationDetailsPage({ params }: Props) {
                     <Badge variant="outline">{getCategoryLabel(condition.category)}</Badge>
                     {condition.matchAll !== undefined && (
                       <Badge variant="secondary" className="text-xs">
-                        Match {condition.matchAll ? 'All' : 'Any'}
+                        Match {condition.matchAll ? "All" : "Any"}
                       </Badge>
                     )}
                   </div>
@@ -427,18 +391,14 @@ export default function AutomationDetailsPage({ params }: Props) {
                     <div className="pl-3 border-l-2 border-primary/20 space-y-2 mt-2">
                       {condition.conditions.map((cond: any, idx: number) => (
                         <div key={idx} className="text-sm">
-                          <span className="font-medium text-foreground">{cond.field || 'field'}</span>
-                          <span className="text-muted-foreground mx-2">
-                            {getOperatorLabel(cond.operator || 'equals')}
-                          </span>
-                          <span className="font-mono text-xs bg-background px-2 py-1 rounded">
-                            {typeof cond.value === 'object' ? JSON.stringify(cond.value) : String(cond.value)}
-                          </span>
+                          <span className="font-medium text-foreground">{cond.field || "field"}</span>
+                          <span className="text-muted-foreground mx-2">{getOperatorLabel(cond.operator || "equals")}</span>
+                          <span className="font-mono text-xs bg-background px-2 py-1 rounded">{typeof cond.value === "object" ? JSON.stringify(cond.value) : String(cond.value)}</span>
                           {cond.secondValue && (
                             <>
                               <span className="text-muted-foreground mx-2">and</span>
                               <span className="font-mono text-xs bg-background px-2 py-1 rounded">
-                                {typeof cond.secondValue === 'object' ? JSON.stringify(cond.secondValue) : String(cond.secondValue)}
+                                {typeof cond.secondValue === "object" ? JSON.stringify(cond.secondValue) : String(cond.secondValue)}
                               </span>
                             </>
                           )}
@@ -466,21 +426,15 @@ export default function AutomationDetailsPage({ params }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Campaign Type</Label>
-              <p className="font-medium mt-1 capitalize">
-                {action.config?.campaignType?.replace(/_/g, ' ') || 'N/A'}
-              </p>
+              <p className="font-medium mt-1 capitalize">{action.config?.campaignType?.replace(/_/g, " ") || "N/A"}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Schedule</Label>
-              <p className="font-medium mt-1">
-                {getScheduleLabel(action.config?.schedule || 'immediate')}
-              </p>
+              <p className="font-medium mt-1">{getScheduleLabel(action.config?.schedule || "immediate")}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Property Source</Label>
-              <p className="font-medium mt-1 capitalize">
-                {action.config?.propertySelection?.source || 'N/A'}
-              </p>
+              <p className="font-medium mt-1 capitalize">{action.config?.propertySelection?.source || "N/A"}</p>
             </div>
           </div>
 
@@ -489,11 +443,11 @@ export default function AutomationDetailsPage({ params }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Campaign Name</Label>
-              <p className="font-medium mt-1">{action.config?.name || 'N/A'}</p>
+              <p className="font-medium mt-1">{action.config?.name || "N/A"}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Subject</Label>
-              <p className="font-medium mt-1">{action.config?.subject || 'N/A'}</p>
+              <p className="font-medium mt-1">{action.config?.subject || "N/A"}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Email List</Label>
@@ -544,9 +498,7 @@ export default function AutomationDetailsPage({ params }: Props) {
             <>
               <Separator />
               <div>
-                <Label className="text-sm font-medium text-muted-foreground mb-3 block">
-                  Multi-Property Configuration
-                </Label>
+                <Label className="text-sm font-medium text-muted-foreground mb-3 block">Multi-Property Configuration</Label>
                 <div className="grid grid-cols-2 gap-4">
                   {action.config.multiPropertyConfig.sortStrategy && (
                     <div className="bg-muted/50 p-3 rounded-md">
@@ -563,9 +515,7 @@ export default function AutomationDetailsPage({ params }: Props) {
                   {action.config.multiPropertyConfig.financingEnabled !== undefined && (
                     <div className="bg-muted/50 p-3 rounded-md">
                       <span className="text-xs text-muted-foreground block mb-1">Financing</span>
-                      <p className="font-medium text-sm">
-                        {action.config.multiPropertyConfig.financingEnabled ? 'Enabled' : 'Disabled'}
-                      </p>
+                      <p className="font-medium text-sm">{action.config.multiPropertyConfig.financingEnabled ? "Enabled" : "Disabled"}</p>
                     </div>
                   )}
                   {action.config.multiPropertyConfig.planStrategy && (
@@ -603,17 +553,12 @@ export default function AutomationDetailsPage({ params }: Props) {
 
             {automation.lastRunAt && (
               <div className="flex items-start gap-3">
-                <div className={`w-2 h-2 rounded-full mt-2 ${
-                  stats.lastRunStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
+                <div className={`w-2 h-2 rounded-full mt-2 ${stats.lastRunStatus === "success" ? "bg-green-500" : "bg-red-500"}`}></div>
                 <div className="flex-1">
                   <p className="font-medium">Last Execution</p>
                   <p className="text-sm text-muted-foreground">{formatDate(automation.lastRunAt)}</p>
                   {stats.lastRunStatus && (
-                    <Badge 
-                      variant={stats.lastRunStatus === 'success' ? 'default' : 'destructive'}
-                      className="mt-1"
-                    >
+                    <Badge variant={stats.lastRunStatus === "success" ? "default" : "destructive"} className="mt-1">
                       {stats.lastRunStatus}
                     </Badge>
                   )}
