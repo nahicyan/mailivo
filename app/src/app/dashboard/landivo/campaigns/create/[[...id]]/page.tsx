@@ -245,7 +245,7 @@ export default function CreateCampaignPage() {
         throw new Error(error.message || "Failed to create campaign");
       }
 
-      router.push("/dashboard/landivo/campaigns");
+      router.push("/dashboard/landivo/campaigns/manage");
     } catch (error: any) {
       alert(error.message || "Failed to create campaign");
     } finally {
@@ -280,7 +280,7 @@ export default function CreateCampaignPage() {
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/dashboard/landivo/campaigns">
+          <Link href="/dashboard/landivo/campaigns/manage">
             <Button variant="ghost" size="sm" className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Campaigns
