@@ -1,13 +1,15 @@
-// api/src/services/linkTracking.service.ts - NEW FILE
+// api/src/services/linkTracking.service.ts - UPDATED
 import { parse, HTMLElement } from 'node-html-parser';
 import { nanoid } from 'nanoid';
 import { logger } from '../utils/logger';
+import { unsubscribeService } from './unsubscribe.service';
 
 interface LinkTransformOptions {
   trackingId: string;
   campaignId: string;
   contactId: string;
   baseUrl: string;
+  buyerId?: string; // NEW: Optional buyer ID for unsubscribe
 }
 
 interface ExtractedLink {
@@ -29,6 +31,7 @@ export class LinkTrackingService {
 
   /**
    * Transform all links in HTML content to tracking links
+   * NOW INCLUDES unsubscribe link injection
    */
   async transformLinks(
     htmlContent: string,
@@ -84,9 +87,44 @@ export class LinkTrackingService {
         anchor.setAttribute('data-link-id', linkId);
         anchor.setAttribute('data-tracked', 'true');
       }
+
+      // NEW: Add unsubscribe link if buyerId provided
+      let finalHtml = root.toString();
+      if (options.buyerId || options.contactId) {
+        const buyerId = options.buyerId || options.contactId;
+        
+        // Generate unsubscribe link data
+        const unsubLink = unsubscribeService.generateUnsubscribeLink({
+          buyerId,
+          trackingId: options.trackingId,
+          campaignId: options.campaignId,
+        });
+
+        // Add to extracted links
+        extractedLinks.push({
+          linkId: unsubLink.linkId,
+          originalUrl: unsubLink.originalUrl,
+          trackingUrl: unsubLink.trackingUrl,
+          linkText: unsubLink.linkText,
+          componentType: unsubLink.componentType,
+          position: linkPosition++,
+        });
+
+        // Add visual unsubscribe link to HTML footer
+        finalHtml = unsubscribeService.addUnsubscribeLinkToHTML(
+          finalHtml,
+          unsubLink.trackingUrl
+        );
+
+        logger.info('Added unsubscribe link to email', {
+          trackingId: options.trackingId,
+          buyerId,
+          linkId: unsubLink.linkId,
+        });
+      }
       
       return {
-        transformedHtml: root.toString(),
+        transformedHtml: finalHtml,
         extractedLinks,
       };
     } catch (error) {
@@ -104,7 +142,7 @@ export class LinkTrackingService {
    */
   private shouldSkipLink(url: string): boolean {
     // Skip tracking for:
-    // - Unsubscribe links (handled separately)
+    // - Unsubscribe links (handled separately now)
     // - Mailto links
     // - Tel links
     // - Already tracked links
@@ -113,8 +151,7 @@ export class LinkTrackingService {
       /^mailto:/i,
       /^tel:/i,
       /^#$/,
-      /\/unsubscribe/i,
-      /\/via\/click\//i,
+      /\/via\/click\//i, // Already tracked
     ];
     
     return skipPatterns.some(pattern => pattern.test(url));
@@ -160,19 +197,19 @@ export class LinkTrackingService {
   /**
    * Create tracking URL
    */
-private createTrackingUrl(params: {
-  trackingId: string;
-  linkId: string;
-  originalUrl: string;
-}): string {
-  const { trackingId, linkId, originalUrl } = params;
-  
-  // Encode the original URL
-  const encodedUrl = encodeURIComponent(originalUrl);
-  
-  // FIX: Use /via/click to match routes
-  return `${this.baseTrackingUrl}/via/click/${trackingId}/${linkId}?url=${encodedUrl}`;
-}
+  private createTrackingUrl(params: {
+    trackingId: string;
+    linkId: string;
+    originalUrl: string;
+  }): string {
+    const { trackingId, linkId, originalUrl } = params;
+    
+    // Encode the original URL
+    const encodedUrl = encodeURIComponent(originalUrl);
+    
+    // Use /via/click to match routes
+    return `${this.baseTrackingUrl}/via/click/${trackingId}/${linkId}?url=${encodedUrl}`;
+  }
 
   /**
    * Decode tracking URL to get original URL

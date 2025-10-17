@@ -6,6 +6,7 @@ import { EmailTracking } from "../../models/EmailTracking.model";
 import { Campaign } from "../../models/Campaign";
 import { logger } from "../../utils/logger";
 import { nanoid } from "nanoid";
+import { unsubscribeService } from "../unsubscribe.service";
 
 interface EmailJob {
   campaignId: string;
@@ -29,22 +30,28 @@ export class EmailJobProcessor {
     });
   }
 
-  async processEmailJob(
-    job: EmailJob
-  ): Promise<{ success: boolean; messageId?: string }> {
-    const { campaignId, contactId, email, personalizedContent, trackingId } =
-      job;
+  async processEmailJob(job: EmailJob): Promise<{ success: boolean; messageId?: string }> {
+    const { campaignId, contactId, email, personalizedContent, trackingId } = job;
 
     try {
       await this.checkRateLimit();
 
       const htmlWithTracking = personalizedContent.htmlContent;
 
+      // NEW: Generate unsubscribe headers using buyer/contact ID
+      const unsubscribeHeaders = unsubscribeService.generateUnsubscribeHeaders({
+        buyerId: contactId, // contactId is the Landivo buyer ID
+        trackingId: trackingId,
+        campaignId: campaignId,
+      });
+
+      // Send email with unsubscribe headers
       const result = await emailService.sendEmail({
         to: email,
         subject: personalizedContent.subject,
         html: htmlWithTracking,
         text: personalizedContent.textContent,
+        headers: unsubscribeHeaders, // NEW: Add unsubscribe headers
       });
 
       if (result.success) {
@@ -54,18 +61,19 @@ export class EmailJobProcessor {
             status: "sent",
             sentAt: new Date(),
             messageId: result.messageId,
-            contactEmail: email, // Store email here as well
+            contactEmail: email,
           }
         );
 
         await this.updateCampaignMetrics(campaignId, "sent");
 
-        logger.info(`Email sent successfully`, {
+        logger.info(`Email sent successfully with unsubscribe headers`, {
           campaignId,
           contactId,
           email,
           messageId: result.messageId,
           provider: result.provider,
+          hasUnsubscribeHeader: true,
         });
 
         return { success: true, messageId: result.messageId };
@@ -73,8 +81,7 @@ export class EmailJobProcessor {
         throw new Error(result.error || "Email sending failed");
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error(`Email sending failed`, {
         campaignId,
         contactId,
@@ -108,20 +115,13 @@ export class EmailJobProcessor {
     textContent: string;
   }> {
     try {
-      if (
-        campaign.source === "landivo" &&
-        campaign.emailTemplate &&
-        campaign.property
-      ) {
-        logger.info(
-          `Rendering template ${campaign.emailTemplate} for property ${campaign.property}`,
-          {
-            campaignId: campaign._id,
-            selectedPlan: campaign.selectedPlan?.planNumber,
-            imageSelections: Object.keys(campaign.imageSelections || {}).length,
-            selectedAgent: campaign.selectedAgent, // Log the agent ID
-          }
-        );
+      if (campaign.source === "landivo" && campaign.emailTemplate && campaign.property) {
+        logger.info(`Rendering template ${campaign.emailTemplate} for property ${campaign.property}`, {
+          campaignId: campaign._id,
+          selectedPlan: campaign.selectedPlan?.planNumber,
+          imageSelections: Object.keys(campaign.imageSelections || {}).length,
+          selectedAgent: campaign.selectedAgent, // Log the agent ID
+        });
 
         // Prepare campaign data for template rendering - INCLUDE selectedAgent!
         const campaignData = {
@@ -150,11 +150,7 @@ export class EmailJobProcessor {
     }
   }
 
-  async createTrackingRecord(
-    campaignId: string,
-    contactId: string,
-    contactEmail?: string
-  ): Promise<string> {
+  async createTrackingRecord(campaignId: string, contactId: string, contactEmail?: string): Promise<string> {
     const trackingId = nanoid(12);
 
     const tracking = new EmailTracking({
@@ -162,7 +158,7 @@ export class EmailJobProcessor {
       contactId,
       trackingId,
       status: "queued",
-      contactEmail: contactEmail || '',
+      contactEmail: contactEmail || "",
       links: [],
       linkClicks: [],
       linkStats: new Map(),
@@ -188,29 +184,19 @@ export class EmailJobProcessor {
         throw new Error("Rate limit exceeded");
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error("Rate limit check failed:", errorMessage);
       // Don't throw - let email proceed if rate limit check fails
     }
   }
 
-  private async updateCampaignMetrics(
-    campaignId: string,
-    type: "sent" | "bounced"
-  ): Promise<void> {
+  private async updateCampaignMetrics(campaignId: string, type: "sent" | "bounced"): Promise<void> {
     try {
-      const update =
-        type === "sent"
-          ? { $inc: { "metrics.sent": 1 } }
-          : { $inc: { "metrics.bounced": 1 } };
+      const update = type === "sent" ? { $inc: { "metrics.sent": 1 } } : { $inc: { "metrics.bounced": 1 } };
 
       await Campaign.findByIdAndUpdate(campaignId, update);
     } catch (error) {
-      logger.error(
-        `Failed to update campaign metrics for ${campaignId}:`,
-        error
-      );
+      logger.error(`Failed to update campaign metrics for ${campaignId}:`, error);
       // Don't throw - this is not critical
     }
   }
@@ -219,18 +205,9 @@ export class EmailJobProcessor {
     const { subject, htmlContent, textContent } = content;
 
     // Apply personalization tokens
-    const personalizedSubject = this.replacePersonalizationTokens(
-      subject,
-      contact
-    );
-    const personalizedHtml = this.replacePersonalizationTokens(
-      htmlContent,
-      contact
-    );
-    const personalizedText = this.replacePersonalizationTokens(
-      textContent,
-      contact
-    );
+    const personalizedSubject = this.replacePersonalizationTokens(subject, contact);
+    const personalizedHtml = this.replacePersonalizationTokens(htmlContent, contact);
+    const personalizedText = this.replacePersonalizationTokens(textContent, contact);
 
     return {
       subject: personalizedSubject,
@@ -240,18 +217,9 @@ export class EmailJobProcessor {
   }
 
   private applyBasicPersonalization(campaign: any, contact: any) {
-    const subject = this.replacePersonalizationTokens(
-      campaign.subject || campaign.name,
-      contact
-    );
-    const htmlContent = this.replacePersonalizationTokens(
-      campaign.htmlContent || "<p>No content</p>",
-      contact
-    );
-    const textContent = this.replacePersonalizationTokens(
-      campaign.textContent || campaign.description || "",
-      contact
-    );
+    const subject = this.replacePersonalizationTokens(campaign.subject || campaign.name, contact);
+    const htmlContent = this.replacePersonalizationTokens(campaign.htmlContent || "<p>No content</p>", contact);
+    const textContent = this.replacePersonalizationTokens(campaign.textContent || campaign.description || "", contact);
 
     return {
       subject,
@@ -264,15 +232,9 @@ export class EmailJobProcessor {
     if (!content) return "";
 
     return content
-      .replace(
-        /\{\{firstName\}\}/g,
-        contact.firstName || contact.first_name || ""
-      )
+      .replace(/\{\{firstName\}\}/g, contact.firstName || contact.first_name || "")
       .replace(/\{\{lastName\}\}/g, contact.lastName || contact.last_name || "")
       .replace(/\{\{email\}\}/g, contact.email || "")
-      .replace(
-        /\{\{name\}\}/g,
-        `${contact.firstName || contact.first_name || ""} ${contact.lastName || contact.last_name || ""}`.trim()
-      );
+      .replace(/\{\{name\}\}/g, `${contact.firstName || contact.first_name || ""} ${contact.lastName || contact.last_name || ""}`.trim());
   }
 }

@@ -7,7 +7,7 @@ import { logger } from "../utils/logger";
 import axios from "axios";
 import Bull from "bull";
 import { nanoid } from "nanoid";
-import { MailivoAutomation } from '../models/MailivoAutomation';
+import { MailivoAutomation } from "../models/MailivoAutomation";
 
 const LANDIVO_API_URL = process.env.LANDIVO_API_URL || "https://api.landivo.com";
 
@@ -449,6 +449,7 @@ class CampaignCreatorService {
             campaignId: campaign._id.toString(),
             contactId,
             baseUrl: process.env.API_URL || "https://api.mailivo.landivo.com",
+            buyerId: contactId, // NEW: Pass buyer ID for unsubscribe link generation
           });
 
           // 5. Update tracking record with links

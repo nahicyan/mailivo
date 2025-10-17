@@ -1,10 +1,10 @@
 // api/src/services/email.service.ts
-import { smtpService } from './smtp.service';
-import { sendGridService } from './sendgrid.service';
-import { logger } from '../utils/logger';
-import { EmailOptions } from './smtp.service';
+import { smtpService } from "./smtp.service";
+import { sendGridService } from "./sendgrid.service";
+import { logger } from "../utils/logger";
+import { EmailOptions } from "./smtp.service";
 
-type EmailProvider = 'smtp' | 'sendgrid' | 'auto';
+type EmailProvider = "smtp" | "sendgrid" | "auto";
 
 interface EmailResult {
   success: boolean;
@@ -24,7 +24,7 @@ class EmailService {
 
   constructor() {
     this.config = {
-      primaryProvider: 'smtp', // Use SMTP as primary for now
+      primaryProvider: "smtp", // Use SMTP as primary for now
       fallbackEnabled: true,
       spamScoreThreshold: 7,
     };
@@ -34,10 +34,10 @@ class EmailService {
     try {
       // Add tracking pixels and unsubscribe links
       const enhancedOptions = this.enhanceEmailContent(options);
-      
+
       // Try primary provider
       const result = await this.sendWithProvider(enhancedOptions, this.config.primaryProvider);
-      
+
       if (result.success) {
         return result;
       }
@@ -46,50 +46,46 @@ class EmailService {
       if (this.config.fallbackEnabled) {
         logger.info(`Primary provider failed, trying fallback`, {
           primary: this.config.primaryProvider,
-          error: result.error
+          error: result.error,
         });
-        
-        const fallbackProvider = this.config.primaryProvider === 'smtp' ? 'sendgrid' : 'smtp';
+
+        const fallbackProvider = this.config.primaryProvider === "smtp" ? "sendgrid" : "smtp";
         return await this.sendWithProvider(enhancedOptions, fallbackProvider);
       }
 
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Email service error:', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Email service error:", errorMessage);
       return {
         success: false,
         error: errorMessage,
-        provider: 'smtp' as const
+        provider: "smtp" as const,
       };
     }
   }
 
   private async sendWithProvider(options: EmailOptions, provider: EmailProvider): Promise<EmailResult> {
     switch (provider) {
-      case 'smtp':
+      case "smtp":
         return await smtpService.sendEmail(options);
-      
-      case 'sendgrid':
+
+      case "sendgrid":
         return await sendGridService.sendEmail(options);
-      
-      case 'auto':
+
+      case "auto":
         // For now, auto means prefer SMTP
         return await smtpService.sendEmail(options);
-      
+
       default:
         throw new Error(`Unknown email provider: ${provider}`);
     }
   }
 
   private enhanceEmailContent(options: EmailOptions): EmailOptions {
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
-    
     const headers = {
-      'List-Unsubscribe': `<${baseUrl}/api/via/unsubscribe>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      'X-Mailer': 'Mailivo-Platform',
-      ...options.headers,
+      "X-Mailer": "Mailivo-Platform",
+      ...options.headers, // Preserve incoming headers
     };
 
     return { ...options, headers };
@@ -97,32 +93,29 @@ class EmailService {
 
   async checkSpamScore(content: string, subject: string): Promise<number> {
     let score = 0;
-    
+
     // Subject line checks
-    const spamTriggers = [
-      'FREE', 'URGENT', '!!!', 'ACT NOW', 'CLICK HERE', 'GUARANTEE',
-      'MAKE MONEY', 'NO OBLIGATION', 'RISK FREE', 'WINNER'
-    ];
-    
+    const spamTriggers = ["FREE", "URGENT", "!!!", "ACT NOW", "CLICK HERE", "GUARANTEE", "MAKE MONEY", "NO OBLIGATION", "RISK FREE", "WINNER"];
+
     const upperSubject = subject.toUpperCase();
-    spamTriggers.forEach(trigger => {
+    spamTriggers.forEach((trigger) => {
       if (upperSubject.includes(trigger)) score += 2;
     });
 
     // Content checks
     const htmlContent = content.toLowerCase();
-    
+
     // Excessive capitalization
     const capsCount = (content.match(/[A-Z]/g) || []).length;
     if (capsCount / content.length > 0.3) score += 3;
 
     // Suspicious phrases
-    if (htmlContent.includes('click here')) score += 1;
-    if (htmlContent.includes('buy now')) score += 1;
-    if (htmlContent.includes('limited time')) score += 1;
+    if (htmlContent.includes("click here")) score += 1;
+    if (htmlContent.includes("buy now")) score += 1;
+    if (htmlContent.includes("limited time")) score += 1;
 
     // HTML/text ratio
-    const textLength = content.replace(/<[^>]*>/g, '').length;
+    const textLength = content.replace(/<[^>]*>/g, "").length;
     const htmlLength = content.length;
     if (textLength / htmlLength < 0.6) score += 2;
 
@@ -139,8 +132,8 @@ class EmailService {
   }
 
   generateUnsubscribeLink(contactId: string, campaignId: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:8000';
-    const token = Buffer.from(`${contactId}:${campaignId}`).toString('base64');
+    const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:8000";
+    const token = Buffer.from(`${contactId}:${campaignId}`).toString("base64");
     return `${baseUrl}/api/via/unsubscribe?token=${token}`;
   }
 
@@ -152,53 +145,54 @@ class EmailService {
 
   setFallbackEnabled(enabled: boolean): void {
     this.config.fallbackEnabled = enabled;
-    logger.info(`Email service fallback ${enabled ? 'enabled' : 'disabled'}`);
+    logger.info(`Email service fallback ${enabled ? "enabled" : "disabled"}`);
   }
 
   // Status and testing
   async getServiceStatus() {
     const smtpStatus = smtpService.getConnectionStatus();
     const sendGridStatus = sendGridService.getConnectionStatus();
-    
+
     return {
       primary: this.config.primaryProvider,
       fallback: this.config.fallbackEnabled,
       providers: {
         smtp: smtpStatus,
-        sendgrid: sendGridStatus
-      }
+        sendgrid: sendGridStatus,
+      },
     };
   }
 
   async testConnection(provider?: EmailProvider): Promise<boolean> {
     const testProvider = provider || this.config.primaryProvider;
-    
+
     switch (testProvider) {
-      case 'smtp':
+      case "smtp":
         return await smtpService.testConnection();
-      case 'sendgrid':
+      case "sendgrid":
         return await sendGridService.testConnection();
       default:
         return false;
     }
   }
 
-  async sendTestEmail(to: string, campaignData: {
-    subject: string;
-    htmlContent: string;
-    textContent?: string;
-  }): Promise<EmailResult> {
+  async sendTestEmail(
+    to: string,
+    campaignData: {
+      subject: string;
+      htmlContent: string;
+      textContent?: string;
+    }
+  ): Promise<EmailResult> {
     const testSubject = `[TEST] ${campaignData.subject}`;
-    
+
     const testBanner = `
       <div style="background-color: #fbbf24; color: #000; padding: 10px; text-align: center; font-weight: bold;">
         This is a test email - Not sent to actual recipients
       </div>
     `;
-    
-    const htmlWithBanner = campaignData.htmlContent.includes('<body>')
-      ? campaignData.htmlContent.replace('<body>', `<body>${testBanner}`)
-      : `${testBanner}${campaignData.htmlContent}`;
+
+    const htmlWithBanner = campaignData.htmlContent.includes("<body>") ? campaignData.htmlContent.replace("<body>", `<body>${testBanner}`) : `${testBanner}${campaignData.htmlContent}`;
 
     return this.sendEmail({
       to,
